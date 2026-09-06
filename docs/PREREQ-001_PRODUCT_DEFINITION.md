@@ -37,6 +37,45 @@ The person operating the agent has no principled answer to three questions:
 The result is that inference spend is uncorrelated with task value. A trivial
 task and an unsolvable task can cost the same, and neither cost was chosen.
 
+### 2.1 Who this is for
+
+**In V1 — autonomous software engineering:**
+
+| | Who |
+|---|---|
+| **User** | Engineering teams operating autonomous coding agents. |
+| **Operator** | The person responsible for deploying and supervising those agents — an engineering lead, AI platform engineer, developer-tooling owner, or equivalent. |
+| **Buyer** | Engineering or AI-platform leadership accountable for both agent performance and inference spend — a CTO, VP Engineering, Head of AI Platform, or equivalent owner. |
+
+The operator runs the agents day to day. The buyer answers for what they cost
+and whether they worked. Radhanite exists because those two concerns are
+currently unconnected.
+
+**The problem they have is not that inference is expensive.** Expense is fine
+when the outcome is worth it. The problem is that these teams have no
+*task-level economic control layer* — nothing that decides how much intelligence
+an autonomous coding agent should purchase to reach a measurable engineering
+outcome within a finite budget.
+
+Without one, spend cannot be tied to completed engineering outcomes, and teams
+fail in both directions: over-spending on premium inference where it changes
+nothing, or under-spending and lowering task-completion quality. Neither failure
+is visible until the money is already gone.
+
+**Beyond V1**
+
+Radhanite is intended to generalize beyond software engineering, to
+organizations deploying autonomous agents across business workflows. Over time
+those agents may purchase inference, tools, data, compute, and specialist
+machine services in order to achieve measurable business outcomes.
+
+The buyer widens accordingly: CTO, CIO, Head of AI, AI-platform leadership,
+FinOps and AI FinOps, and business-unit owners accountable for the economics of
+autonomous work.
+
+This records intended direction, not authorization. Only the V1 use case in §6
+is being built.
+
 ## 3. The shift in the unit of instruction
 
 The core idea of Radhanite is a change in what the user hands to the system.
