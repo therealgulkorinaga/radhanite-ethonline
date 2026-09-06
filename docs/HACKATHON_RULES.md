@@ -48,9 +48,9 @@ data are ever committed — the repository being public is assumed at all times.
 ### 1.6 The project must be open source
 The work must be released under an open source license.
 
-**How we comply:** an OSI-approved license will be added by the product owner
-before the first release. All code and documentation in the repository is
-written with public release in mind.
+**How we comply:** the repository is licensed under the MIT License, an
+OSI-approved licence, from its first push. All code and documentation in the
+repository is written with public release in mind.
 
 ## 2. Practical consequences for AI-assisted building
 

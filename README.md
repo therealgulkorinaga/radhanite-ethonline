@@ -107,5 +107,5 @@ in [`docs/HACKATHON_RULES.md`](docs/HACKATHON_RULES.md).
 
 ## License
 
-To be selected by the product owner before the first release. The project will
-be open source, as required by ETHOnline.
+MIT. See [`LICENSE`](LICENSE). The project is open source, as required by
+ETHOnline.
