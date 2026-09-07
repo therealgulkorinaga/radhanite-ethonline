@@ -4,8 +4,8 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md`, `docs/PREREQ-001_PRODUCT_DEFINITION.md`, `docs/ARCHITECTURE.md`
 **Date issued:** 2026-09-07
-**Outcome:** **Rejected** — TASK-001 §1's no-external-dependencies requirement was departed from by `pytest` and `hatchling`.
-**Commit reviewed:** `887e9f6`
+**Outcome:** **Approved with corrections** — `CODEX-PR003-04`, since corrected.
+**Reviews:** first pass at `887e9f6` (Rejected, 3 findings); second pass after correction (Approved with corrections, 1 finding).
 
 ---
 
@@ -116,9 +116,34 @@ Recorded verbatim, as returned. Not summarized, softened, or filtered.
 >
 > Rejected — TASK-001 §1's no-external-dependencies requirement is departed from by `pytest` and `hatchling`.
 
+## 2b. Second review, after correction
+
+The corrections were re-reviewed. Recorded verbatim.
+
+> The three original findings are correctly fixed, and the verification claims reproduce:
+> - Bare Python 3.12: 3 tests pass without pytest.
+> - Python 3.13 and 3.14: the runtime test fails with the required message.
+> - PR #3 contains exactly six commits, including three correction commits naming their finding identifiers.
+> - The prompt commit precedes the findings commit, and the review is preserved verbatim.
+>
+> One new documentation correction remains:
+>
+> `CODEX-PR003-04`
+>
+> File and line: `docs/pr_explanations/PR-003_TASK-001_EXPLANATION.md:20,50-53,91-93,178-181`
+>
+> The explanation has stale counts after adding the runtime test:
+> - "Four new files" precedes a five-file table.
+> - It says the command finds two checks, although there are three.
+> - Two later passages still refer to "both tests" or "two of them."
+>
+> The implementation and other sections correctly report three passing tests. These stale claims depart from the truthfulness requirement in AI_BUILD_GOVERNANCE.md §1.3(4). No TASK-001 or architecture violation remains.
+>
+> Approved with corrections — CODEX-PR003-04
+
 ## 3. Outcome
 
-**Rejected.**
+**First pass: Rejected. Second pass: Approved with corrections.**
 
 Per §7.2, rejected work is fixed or removed — it is not merged with a note. All
 three findings were accepted without dispute and corrected. None was disputed.
@@ -136,6 +161,7 @@ dependencies were removed rather than the specification reinterpreted.
 | `CODEX-PR003-01` | `01817a9` | Removed `pytest` and `hatchling`. Tests rewritten against the standard library's `unittest`; `[build-system]` and all dependencies dropped from `pyproject.toml`; package moved from `src/radhanite/` to `radhanite/`, the src layout existing only to force an install step that no longer happens. |
 | `CODEX-PR003-02` | `f554191` | Docstring reframed as intended behaviour, opening with an explicit statement that none of it is implemented and that the package exports only its version. |
 | `CODEX-PR003-03` | `024e60e` | Both false claims made true rather than deleted. A third test asserts the runtime is 3.12, verified to FAIL on 3.14; with `pytest` gone, no install step remains, verified on a bare 3.12 interpreter that cannot import pytest. |
+| `CODEX-PR003-04` | `c4b2a93` | Stale counts left behind by `024e60e` corrected to three throughout. The file count was also wrong in the opposite direction, which the finding did not reach: the PR adds six files, not five, the table having omitted the explanation document itself. A row was added, so the stated count, the table and `git diff --diff-filter=A` now agree. |
 
 The full history of any finding is recoverable with:
 
