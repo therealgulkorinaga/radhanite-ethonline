@@ -20,7 +20,7 @@ refused, since they are not quantities either condition can meaningfully weigh.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from radhanite.money import Money
 
@@ -46,7 +46,7 @@ class Task:
     budget: Money
     task_value: Money
     success_condition: str
-    constraints: tuple[str, ...] = field(default=())
+    constraints: tuple[str, ...]
 
     def __post_init__(self) -> None:
         if not self.description or not self.description.strip():

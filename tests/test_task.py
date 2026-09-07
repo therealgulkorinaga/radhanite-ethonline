@@ -35,7 +35,18 @@ class AcceptanceTests(unittest.TestCase):
         self.assertEqual(t.success_condition, "tests pass")
         self.assertEqual(t.constraints, ("no dependency changes",))
 
-    def test_constraints_are_optional(self) -> None:
+    def test_constraints_must_be_supplied_even_when_empty(self) -> None:
+        # All five inputs are required. A task with nothing forbidden says so
+        # explicitly, rather than leaving the field out and hoping.
+        with self.assertRaises(TypeError):
+            Task(
+                description="Fix GitHub issue #184",
+                budget=Money("2.00"),
+                task_value=Money("20.00"),
+                success_condition="tests pass",
+            )
+
+    def test_an_empty_constraint_tuple_is_valid(self) -> None:
         self.assertEqual(a_task(constraints=()).constraints, ())
 
     def test_constraints_are_normalised_to_a_tuple(self) -> None:
