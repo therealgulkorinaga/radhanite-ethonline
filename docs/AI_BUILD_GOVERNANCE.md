@@ -262,6 +262,26 @@ Once a review has begun, it concludes with exactly one of:
 
 Unauthorized scope found in review is removed, not merged and deferred.
 
+### 7.3 Review records
+
+> **Every review is recorded in `docs/reviews/` — the prompt and the findings
+> both.**
+
+A review that leaves no trace cannot be shown to have happened. Each reviewed
+pull request gets one committed record, `docs/reviews/PR-<NNN>_CODEX_REVIEW.md`,
+holding the prompt the reviewer was given, the findings it returned verbatim,
+the outcome, and the correction commits that resolved each finding.
+
+The prompt is committed **before the review is run**. A prompt recorded
+afterwards can be quietly reshaped to fit the answer it received.
+
+Findings are never summarized, softened, or deleted. A finding that was disputed
+is kept, together with the reasoning that disputed it.
+
+The record is a transcript, not a source of truth. A reviewer can be wrong, and
+the record preserves what it said rather than endorsing it. See
+[`docs/reviews/README.md`](reviews/README.md).
+
 ## 8. Amending this document
 
 This document may be changed only by the human product owner. No AI agent may
