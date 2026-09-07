@@ -63,8 +63,12 @@ class BudgetAndValueAreIndependentTests(unittest.TestCase):
         self.assertEqual(t.task_value, Money("20.00"))
 
     def test_value_below_budget_is_permitted(self) -> None:
-        # Economically unwise, but not the type's business to forbid: the
-        # escalation rule will simply refuse to spend.
+        # Not the type's business to forbid. Note this does NOT mean the
+        # escalation rule will refuse to spend: that rule is marginal, so a
+        # cheap escalation with a large probability gain can still be justified
+        # even when the whole task is worth less than the whole budget. The two
+        # quantities serve separate conditions (TASK-001 §2.5) and neither
+        # total constrains the other.
         t = a_task(budget=Money("20.00"), task_value=Money("2.00"))
         self.assertEqual(t.task_value, Money("2.00"))
 
