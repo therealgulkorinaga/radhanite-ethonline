@@ -6,6 +6,18 @@
 
 ---
 
+> **A note on numbering.** Files and finding identifiers in this repository are
+> named for the **GitHub pull request number**, never for a position in the build
+> plan. TASK-001 was planned as twelve build steps, and its first step happened
+> to land as pull request #3 — a coincidence, not a scheme. Governance pull
+> requests #4 and #5 then landed in between, so from that point the two
+> numberings diverge: the second build step is pull request **#6**, not #4.
+>
+> GitHub pull request numbers are permanent, assigned at creation and shared with
+> the issue counter, so they cannot be reassigned. When the build plan and the
+> record disagreed, the plan moved. Reading the pull request numbers as build
+> steps will mislead you; read them as what they are.
+
 ## 1. Purpose of this PR
 
 To set up the workshop before building anything in it.
