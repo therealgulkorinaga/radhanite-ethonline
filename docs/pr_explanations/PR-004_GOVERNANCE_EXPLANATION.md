@@ -6,6 +6,23 @@
 
 ---
 
+> **A note on numbering.** This pull request is one of the reasons the build plan
+> and the pull request numbers no longer line up.
+>
+> TASK-001 was planned as twelve build steps, originally labelled PR-003 through
+> PR-014 on the assumption they would match GitHub's numbering. This governance
+> pull request, and the one after it, landed in the middle of that sequence and
+> took numbers #4 and #5. From that point the two numberings diverge: the second
+> build step is pull request **#6**, not #4.
+>
+> Files and finding identifiers here are named for the **GitHub pull request
+> number**, never for a position in the build plan. GitHub numbers are permanent,
+> assigned at creation and shared with the issue counter, so they cannot be
+> reassigned. When the plan and the record disagreed, the plan moved.
+>
+> Governance work interleaving with build work is expected, not an accident, so
+> this divergence will widen. Read pull request numbers as pull request numbers.
+
 ## 1. Purpose of this PR
 
 To make sure that when a reviewer finds a problem, the fix for that problem can
