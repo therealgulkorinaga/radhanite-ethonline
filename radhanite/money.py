@@ -76,9 +76,11 @@ class Money:
         TypeError: Money cannot be built from a float ...
 
     Amounts may be negative. That is not an oversight: the escalation rule in
-    TASK-001 §2.5 computes an incremental expected value that is negative
-    whenever a strategy offers no improvement, and the rule requires that case
-    to fall out of the arithmetic rather than be special-cased.
+    TASK-001 §2.5 computes an incremental expected value that is **zero or
+    negative** when a strategy offers no improvement — zero when the
+    probabilities are equal, negative when the next strategy is worse. The rule
+    requires that case to fall out of the arithmetic rather than be
+    special-cased, so negative amounts must be representable.
     """
 
     amount: Decimal

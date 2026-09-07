@@ -128,10 +128,15 @@ class ArithmeticTests(unittest.TestCase):
 
 class SignTests(unittest.TestCase):
     def test_negative_amounts_are_allowed(self) -> None:
-        # Required by TASK-001 §2.5: a strategy offering no improvement yields a
-        # negative incremental expected value, and the rule says that must fall
-        # out of the arithmetic rather than be special-cased.
+        # Required by TASK-001 §2.5: a strategy offering no improvement yields
+        # zero or a negative incremental expected value — zero when the
+        # probabilities are equal, negative when the next strategy is worse. The
+        # rule says that must fall out of the arithmetic, not be special-cased.
         self.assertEqual((Money("20.00") * Decimal("-0.10")).amount, Decimal("-2.000"))
+
+    def test_equal_probabilities_give_exactly_zero(self) -> None:
+        # The equality case §2.5 calls out: zero, not negative.
+        self.assertEqual((Money("20.00") * Decimal("0")).amount, Decimal("0.00"))
 
     def test_is_positive(self) -> None:
         self.assertTrue(Money("0.01").is_positive)
