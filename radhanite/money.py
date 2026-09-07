@@ -156,3 +156,7 @@ class Money:
     @property
     def is_positive(self) -> bool:
         return self.amount > 0
+
+    @property
+    def is_negative(self) -> bool:
+        return self.amount < 0

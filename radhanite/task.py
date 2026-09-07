@@ -8,6 +8,14 @@ Budget and task value are separate, and neither is derived from the other. A
 budget alone answers "may I afford this?"; only a value answers "is it worth
 buying?". Without both, no genuine economic decision is possible — which is why
 `Task` requires them independently and never computes one from the other.
+
+Validation here is deliberately thin. A zero budget and a zero task value are
+both accepted, because TASK-001 §2.5 assigns those outcomes to the escalation
+rule: a zero budget fails the budget condition, and a zero value fails the value
+condition, and in both cases the rule returns Stop. Rejecting them up front
+would invent a product rule neither authoritative document states, and would
+prevent the specified Stop outcome from ever being reached. Negative amounts are
+refused, since they are not quantities either condition can meaningfully weigh.
 """
 
 from __future__ import annotations
@@ -46,18 +54,14 @@ class Task:
 
         if not isinstance(self.budget, Money):
             raise TypeError("budget must be a Money amount.")
-        if not self.budget.is_positive:
-            raise ValueError(
-                f"budget must be greater than zero, got {self.budget}. A task with "
-                "nothing to spend cannot be attempted."
-            )
+        if self.budget.is_negative:
+            raise ValueError(f"budget cannot be negative, got {self.budget}.")
 
         if not isinstance(self.task_value, Money):
             raise TypeError("task_value must be a Money amount.")
-        if not self.task_value.is_positive:
+        if self.task_value.is_negative:
             raise ValueError(
-                f"task_value must be greater than zero, got {self.task_value}. A "
-                "task worth nothing can never justify any expenditure."
+                f"task_value cannot be negative, got {self.task_value}."
             )
 
         if not self.success_condition or not self.success_condition.strip():

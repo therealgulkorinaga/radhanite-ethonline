@@ -62,24 +62,35 @@ class BudgetAndValueAreIndependentTests(unittest.TestCase):
         self.assertEqual(t.budget, t.task_value)
 
 
+class ZeroIsTheEscalationRulesBusinessTests(unittest.TestCase):
+    """TASK-001 §2.5 decides these, not the constructor.
+
+    A zero budget fails the rule's budget condition; a zero task value fails its
+    value condition. Both produce Stop, which is a correct outcome. Rejecting
+    them here would invent a product rule neither authoritative document states,
+    and would stop the specified Stop outcome from ever being reached.
+    """
+
+    def test_zero_budget_is_accepted(self) -> None:
+        self.assertEqual(a_task(budget=Money("0")).budget, Money("0"))
+
+    def test_zero_task_value_is_accepted(self) -> None:
+        self.assertEqual(a_task(task_value=Money("0")).task_value, Money("0"))
+
+    def test_both_zero_is_accepted(self) -> None:
+        t = a_task(budget=Money("0"), task_value=Money("0"))
+        self.assertEqual(t.budget, Money("0"))
+        self.assertEqual(t.task_value, Money("0"))
+
+
 class RejectionTests(unittest.TestCase):
     def test_rejects_empty_description(self) -> None:
         with self.assertRaises(ValueError):
             a_task(description="   ")
 
-    def test_rejects_zero_budget(self) -> None:
-        with self.assertRaises(ValueError):
-            a_task(budget=Money("0"))
-
     def test_rejects_negative_budget(self) -> None:
         with self.assertRaises(ValueError):
             a_task(budget=Money("-1.00"))
-
-    def test_rejects_zero_task_value(self) -> None:
-        # A task worth nothing can never justify any expenditure, so the
-        # escalation rule would have nothing to weigh.
-        with self.assertRaises(ValueError):
-            a_task(task_value=Money("0"))
 
     def test_rejects_negative_task_value(self) -> None:
         with self.assertRaises(ValueError):
