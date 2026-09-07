@@ -17,7 +17,7 @@ whether the code works.
 
 ## 2. What changed
 
-Four new files:
+Six new files:
 
 | File | What it is |
 |---|---|
@@ -26,6 +26,7 @@ Four new files:
 | `tests/test_package.py` | Three checks that confirm the setup works |
 | `tests/__init__.py` | Lets the test command find the tests with no configuration |
 | `.gitignore` | A list of files that should never be saved into the project's history |
+| `docs/pr_explanations/PR-003_...md` | This document |
 
 This pull request was revised after an independent review rejected its first
 version. Three problems were found and fixed; the record is in
@@ -48,7 +49,7 @@ anything, and no way to check whether anything worked.
 ## 5. How it works after
 
 There is now a single command that runs every check in the project and reports
-whether they all passed. Today it finds two checks and both pass.
+whether they all passed. Today it finds three checks and all three pass.
 
 Those three checks are deliberately not empty. One confirms the project can
 actually be loaded and knows its own version number. The second confirms the
@@ -89,8 +90,8 @@ failed.
   other than 3.12, so this is loud rather than silent. This was verified by
   running the tests on a newer Python and confirming they fail.
 - **The checks could be meaningless.** A test that passes no matter what is
-  worse than useless, because it creates false confidence. Both tests here were
-  written to fail if the setup is genuinely broken.
+  worse than useless, because it creates false confidence. All three tests
+  here were written to fail if the setup is genuinely broken.
 - **The setup could work on this machine only.** It has not been run anywhere
   else, so that is an open risk rather than a solved problem.
 
@@ -177,7 +178,7 @@ because it is the process working rather than failing.
 
 Radhanite's first task is finished only when the project's own tests pass, so
 the very first thing built was the ability to run tests and see the result.
-There are two of them and they both pass, and neither is the kind of test that
+There are three of them and they all pass, and none is the kind of test that
 passes no matter what.
 
 The reason to do this separately, rather than folding it into the first real
