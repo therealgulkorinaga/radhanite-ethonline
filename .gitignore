@@ -6,7 +6,6 @@ build/
 dist/
 
 # Test and environment
-.pytest_cache/
 .venv/
 venv/
 

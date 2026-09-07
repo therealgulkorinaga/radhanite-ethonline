@@ -1,18 +1,20 @@
 """The package imports and is wired up correctly.
 
-This is deliberately minimal. Its job is to prove that the test command works
-and that `src/` is on the import path, so that later tests have somewhere to
-stand.
+These tests are deliberately minimal. Their job is to prove the test command
+works and that the package can be imported, so that later tests have somewhere
+to stand.
 """
+
+import unittest
 
 import radhanite
 
 
-def test_package_declares_a_version() -> None:
-    assert isinstance(radhanite.__version__, str)
-    assert radhanite.__version__
+class PackageTests(unittest.TestCase):
+    def test_declares_a_version(self) -> None:
+        self.assertIsInstance(radhanite.__version__, str)
+        self.assertTrue(radhanite.__version__)
 
-
-def test_package_docstring_describes_the_product() -> None:
-    assert radhanite.__doc__ is not None
-    assert "economic control layer" in radhanite.__doc__
+    def test_docstring_describes_the_product(self) -> None:
+        self.assertIsNotNone(radhanite.__doc__)
+        self.assertIn("economic control layer", radhanite.__doc__)

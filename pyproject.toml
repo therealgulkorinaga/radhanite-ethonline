@@ -1,3 +1,8 @@
+# TASK-001 §1 requires the implementation to have no external dependencies.
+# This project therefore declares no third-party packages and no build backend:
+# it is run directly from the source tree and tested with the standard library's
+# unittest module. There is deliberately nothing to install.
+
 [project]
 name = "radhanite"
 version = "0.1.0"
@@ -5,17 +10,3 @@ description = "An economic control layer for autonomous AI agents."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = { file = "LICENSE" }
-
-[project.optional-dependencies]
-dev = ["pytest>=8.0"]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/radhanite"]
-
-[tool.pytest.ini_options]
-pythonpath = ["src"]
-testpaths = ["tests"]
