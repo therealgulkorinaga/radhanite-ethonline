@@ -159,9 +159,6 @@ OK
 - Nothing here decides anything; these are only the building blocks.
 - Amounts are US dollars only. TASK-001 §6.6 fixes that for now, and they are
   internal accounting numbers rather than any real currency.
-- The convenience of a ratio between value and budget is exposed for reading,
-  but nothing decides anything from it, and nothing should — the spending rule
-  weighs one step at a time, never the totals.
 
 ## 13. Functionality explicitly left out of scope
 

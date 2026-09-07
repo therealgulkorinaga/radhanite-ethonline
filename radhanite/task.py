@@ -23,14 +23,15 @@ __all__ = ["Task"]
 class Task:
     """A unit of work with an economic frame around it.
 
-    >>> Task(
+    >>> t = Task(
     ...     description="Fix GitHub issue #184",
     ...     budget=Money("2.00"),
     ...     task_value=Money("20.00"),
-    ...     constraints=("no dependency changes",),
     ...     success_condition="tests pass",
-    ... ).headroom_ratio
-    Decimal('10')
+    ...     constraints=("no dependency changes",),
+    ... )
+    >>> print(t.budget, t.task_value)
+    $2.00 $20.00
     """
 
     description: str
@@ -71,13 +72,3 @@ class Task:
                 "constraints must be a tuple of strings, not a single string."
             )
         object.__setattr__(self, "constraints", tuple(self.constraints))
-
-    @property
-    def headroom_ratio(self):
-        """How many times the budget the outcome is worth.
-
-        Reported for inspection only. Nothing in Radhanite decides anything from
-        this: the escalation rule in TASK-001 §2.5 weighs an incremental
-        expected value against an incremental cost, never a ratio of the totals.
-        """
-        return self.task_value.amount / self.budget.amount

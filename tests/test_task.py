@@ -7,7 +7,6 @@ independent, since collapsing them would remove the economic decision entirely.
 
 import doctest
 import unittest
-from decimal import Decimal
 
 from radhanite import task as task_module
 from radhanite.money import Money
@@ -49,7 +48,8 @@ class BudgetAndValueAreIndependentTests(unittest.TestCase):
     def test_value_far_exceeding_budget_is_normal(self) -> None:
         t = a_task(budget=Money("2.00"), task_value=Money("20.00"))
         self.assertNotEqual(t.budget, t.task_value)
-        self.assertEqual(t.headroom_ratio, Decimal("10"))
+        self.assertEqual(t.budget, Money("2.00"))
+        self.assertEqual(t.task_value, Money("20.00"))
 
     def test_value_below_budget_is_permitted(self) -> None:
         # Economically unwise, but not the type's business to forbid: the
@@ -59,7 +59,7 @@ class BudgetAndValueAreIndependentTests(unittest.TestCase):
 
     def test_equal_budget_and_value_are_permitted(self) -> None:
         t = a_task(budget=Money("5.00"), task_value=Money("5.00"))
-        self.assertEqual(t.headroom_ratio, Decimal("1"))
+        self.assertEqual(t.budget, t.task_value)
 
 
 class RejectionTests(unittest.TestCase):
