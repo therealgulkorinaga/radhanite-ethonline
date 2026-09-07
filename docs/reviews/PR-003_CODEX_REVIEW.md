@@ -4,7 +4,8 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md`, `docs/PREREQ-001_PRODUCT_DEFINITION.md`, `docs/ARCHITECTURE.md`
 **Date issued:** 2026-09-07
-**Outcome:** _pending — review not yet run_
+**Outcome:** **Rejected** — TASK-001 §1's no-external-dependencies requirement was departed from by `pytest` and `hatchling`.
+**Commit reviewed:** `887e9f6`
 
 ---
 
@@ -78,19 +79,97 @@ End with exactly ONE outcome, per §7.2:
 
 ## 2. Findings returned
 
-_Pending. Codex has not yet reviewed this pull request._
+Recorded verbatim, as returned. Not summarized, softened, or filtered.
 
-Findings will be recorded here verbatim, numbered `CODEX-PR003-01` onward per
-`§3.1`.
+> Reviewed PR #3 at `887e9f6` against the three specified authoritative documents.
+>
+> 1. The implementation is limited to project scaffolding and tests, but several claims overstate what it currently provides.
+> 2. None of the technologies expressly excluded by TASK-001 §3 appear in the source, configuration, or declared dependencies.
+> 3. No ARCHITECTURE.md §6 integration boundary or speculative future abstraction appears.
+> 4. Python 3.12 is declared through `requires-python = ">=3.12,<3.13"`, but the documented test command does not enforce that constraint.
+> 5. Both tests are real, although narrow. Removing `__version__` failed the first test; removing the required product wording failed the second.
+> 6. All three commits explicitly identify TASK-001 as their authority.
+> 7. Unsupported behavioral claims exist, as detailed below.
+>
+> `CODEX-PR003-01`
+>
+> File and line: `pyproject.toml:9-14`
+>
+> The PR adds two third-party dependencies: pytest as an optional development dependency and hatchling as a build dependency. TASK-001 §1 requires the implementation to have "no external dependencies" and provides no exception for development or build tooling. Neither package is among the specific exclusions in §3, but both still depart from the broader requirement in §1.
+>
+> `CODEX-PR003-02`
+>
+> File and line: `src/radhanite/__init__.py:3-6`
+>
+> The package docstring states in the present tense that Radhanite accepts task inputs, selects a strategy, allocates expenditure, evaluates outcomes, and decides whether further expenditure is justified. The package exports only `__version__`; none of that behavior exists in this PR. This is an unsupported behavioral claim concerning the pipeline defined by TASK-001 §2. The text should be explicitly framed as the intended product behavior until the implementation exists.
+>
+> `CODEX-PR003-03`
+>
+> File and line: `docs/pr_explanations/PR-003_TASK-001_EXPLANATION.md:45-46,75-77,101-108`
+>
+> The explanation claims that the project refuses Python versions outside 3.12 and that a reviewer can run the tests with one command and no installation step. Neither claim holds for the documented `python -m pytest -q` workflow:
+>
+> - The unchanged tests passed under Python 3.13 and Python 3.14 because `requires-python` is package-installation metadata; it does not constrain direct source-tree test execution.
+> - A clean Python 3.12 environment failed with `No module named pytest`, so an installation step or pre-existing pytest installation is required.
+>
+> This overstates compliance with TASK-001 §6.4 and violates the review requirement that claims about behavior be supported by the implementation.
+>
+> Rejected — TASK-001 §1's no-external-dependencies requirement is departed from by `pytest` and `hatchling`.
 
 ## 3. Outcome
 
-_Pending._
+**Rejected.**
+
+Per §7.2, rejected work is fixed or removed — it is not merged with a note. All
+three findings were accepted without dispute and corrected. None was disputed.
+
+Finding `CODEX-PR003-01` turned on a genuine ambiguity in the specification the
+implementing agent had itself written: TASK-001 §1 says "no external
+dependencies" with no exemption for tooling. The implementing agent had assumed
+testing and build tools were exempt. The specification does not say that, so the
+dependencies were removed rather than the specification reinterpreted.
 
 ## 4. Corrections
 
-_None yet._
+| Finding | Correction commit | What changed |
+|---|---|---|
+| `CODEX-PR003-01` | `01817a9` | Removed `pytest` and `hatchling`. Tests rewritten against the standard library's `unittest`; `[build-system]` and all dependencies dropped from `pyproject.toml`; package moved from `src/radhanite/` to `radhanite/`, the src layout existing only to force an install step that no longer happens. |
+| `CODEX-PR003-02` | `f554191` | Docstring reframed as intended behaviour, opening with an explicit statement that none of it is implemented and that the package exports only its version. |
+| `CODEX-PR003-03` | `024e60e` | Both false claims made true rather than deleted. A third test asserts the runtime is 3.12, verified to FAIL on 3.14; with `pytest` gone, no install step remains, verified on a bare 3.12 interpreter that cannot import pytest. |
 
-When findings are resolved, each correction commit is listed here against the
-finding identifier it references, so the trail runs from complaint to fix
-without leaving the repository.
+The full history of any finding is recoverable with:
+
+```
+git log --grep=CODEX-PR003
+```
+
+### Verification after correction
+
+```
+$ python --version
+Python 3.12.13
+$ python -m unittest discover
+...
+Ran 3 tests in 0.000s
+OK
+```
+
+Wrong runtime is now refused:
+
+```
+$ python3 --version
+Python 3.14.3
+$ python3 -m unittest discover
+TASK-001 §6.4 requires Python 3.12; running 3.14.3
+FAILED (failures=1)
+```
+
+No install step, on an interpreter with nothing installed:
+
+```
+$ python3.12 -c "import pytest"
+ModuleNotFoundError: No module named 'pytest'
+$ python3.12 -m unittest discover
+Ran 3 tests in 0.000s
+OK
+```

@@ -18,7 +18,7 @@ A new folder, `docs/reviews/`, containing:
 | File | What it is |
 |---|---|
 | `README.md` | What the folder is for and how records must be written |
-| `PR-003_CODEX_REVIEW.md` | The record for pull request 3, with its prompt filled in and its findings still to come |
+| `PR-003_CODEX_REVIEW.md` | The record for pull request 3: the prompt, the findings, the verdict, and the fixes |
 
 One new subsection, `§7.3 Review records`, was added to
 `docs/AI_BUILD_GOVERNANCE.md` requiring these records to exist.
@@ -101,8 +101,9 @@ between the new files resolve.
 
 ## 12. Known limitations
 
-- The first record is incomplete by design: it holds a prompt and no findings,
-  because the review has not been run yet.
+- The first record is now complete. Its prompt was committed before the review
+  ran, and the findings were added afterwards — the commit history shows that
+  ordering, which is the only thing that makes the ordering rule checkable.
 - Nothing is automated. A person runs the reviewer and pastes the result.
 - Ordering is enforced by convention plus the commit history, not by tooling.
 
