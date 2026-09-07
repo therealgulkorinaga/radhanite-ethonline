@@ -96,6 +96,97 @@ End with exactly ONE outcome, per §7.2:
   - Rejected  (state which specification or boundary was departed from)
 ```
 
+## 1b. Second review prompt
+
+Issued after the seven corrections were pushed, and committed before that second
+review was run.
+
+```text
+You are the independent review agent for the Radhanite repository, per
+docs/AI_BUILD_GOVERNANCE.md §1.3.
+
+This is a SECOND review of pull request #6:
+https://github.com/therealgulkorinaga/radhanite-ethonline/pull/6
+
+You reviewed it previously at commit d3c13d7 and rejected it with seven
+findings, CODEX-PR006-01 through CODEX-PR006-07. Seven correction commits have
+since been pushed. Your record of the first review, including your findings
+verbatim, is in docs/reviews/PR-006_CODEX_REVIEW.md.
+
+Review against these authoritative documents ONLY:
+  - tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md
+  - docs/PREREQ-001_PRODUCT_DEFINITION.md
+  - docs/ARCHITECTURE.md
+
+Do NOT treat the PR explanation as evidence of correctness (§4.3).
+
+PART A — do the fixes hold?
+
+For each of CODEX-PR006-01 through -07, verify the fix actually resolves the
+finding. Reproduce where you can rather than reading the diff:
+
+  -01  Is headroom_ratio gone, with nothing equivalent reintroduced?
+  -02  Are Infinity, -Infinity and NaN refused, as Money and inside a Task?
+  -03  Is arithmetic now exact? Retry your own example. Try changing the
+       ambient decimal context and confirm results are unaffected. Confirm an
+       operation that genuinely cannot be represented raises rather than
+       rounding.
+  -04  Are zero budget and zero task value now accepted, and negatives still
+       refused?
+  -05  Is constraints required? Confirm omitting it raises, and confirm the
+       replacement test fails if the default is restored.
+  -06  Does the justification now preserve the equality case?
+  -07  Is the corrected comment accurate?
+
+PART B — did any correction introduce a NEW defect?
+
+This is the part that matters most. On PR #3 a correction introduced a fresh
+defect that only the second review caught. Look specifically at:
+
+  - The new decimal context (prec=200, Inexact/InvalidOperation/DivisionByZero/
+    Overflow trapped). Does trapping change behaviour anywhere unintended? Can
+    a legitimate amount of money now raise? Is comparison, equality, hashing,
+    or string formatting affected? Does the context leak or fail to apply?
+  - Accepting zero. Does any code path now divide by, or otherwise mishandle,
+    a zero budget or zero task value?
+  - Money.is_negative alongside is_positive. Is zero handled consistently by
+    both, and is either used anywhere it should not be?
+  - Making constraints required. Did that break any construction site?
+
+PART C — claims
+
+Re-check every count and claim in
+docs/pr_explanations/PR-006_TASK-001_EXPLANATION.md against reality: file
+counts, test counts, and behavioural claims. Stale counts after a correction
+were finding CODEX-PR003-04 on the previous pull request; check the same class
+of error has not recurred.
+
+Also confirm the review record in docs/reviews/PR-006_CODEX_REVIEW.md reproduces
+your first-round findings verbatim, without softening or omission.
+
+FORMAT
+
+Number any NEW findings continuing the existing sequence, per §3.1 — identifiers
+are never reused, so start at:
+
+    CODEX-PR006-08
+
+For each: identifier, file and line, what is wrong, and which specification or
+boundary it departs from.
+
+If a previous finding is not properly fixed, say so against its ORIGINAL
+identifier rather than issuing a new one.
+
+If you find nothing new and all seven fixes hold, say so explicitly.
+
+CONCLUDE
+
+End with exactly ONE outcome, per §7.2:
+  - Approved
+  - Approved with corrections  (list the finding identifiers)
+  - Rejected  (state which specification or boundary was departed from)
+```
+
 ## 2. Findings returned
 
 Recorded verbatim, as returned. Not summarized, softened, or filtered.
