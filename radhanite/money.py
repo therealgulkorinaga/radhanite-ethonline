@@ -9,6 +9,16 @@ trace.
 `Money` therefore wraps `decimal.Decimal` and refuses to be built from a float
 at all, so the mistake cannot be made quietly.
 
+Wrapping `Decimal` is not by itself enough. Decimal arithmetic obeys an ambient
+context that defaults to 28 significant digits and that any code in the process
+can change; beyond that precision it rounds, silently. `Money` therefore runs
+every operation in its own context with a far larger precision and with
+`Inexact` trapped, so an operation that would round raises instead. Amounts are
+exact or the program stops — never almost right.
+
+Non-finite values are refused as well. `Decimal("Infinity")` and `Decimal("NaN")`
+are perfectly good Decimals and are not amounts of money.
+
 TASK-001 §6.6 fixes the unit as USD-denominated decimal values for this task.
 These are internal accounting numbers. They are **not** USDC and must not be
 described as USDC until a real USDC integration exists — see ARCHITECTURE.md §6
@@ -18,11 +28,35 @@ item 8.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import (
+    Context,
+    Decimal,
+    DivisionByZero,
+    Inexact,
+    InvalidOperation,
+    Overflow,
+    localcontext,
+)
 
 CURRENCY = "USD"
 
-__all__ = ["CURRENCY", "Money"]
+#: Arithmetic runs in this context rather than the ambient one.
+#:
+#: Two things matter here. The precision is far larger than any real amount of
+#: money needs, and `Inexact` is trapped — so if an operation ever *would* round,
+#: it raises instead of silently returning an almost-right answer. Radhanite's
+#: decisions are comparisons between amounts, and an almost-right amount is how
+#: a comparison flips without anyone noticing.
+#:
+#: The ambient decimal context defaults to 28 significant digits and can be
+#: changed by any code in the process. Neither is acceptable as a basis for
+#: deciding how to spend money, so Money never uses it.
+EXACT = Context(
+    prec=200,
+    traps=[Inexact, InvalidOperation, DivisionByZero, Overflow],
+)
+
+__all__ = ["CURRENCY", "EXACT", "Money"]
 
 
 @dataclass(frozen=True, order=True)
@@ -57,10 +91,24 @@ class Money:
                 "represent decimal amounts exactly. Use a string, int, or Decimal."
             )
         if isinstance(value, (str, int)):
-            object.__setattr__(self, "amount", Decimal(value))
+            try:
+                value = Decimal(value)
+            except InvalidOperation as exc:
+                raise ValueError(f"{value!r} is not a valid amount.") from exc
+            object.__setattr__(self, "amount", value)
         elif not isinstance(value, Decimal):
             raise TypeError(
                 f"Money requires a str, int, or Decimal, not {type(value).__name__}."
+            )
+
+        if not self.amount.is_finite():
+            # Infinity and NaN are representable as Decimals and are not amounts
+            # of money. An infinite budget is not the hard ceiling PREREQ-001
+            # §4.2 requires, and NaN would fail unpredictably at comparison time
+            # rather than here, where the problem actually is.
+            raise ValueError(
+                f"Money must be a finite amount, got {self.amount}. "
+                "Infinity and NaN are not amounts of money."
             )
 
     # -- arithmetic ------------------------------------------------------
@@ -68,12 +116,14 @@ class Money:
     def __add__(self, other: Money) -> Money:
         if not isinstance(other, Money):
             return NotImplemented
-        return Money(self.amount + other.amount)
+        with localcontext(EXACT):
+            return Money(self.amount + other.amount)
 
     def __sub__(self, other: Money) -> Money:
         if not isinstance(other, Money):
             return NotImplemented
-        return Money(self.amount - other.amount)
+        with localcontext(EXACT):
+            return Money(self.amount - other.amount)
 
     def __mul__(self, factor: Decimal | int) -> Money:
         """Scale an amount, e.g. a probability change times a task value."""
@@ -84,7 +134,8 @@ class Money:
             )
         if not isinstance(factor, (Decimal, int)):
             return NotImplemented
-        return Money(self.amount * Decimal(factor))
+        with localcontext(EXACT):
+            return Money(self.amount * Decimal(factor))
 
     __rmul__ = __mul__
 

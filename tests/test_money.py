@@ -7,7 +7,7 @@ right up until it flips such a comparison.
 
 import doctest
 import unittest
-from decimal import Decimal
+from decimal import Decimal, Inexact, localcontext
 
 from radhanite import money
 from radhanite.money import Money
@@ -33,6 +33,68 @@ class ConstructionTests(unittest.TestCase):
     def test_rejects_other_types(self) -> None:
         with self.assertRaises(TypeError):
             Money(None)
+
+
+class FiniteTests(unittest.TestCase):
+    """Infinity and NaN are valid Decimals and are not amounts of money."""
+
+    def test_rejects_infinity(self) -> None:
+        for value in ("Infinity", "-Infinity", "inf"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                Money(value)
+
+    def test_rejects_nan(self) -> None:
+        with self.assertRaises(ValueError):
+            Money("NaN")
+
+    def test_rejects_non_finite_decimals_too(self) -> None:
+        with self.assertRaises(ValueError):
+            Money(Decimal("Infinity"))
+
+    def test_rejects_unparseable_strings(self) -> None:
+        with self.assertRaises(ValueError):
+            Money("two dollars")
+
+
+class ExactnessTests(unittest.TestCase):
+    """Wrapping Decimal is not enough on its own.
+
+    Decimal obeys an ambient context that defaults to 28 significant digits and
+    that any code in the process may change. Money runs arithmetic in its own
+    context instead, with Inexact trapped.
+    """
+
+    def test_addition_beyond_the_default_context_precision(self) -> None:
+        # Under the ambient 28-digit default this rounds to ...679. It must not.
+        total = Money("1.234567890123456789012345678") + Money(
+            "0.0000000000000000000000000009"
+        )
+        self.assertEqual(total.amount, Decimal("1.2345678901234567890123456789"))
+
+    def test_ambient_precision_cannot_change_the_answer(self) -> None:
+        with localcontext() as ctx:
+            ctx.prec = 5
+            total = Money("1.11111111") + Money("2.22222222")
+        self.assertEqual(total.amount, Decimal("3.33333333"))
+
+    def test_multiplication_ignores_ambient_precision(self) -> None:
+        with localcontext() as ctx:
+            ctx.prec = 3
+            product = Money("1.11111111") * Decimal("2")
+        self.assertEqual(product.amount, Decimal("2.22222222"))
+
+    def test_an_operation_that_would_round_raises_instead(self) -> None:
+        # Far beyond any real amount of money, but the point is that rounding is
+        # never silent: it stops the program rather than returning almost-right.
+        huge = Money("1." + "1" * 150)
+        with self.assertRaises(Inexact):
+            huge * Decimal("1." + "1" * 150)
+
+    def test_a_decimal_built_from_a_float_still_gets_through(self) -> None:
+        # Known limitation, recorded rather than hidden. Once a float has been
+        # converted to Decimal by the caller, its provenance is unrecoverable.
+        sneaky = Money(Decimal(0.1))
+        self.assertNotEqual(sneaky, Money("0.1"))
 
 
 class ArithmeticTests(unittest.TestCase):
