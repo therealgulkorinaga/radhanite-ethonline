@@ -119,6 +119,40 @@ Each commit message states which authority it derives from:
   the human product owner must have authorized;
 - a **correction** commit references the review finding it resolves.
 
+### 3.1 Referencing a review finding
+
+A correction commit must be traceable to the specific finding that caused it.
+The record lives in the commit history; no separate issue tracker is used.
+
+Each finding in a review is given a stable identifier:
+
+```
+<REVIEWER>-PR<pr number>-<finding number>
+```
+
+for example `CODEX-PR003-01`, numbered in the order the review lists them. The
+identifier is assigned when the review is recorded and never reused.
+
+The commit that resolves it takes this form:
+
+```
+Correction: <what was wrong, in one line>
+
+Codex review finding CODEX-PR003-01 on PR #3.
+<what changed, and why it resolves the finding>
+
+Authority: documented review correction
+```
+
+The finding's full history is then recoverable with a single command:
+
+```
+git log --grep=CODEX-PR003
+```
+
+One finding, one identifier, one or more commits referencing it. A correction
+that names no finding is not a correction — it is an unauthorized change.
+
 A committed change that can be traced to none of these four authorities should
 not exist. If work turns out to be unauthorized, it is removed rather than
 retroactively justified.
