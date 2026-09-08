@@ -290,6 +290,50 @@ Recorded verbatim, as returned. Not summarized, softened, or filtered.
 >
 > Rejected — CODEX-PR012-01 departs from TASK-001 §2.4 and acceptance criterion 4, and CODEX-PR012-02 departs from §2.3’s deterministic, controlled simulator requirement.
 
+## 2c. Second review findings
+
+Recorded verbatim, as returned. **This transcript is incomplete**: the reviewer's
+output was truncated mid-finding and is reproduced exactly as received, including
+the point at which it breaks off. Nothing has been inferred or filled in.
+
+> Reviewed PR #12 at `2c3de07`. The redesigned execution/evaluation model is substantively sound, and the unmodified suite passes 183 tests on Python 3.12.13.
+>
+> `CODEX-PR012-01` is fixed. The same attempt is `MET` for `"tests pass"` and `NOT_MET` for `"issue #184 closed"` or `"2 + 2 == 5"`. Changing strategy name, cost, probability, escalation status, or note does not affect the verdict; changing `satisfied` does.
+>
+> The tautology has not merely moved. A deterministic simulator necessarily scripts evidence. It now supplies facts that became true rather than a verdict, and evaluation applies a separate, counterfactual comparison: the identical observation can pass one condition and fail another. That genuinely implements TASK-001 §2.4 and criterion 4.
+>
+> Exact matching after trimming is the correct conservative rule. Case, punctuation, and wording remain significant, which avoids inventing synonym, fuzzy, or semantic interpretation that §2.4 does not authorize. Because the task and scenario fixtures are controlled together, exact agreement is practical. Trimming surrounding whitespace is normalization, not interpretation.
+>
+> `CODEX-PR012-02` is fixed. The sequence is snapshotted exactly once and that snapshot is validated. The original changing-sequence attack now stores the single value it read; late invalid elements raise, and mutating the source collection afterwards cannot affect the simulator.
+>
+> `CODEX-PR012-03` is not fully fixed.
+>
+> CODEX-PR012-03
+>
+> File and line: [docs/pr_explan Yen?] No. Need write exact no typo. Continue.
+
+**The transcript ends there.** The finding's file references, description and the
+review's concluding outcome were never received.
+
+### What was done in the absence of the finding text
+
+The defect class was known — an unqualified immutability claim — so the
+implementing agent searched for surviving instances rather than guessing at the
+finding. Two were found, both in the file whose path the truncated reference had
+begun to name:
+
+- Section 8 of the explanation still read "Neither can be altered afterwards",
+  unqualified.
+- The same section claimed "the test names now say so too", which was false:
+  only the two test files this pull request touched had been renamed. Three
+  older tests still made absolute claims while asserting only that ordinary
+  assignment raises.
+
+Both are corrected in `f0a2b1e`. **Whether these are what the finding names is
+unknown.** If it identifies something else, `CODEX-PR012-03` remains outstanding,
+and the outcome of this second review is unrecorded because it was never
+received.
+
 ## 3. Outcome
 
 **Rejected.** All three findings accepted without dispute and corrected.
