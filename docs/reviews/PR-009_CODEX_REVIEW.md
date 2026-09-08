@@ -122,6 +122,95 @@ End with exactly ONE outcome, per §7.2:
   - Rejected  (state which specification or boundary was departed from)
 ```
 
+## 1b. Second review prompt
+
+Issued after the three corrections were pushed, and committed before that second
+review was run.
+
+```text
+You are the independent review agent for the Radhanite repository, per
+docs/AI_BUILD_GOVERNANCE.md §1.3.
+
+This is a SECOND review of pull request #9:
+https://github.com/therealgulkorinaga/radhanite-ethonline/pull/9
+
+You reviewed it at commit be267c7 and approved it with corrections, raising
+CODEX-PR009-01, -02 and -03. Two correction commits have since been pushed:
+5479e41 and d710bb2. Your first review is recorded verbatim in
+docs/reviews/PR-009_CODEX_REVIEW.md.
+
+Review against these authoritative documents ONLY:
+  - tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md
+  - docs/PREREQ-001_PRODUCT_DEFINITION.md
+  - docs/ARCHITECTURE.md
+
+Do NOT treat the PR explanation as evidence of correctness (§4.3).
+
+Why this second pass exists: on PR #3 a correction introduced a fresh defect
+that only the second review caught (CODEX-PR003-04), and on PR #6 a correction
+claimed to resolve CODEX-PR006-03 but left two paths open. Corrections are where
+defects have hidden in this project.
+
+PART A — do the three fixes hold?
+
+  -01  Are the counts now correct? Verify independently: count the files in the
+       diff, and count the tests discovery actually finds per file and in total.
+       Do not take the document's word for any number.
+  -02  Does test_the_decision_can_be_recomputed_from_what_it_recorded now
+       actually re-derive the verdict and the failed conditions from the
+       record, rather than only the arithmetic? Mutate the implementation —
+       force the decision, invert a condition, drop a failed condition from the
+       tuple — and confirm the test fails each time.
+  -03  Is the $6.01 stopping side of the tie boundary now covered, and does it
+       fail if the value condition is changed to >=?
+
+PART B — did any correction introduce a NEW defect?
+
+This is the part that matters most.
+
+  - The rewritten recompute test iterates six cases with subTest. Does a failure
+    in any single case actually fail the test? Does any case silently pass
+    without asserting anything?
+  - Did renaming test_a_hair_above_the_tie_does_escalate to
+    test_a_penny_below_the_tie_does_escalate lose or duplicate coverage?
+  - Do the corrections leave any test asserting something that is now
+    tautologically true?
+
+PART C — claims, again
+
+Re-check every count and factual claim in
+docs/pr_explanations/PR-009_TASK-001_EXPLANATION.md against reality. Finding -01
+was the fifth instance in this project of a hand-maintained count left stale by
+a later change; the correction commit claims every count was verified before
+being written. Test that claim.
+
+Also confirm docs/reviews/PR-009_CODEX_REVIEW.md reproduces your first-round
+findings literally verbatim, punctuation included. Non-verbatim transcription was
+finding CODEX-PR006-10 on the previous pull request.
+
+FORMAT
+
+Number any NEW findings continuing the sequence, per §3.1 — identifiers are
+never reused, so start at:
+
+    CODEX-PR009-04
+
+For each: identifier, file and line, what is wrong, and which specification or
+boundary it departs from.
+
+If a previous finding is not properly fixed, say so against its ORIGINAL
+identifier rather than issuing a new one.
+
+If you find nothing new and all three fixes hold, say so explicitly.
+
+CONCLUDE
+
+End with exactly ONE outcome, per §7.2:
+  - Approved
+  - Approved with corrections  (list the finding identifiers)
+  - Rejected  (state which specification or boundary was departed from)
+```
+
 ## 2. Findings returned
 
 Recorded verbatim, as returned. Not summarized, softened, or filtered.
