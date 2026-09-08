@@ -382,6 +382,46 @@ Where a pull request and a review record disagree, **the review record is
 correct**, on the same reasoning as §4.3: the record is the primary artifact and
 the description is a convenience.
 
+### 7.5 Corrections are reviewed too
+
+> **A pull request whose findings have been corrected is not finished. The
+> corrections are themselves reviewed before merge.**
+
+A review examines the code as it stood when the review ran. Corrections written
+afterwards have been examined by nobody but the agent that wrote them — the same
+agent whose work the review just faulted.
+
+#### Why this rule exists
+
+Because corrections are where the defects have been:
+
+- **PR #3.** The second pass found `CODEX-PR003-04`: stale counts introduced *by*
+  a correction, in the same document the correction had just edited.
+- **PR #6.** The second pass found `CODEX-PR006-03` only half fixed — negation
+  still bypassed the exact context, and the context itself was a mutable object
+  any caller could strip — plus three findings the first pass had not reached.
+
+In both cases the implementing agent had reported the findings as resolved, in
+good faith, and was wrong.
+
+#### How the cycle ends
+
+Reviewing corrections produces corrections, so the loop needs a floor:
+
+1. A review returning **no findings** ends it. The pull request is ready.
+2. The **human product owner may merge at any point** — `§1.1` is unconditional
+   and this rule does not qualify it.
+
+Where the product owner merges with corrections unreviewed, that is recorded in
+the review record, naming the commits that went in unexamined. The decision is
+theirs; the record simply does not pretend otherwise.
+
+#### Scope
+
+This applies to corrections of substance — code, tests, and claims about
+behaviour. A correction that only fixes a typo does not restart the cycle. If it
+is unclear which kind a correction is, it is the reviewable kind.
+
 ## 8. Amending this document
 
 This document may be changed only by the human product owner. No AI agent may
