@@ -366,6 +366,105 @@ hop.
 >
 > Rejected — TASK-001 §§2.2, 2.5 and 2.6 and acceptance criteria 2, 5, 8, 9, 11 and 14 are departed from.
 
+## 2c. Second review — received corrupted
+
+Recorded as received. **This transcript is not usable in full.** From
+`CODEX-PR013-10` onward the output degenerates into what appears to be the
+reviewer's own internal reasoning, and no concluding outcome was returned. It is
+reproduced exactly, including the corruption, rather than tidied or truncated at
+a convenient point.
+
+> I reviewed the rebuilt PR #13 at `b110a6c`. Fixes `-01`, `-02`, `-03`, `-07`, and `-08` hold. Fixes `-04`, `-05`, and `-06` remain incomplete, and four new defects were found.
+>
+> ### Previous findings not fully fixed
+>
+> CODEX-PR013-04
+>
+> File: `radhanite/run.py:342`
+>
+> Default runs now write JSON and the CLI no longer double-writes. However, the public `record_directory=None` option still permits completed runs without a JSON file; all 37 loop tests use that escape hatch. I reproduced a successful completed run with `None` and no file was produced.
+>
+> The unqualified explanation claim that "Every run writes a file" is therefore still false. TASK-001 §2.6 and criterion 14 provide no testing exemption.
+>
+> CODEX-PR013-05
+>
+> File: `radhanite/run.py:371`
+>
+> The unaffordable-opening path now creates a step, but it still does not create the §2.5 decision, quantities, or failed condition required by the original finding.
+>
+> With budgets of $0 and $0.01, the sole step has:
+>
+> - `strategy_name=None`
+> - `decision=None`
+> - no `failed_conditions`
+>
+> This only fixes the empty `steps` symptom. The selector still describes this as TASK-001's budget condition, but the run record does not record that condition. The departure from TASK-001 §§2.5–2.6 and criterion 14 remains.
+>
+> CODEX-PR013-06
+>
+> Files: `radhanite/run.py:334`, `radhanite/run.py:400`
+>
+> Selection reasons are correct for the opening attempt and ordinary selected purchases. The terminal fallback is not.
+>
+> When `_next_action()` says no candidate is worth selecting, the loop applies a separate `_cheapest()` policy and attaches a decision to that rejected candidate. The recorded `selection_reason` lists why every candidate was unusable but never says that the named strategy was subsequently chosen because it was cheapest.
+>
+> In the default stopped scenario, the final step names Progressive Escalation and records a value-condition Stop even though selection rejected it and the only improving candidate—Exhaustive escalation—was unaffordable. The selection summary is accurate, but the attached economic decision is not the decision that caused the run to end.
+>
+> The record therefore still does not explain why the strategy named on every step was selected, contrary to TASK-001 §2.6.
+>
+> ### New findings
+>
+> CODEX-PR013-09
+>
+> Files: `radhanite/run.py:482`, `radhanite/run.py:508`
+>
+> Record numbering is safe for sequential runs but not concurrent runs. `_next_record_number()` scans for the next number and `write_text()` later overwrites that path without exclusive creation.
+>
+> I synchronized eight runs immediately after their number lookup. All eight completed successfully, all selected `run-001.json`, and only one file remained. Seven completed-run records were silently overwritten.
+>
+> This departs from TASK-001 §2.6 and criterion 14's requirement for one JSON record per completed run.
+>
+> CODEX-PR013-10
+>
+> Files: `radhanite/run.py:122`, `tests/test_run.py:82`, `PR-013_TASK--001 pragmatic retirement question: must balance user desire to spend budget across all strategies? User says candidate skip question. We accept skip but fallback issue.]/private/tmp/radhanite-pr13? No malformed. Need avoid. Let's continue carefully. We need final message correct. I am in analysis before final? Actually composing final not sent yet. Need ensure links valid. Continue final from scratch maybe.
+>
+> Need name file explanation line213. Link proper. Need no accidental weird. We'll draft full.
+>
+> CODEX-PR013-10:
+> - doc claim decision None opening only false for no strategies/unaffordable? Step1 no attempt. For exhaustion after single strategy, terminal later step None. Test every later weak. `docs RUN_RECORDS line135 first step none` doesn't say only. Explanation line213 says every later. RunRecord doc line155 each step carries. Mention.
+> Departs claims and §2.6? A terminal selection-only step can be legitimate, but false doc/test. Test name false. Task run record explanation must be accurate. use TASK §5 deliverable4 and §7 review notes no untested claims? §7 is review notes authoritative task. Good.
+> - New finding 11 docs stale.
+> - New 12 double read.
+>
+> Need review record transcript:
+> - `Recorded as received`, all complete. restored sentence. no new.
+> - counts etc.
+>
+> Need final outcome.
+>
+> Let's redo final in full, not too huge. Ensure last line. Use clone links. After user likely records response, no matter temp links.
+>
+> Potential output must end one outcome. Fine. Let's send. for pull 13
+
+**The transcript ends there.** No outcome was returned.
+
+### What was acted on, and what was not
+
+Four findings were stated clearly enough to act on, and were corrected:
+`CODEX-PR013-04`, `-05`, `-06` and `-09`.
+
+Three were not. `-10`, `-11` and `-12` appear only inside the corrupted section.
+The fragments suggest `-10` concerns a documentation or test claim that
+`decision` is `None` for the opening attempt *only* — which a terminal
+selection-only step also makes false — and that `-11` and `-12` concern stale
+documentation and a double read. **None of that is recorded as a finding**,
+because inferring findings from corrupted output and writing them down as though
+they had been made would be worse than leaving them open.
+
+`CODEX-PR013-10`, `-11` and `-12` are therefore **open and unaddressed**, and the
+outcome of this review is **unrecorded**, because none was returned. A clean
+re-run has been requested.
+
 ## 3. Outcome
 
 **Rejected.** All eight findings accepted without dispute and corrected.
