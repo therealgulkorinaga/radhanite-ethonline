@@ -26,7 +26,7 @@ See docs/PREREQ-001_PRODUCT_DEFINITION.md for the product definition.
 
 from radhanite.escalation import Decision, EscalationDecision, FailedCondition, decide
 from radhanite.evaluation import Evaluation, Verdict, evaluate
-from radhanite.execution import Attempt, Outcome, ScriptedSimulator
+from radhanite.execution import Attempt, Observation, ScriptedSimulator
 from radhanite.money import CURRENCY, Money
 from radhanite.probability import Probability
 from radhanite.strategy import DECLARED_STRATEGIES, Strategy, select
@@ -42,7 +42,7 @@ __all__ = [
     "EscalationDecision",
     "Evaluation",
     "FailedCondition",
-    "Outcome",
+    "Observation",
     "Money",
     "Probability",
     "ScriptedSimulator",

@@ -7,18 +7,22 @@ on demand.
 
 The simulator is a **test fixture standing in for the eventual inference
 layer**. It is not a model of intelligence and must never be presented as one.
-It does no work, decides nothing, and knows nothing about the task: it is told
-what happens and reports it, charging the strategy's declared price.
+It does no work and decides nothing: it is told what became true and reports it,
+charging the strategy's declared price.
 
-That is the point. TASK-001 exists to prove the economic reasoning is correct
-and inspectable, which requires the outcome of an attempt to be a controlled
-input rather than something to be discovered. Real execution is `BL-07` in the
-backlog and is unauthorized.
+What it reports is deliberately *evidence*, not a verdict. An attempt yields an
+`Observation` — the set of conditions that now hold — and it is
+`radhanite.evaluation` that decides whether those satisfy the task. An earlier
+version of this module reported `SUCCESS` or `FAILURE` directly, which meant the
+simulator was handing down the verdict and evaluation was only relabelling it.
+§2.3 and §2.4 are separate stages on purpose.
+
+Real execution is `BL-07` in the backlog and is unauthorized.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from enum import Enum
 
@@ -27,26 +31,60 @@ from radhanite.money import Money
 from radhanite.probability import Probability
 from radhanite.strategy import Strategy
 
-__all__ = ["Attempt", "Outcome", "ScriptedSimulator"]
+__all__ = ["Attempt", "Observation", "ScriptedSimulator"]
 
 
-class Outcome(Enum):
-    """What an attempt turned out to have achieved.
+@refuse_rehydration
+@dataclass(frozen=True, slots=True)
+class Observation:
+    """What became true as a result of an attempt.
 
-    `PARTIAL_PROGRESS` exists because real work often ends that way, and because
-    TASK-001 §2.4 requires evaluation to refuse to treat it as success. Having
-    the case available is what lets that refusal be tested.
+    `satisfied` is the evidence: the conditions that now hold. It is what
+    evaluation compares a task's success condition against, and it is the only
+    thing that determines a verdict.
+
+    `note` describes what happened for a human reader, and is never consulted by
+    any decision.
+
+    >>> Observation(satisfied=("tests pass",), note="the suite went green").satisfied
+    frozenset({'tests pass'})
+    >>> Observation(satisfied=(), note="nothing worked").satisfied
+    frozenset()
     """
 
-    SUCCESS = "success"
-    PARTIAL_PROGRESS = "partial_progress"
-    FAILURE = "failure"
+    satisfied: frozenset[str]
+    note: str
+
+    def __post_init__(self) -> None:
+        raw = self.satisfied
+        if isinstance(raw, (str, bytes)) or not isinstance(raw, Iterable):
+            raise TypeError(
+                "satisfied must be a collection of condition strings, not "
+                f"{type(raw).__name__}."
+            )
+        conditions = []
+        for condition in raw:
+            if not isinstance(condition, str):
+                raise TypeError(
+                    f"satisfied may contain only strings, got {condition!r}."
+                )
+            if not condition.strip():
+                raise ValueError("A satisfied condition cannot be blank.")
+            conditions.append(condition.strip())
+        object.__setattr__(self, "satisfied", frozenset(conditions))
+
+        if not self.note or not self.note.strip():
+            raise ValueError("An observation needs a note describing what happened.")
+        object.__setattr__(self, "note", self.note.strip())
+
+    def __str__(self) -> str:
+        return self.note
 
 
 @refuse_rehydration
 @dataclass(frozen=True, slots=True)
 class Attempt:
-    """One execution of a strategy, and what it cost.
+    """One execution of a strategy, what it cost, and what it achieved.
 
     Carries everything needed to reconstruct the attempt, since TASK-001 §2.6
     requires a run record from which every decision can be recomputed.
@@ -54,51 +92,60 @@ class Attempt:
 
     strategy_name: str
     escalated: bool
-    outcome: Outcome
     cost: Money
     success_probability: Probability
+    observation: Observation
 
     def __str__(self) -> str:
         stage = "escalated" if self.escalated else "initial"
         return (
             f"{self.strategy_name} ({stage} attempt, {self.success_probability} "
-            f"likely) cost {self.cost} and ended in {self.outcome.value}"
+            f"likely) cost {self.cost}: {self.observation.note}"
         )
 
 
 class ScriptedSimulator:
-    """Reports outcomes that were decided in advance, in order.
+    """Reports observations that were decided in advance, in order.
 
-    Deterministic by construction: the same script produces the same outcomes,
-    in the same order, every time. Nothing is inferred, sampled, or derived from
-    the strategy's stated chance of success — a simulator that rolled dice
-    against those probabilities would make the economic loop untestable, which
-    is exactly what TASK-001 §2.3 is avoiding.
+    Deterministic by construction: the same script produces the same run, every
+    time. Nothing is inferred, sampled, or derived from the strategy's stated
+    chance of success — a simulator that rolled dice against those probabilities
+    would make the economic loop untestable, which is exactly what §2.3 avoids.
 
     >>> from radhanite.strategy import DECLARED_STRATEGIES
-    >>> simulator = ScriptedSimulator([Outcome.FAILURE, Outcome.SUCCESS])
+    >>> simulator = ScriptedSimulator([
+    ...     Observation(satisfied=(), note="the build broke"),
+    ...     Observation(satisfied=("tests pass",), note="the suite went green"),
+    ... ])
     >>> strategy = DECLARED_STRATEGIES[0]
-    >>> simulator.execute(strategy, escalated=False).outcome
-    <Outcome.FAILURE: 'failure'>
-    >>> simulator.execute(strategy, escalated=True).outcome
-    <Outcome.SUCCESS: 'success'>
+    >>> simulator.execute(strategy, escalated=False).observation.satisfied
+    frozenset()
+    >>> simulator.execute(strategy, escalated=True).observation.satisfied
+    frozenset({'tests pass'})
     >>> simulator.remaining
     0
     """
 
     __slots__ = ("_script", "_position")
 
-    def __init__(self, script: Sequence[Outcome]) -> None:
+    def __init__(self, script: Sequence[Observation]) -> None:
         if isinstance(script, (str, bytes)) or not isinstance(script, Sequence):
             raise TypeError(
-                "script must be an ordered sequence of Outcome values, not "
+                "script must be an ordered sequence of Observations, not "
                 f"{type(script).__name__}. An unordered collection could not "
                 "produce the same run twice."
             )
-        for step in script:
-            if not isinstance(step, Outcome):
-                raise TypeError(f"script may contain only Outcome values, got {step!r}.")
-        self._script: tuple[Outcome, ...] = tuple(script)
+        # Snapshot once, then validate the snapshot. Validating the argument and
+        # then copying it separately reads the sequence twice, so a sequence
+        # that yields different values on a second traversal could store
+        # something that was never checked.
+        snapshot = tuple(script)
+        for step in snapshot:
+            if not isinstance(step, Observation):
+                raise TypeError(
+                    f"script may contain only Observations, got {step!r}."
+                )
+        self._script: tuple[Observation, ...] = snapshot
         self._position = 0
 
     @property
@@ -106,7 +153,7 @@ class ScriptedSimulator:
         return len(self._script) - self._position
 
     def execute(self, strategy: Strategy, *, escalated: bool) -> Attempt:
-        """Carry out one attempt and report what happened.
+        """Carry out one attempt and report what became true.
 
         The cost and the stated chance of success come from the strategy's
         declared figures — the initial pair, or the escalated pair. The simulator
@@ -116,22 +163,22 @@ class ScriptedSimulator:
             raise TypeError(f"strategy must be a Strategy, got {type(strategy).__name__}.")
         if self._position >= len(self._script):
             raise RuntimeError(
-                "The simulator has run out of scripted outcomes. Something asked "
-                f"for attempt {self._position + 1} of a script with "
+                "The simulator has run out of scripted observations. Something "
+                f"asked for attempt {self._position + 1} of a script with "
                 f"{len(self._script)}. That is a fault in whatever is driving "
                 "the loop, not an outcome to report."
             )
 
-        outcome = self._script[self._position]
+        observation = self._script[self._position]
         self._position += 1
         return Attempt(
             strategy_name=strategy.name,
             escalated=escalated,
-            outcome=outcome,
             cost=strategy.escalation_cost if escalated else strategy.initial_cost,
             success_probability=(
                 strategy.escalated_success_probability
                 if escalated
                 else strategy.initial_success_probability
             ),
+            observation=observation,
         )

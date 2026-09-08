@@ -6,18 +6,20 @@ condition and produce an objective verdict.
 > Evaluation reports what happened. It does not interpret, soften, or infer
 > partial success that the condition does not define.
 
-That sentence does most of the work here. An attempt that made progress without
-meeting the condition **has not succeeded**, and evaluation says so plainly.
-Softening it would be the most natural mistake in the system and the most
-damaging: the escalation rule would then be told the task was done, stop
-spending, and report a success that never happened.
+Two things follow, and both are load-bearing.
 
-In TASK-001 the outcome of an attempt is a controlled input rather than
-something observed — the simulator is told what happened and reports it (§2.3).
-Evaluation therefore turns a reported outcome into a verdict against the
-declared condition. When real execution arrives, this is where the condition is
-actually checked; the verdict it produces, and the rule that partial progress is
-not success, do not change.
+**The comparison is real.** The verdict is decided by whether the task's success
+condition is among the conditions the attempt actually satisfied. An earlier
+version of this module derived the verdict from a `SUCCESS`/`FAILURE` label the
+simulator supplied, which meant the simulator had already decided and evaluation
+was a relabelling step — the same attempt counted as success against *any*
+condition, including one it plainly had not met. §2.3 and §2.4 are separate
+stages, and this is where the condition is checked.
+
+**Partial progress is not success.** An attempt that satisfied something, but
+not the condition asked for, has not met it. Softening that is the most damaging
+mistake available in this system: the escalation rule would be told the task was
+finished, stop spending, and report a success that never happened.
 """
 
 from __future__ import annotations
@@ -26,7 +28,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from radhanite._immutable import refuse_rehydration
-from radhanite.execution import Attempt, Outcome
+from radhanite.execution import Attempt
 
 __all__ = ["Evaluation", "Verdict", "evaluate"]
 
@@ -44,8 +46,8 @@ class Evaluation:
     """A verdict, with what it was judged against and why."""
 
     verdict: Verdict
-    outcome: Outcome
     success_condition: str
+    satisfied: frozenset[str]
     reason: str
 
     @property
@@ -59,15 +61,21 @@ class Evaluation:
 def evaluate(attempt: Attempt, success_condition: str) -> Evaluation:
     """Judge one attempt against the task's success condition.
 
-    >>> from radhanite.execution import ScriptedSimulator
+    The condition is met if, and only if, it is among the conditions the attempt
+    satisfied. Nothing else is consulted — not the strategy, not its stated
+    chance of success, and not the attempt's own description of itself.
+
+    >>> from radhanite.execution import Observation, ScriptedSimulator
     >>> from radhanite.strategy import DECLARED_STRATEGIES
-    >>> simulator = ScriptedSimulator([Outcome.PARTIAL_PROGRESS])
+    >>> simulator = ScriptedSimulator([
+    ...     Observation(satisfied=("code compiles",), note="it builds, tests still red"),
+    ... ])
     >>> attempt = simulator.execute(DECLARED_STRATEGIES[0], escalated=False)
     >>> evaluation = evaluate(attempt, "tests pass")
     >>> evaluation.verdict
     <Verdict.NOT_MET: 'not_met'>
     >>> print(evaluation)
-    Not met: the attempt made partial progress, which is not "tests pass".
+    Not met: "tests pass" is not among what the attempt achieved (code compiles).
     """
     if not isinstance(attempt, Attempt):
         raise TypeError(f"attempt must be an Attempt, got {type(attempt).__name__}.")
@@ -79,33 +87,34 @@ def evaluate(attempt: Attempt, success_condition: str) -> Evaluation:
         )
 
     condition = success_condition.strip()
+    satisfied = attempt.observation.satisfied
 
-    if attempt.outcome is Outcome.SUCCESS:
+    if condition in satisfied:
         return Evaluation(
             verdict=Verdict.MET,
-            outcome=attempt.outcome,
             success_condition=condition,
+            satisfied=satisfied,
             reason=f'Met: the attempt achieved "{condition}".',
         )
 
-    if attempt.outcome is Outcome.PARTIAL_PROGRESS:
-        # §2.4 forbids inferring partial success the condition does not define.
-        # The condition is met or it is not; progress towards it is not a third
-        # verdict, and treating it as one would tell the escalation rule to stop
-        # spending on a task that was never finished.
+    if satisfied:
+        # Something was achieved, but not the thing that was asked for. §2.4
+        # forbids reading that as partial success: the condition is met or it is
+        # not, and progress towards it is not a third verdict.
+        achieved = ", ".join(sorted(satisfied))
         return Evaluation(
             verdict=Verdict.NOT_MET,
-            outcome=attempt.outcome,
             success_condition=condition,
+            satisfied=satisfied,
             reason=(
-                f'Not met: the attempt made partial progress, which is not '
-                f'"{condition}".'
+                f'Not met: "{condition}" is not among what the attempt achieved '
+                f"({achieved})."
             ),
         )
 
     return Evaluation(
         verdict=Verdict.NOT_MET,
-        outcome=attempt.outcome,
         success_condition=condition,
-        reason=f'Not met: the attempt failed, and "{condition}" was not achieved.',
+        satisfied=satisfied,
+        reason=f'Not met: the attempt achieved nothing, so "{condition}" was not met.',
     )
