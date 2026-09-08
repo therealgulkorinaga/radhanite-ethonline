@@ -240,6 +240,18 @@ class FormattingTests(unittest.TestCase):
             with self.subTest(spec=spec), self.assertRaises(ValueError):
                 format(Money("123.456"), spec)
 
+    def test_a_dot_fill_is_not_mistaken_for_a_precision(self) -> None:
+        # "{:.>10}" pads with dots — a dot-leader column, which is exactly what
+        # a table of amounts wants. The first guard against truncation refused
+        # any spec containing a dot and so refused this too.
+        self.assertEqual(format(Money("2.00"), ".>10"), ".....$2.00")
+        self.assertEqual(format(Money("2.00"), ".<10"), "$2.00.....")
+        self.assertEqual(format(Money("2.00"), ".^10"), "..$2.00...")
+
+    def test_a_precision_after_a_dot_fill_is_still_refused(self) -> None:
+        with self.assertRaises(ValueError):
+            format(Money("123.456"), ".>10.2")
+
     def test_alignment_still_works_on_a_long_amount(self) -> None:
         self.assertEqual(format(Money("123.456"), ">10"), "  $123.456")
 

@@ -161,7 +161,17 @@ class Money:
         is exactly the sort of surprise that shows up first in a column of
         output nobody tested.
         """
-        if "." in spec:
+        # A leading fill character may itself be a dot — "{:.>10}" pads with
+        # dots — so the fill and alignment prefix is removed before looking for
+        # a precision. Rejecting on a bare "." in the spec would refuse a
+        # perfectly good dot-leader column.
+        body = spec
+        if len(body) >= 2 and body[1] in "<>^=":
+            body = body[2:]
+        elif body[:1] in "<>^=":
+            body = body[1:]
+
+        if "." in body:
             # format(Money("123.456"), ".2") would return "$1" — string
             # precision silently truncating an exact amount into a different,
             # wrong one. TASK-001 §6.6 requires exact USD values and PREREQ-001
