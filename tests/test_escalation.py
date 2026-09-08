@@ -268,9 +268,16 @@ class TheDecisionRecordTests(unittest.TestCase):
         ).reason
         self.assertIn("less likely", reason)
 
-    def test_a_decision_cannot_be_altered_after_the_fact(self) -> None:
+    def test_ordinary_assignment_and_rehydration_are_refused(self) -> None:
+        # Bounded, not absolute: object.__setattr__ and ctypes remain open
+        # by design. radhanite/_immutable.py states what is prevented.
+        decision = ruling()
         with self.assertRaises(Exception):
-            ruling().decision = Decision.STOP
+            decision.decision = Decision.STOP
+        with self.assertRaises(AttributeError):
+            decision.__dict__["decision"] = Decision.STOP
+        with self.assertRaises(TypeError):
+            decision.__setstate__({"decision": Decision.STOP})
 
 
 class DeterminismTests(unittest.TestCase):

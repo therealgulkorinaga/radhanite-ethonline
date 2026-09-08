@@ -129,9 +129,16 @@ class RejectionTests(unittest.TestCase):
 
 
 class ImmutabilityTests(unittest.TestCase):
-    def test_a_task_cannot_be_changed_after_creation(self) -> None:
+    def test_ordinary_assignment_and_rehydration_are_refused(self) -> None:
+        # Bounded, not absolute: object.__setattr__ and ctypes remain open
+        # by design. radhanite/_immutable.py states what is prevented.
+        task = a_task()
         with self.assertRaises(Exception):
-            a_task().budget = Money("999.00")
+            task.budget = Money("999.00")
+        with self.assertRaises(AttributeError):
+            task.__dict__["budget"] = Money("999.00")
+        with self.assertRaises(TypeError):
+            task.__setstate__({"budget": Money("999.00")})
 
 
 def load_tests(loader, tests, ignore):

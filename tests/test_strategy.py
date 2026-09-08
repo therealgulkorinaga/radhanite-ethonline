@@ -64,9 +64,16 @@ class StrategyTests(unittest.TestCase):
         worse = a_strategy(escalated_success_probability=Probability("0.30"))
         self.assertEqual(worse.escalated_success_probability, Probability("0.30"))
 
-    def test_a_strategy_cannot_be_changed_after_creation(self) -> None:
+    def test_ordinary_assignment_and_rehydration_are_refused(self) -> None:
+        # Bounded, not absolute: object.__setattr__ and ctypes remain open
+        # by design. radhanite/_immutable.py states what is prevented.
+        strategy = a_strategy()
         with self.assertRaises(Exception):
-            a_strategy().initial_cost = Money("999.00")
+            strategy.initial_cost = Money("999.00")
+        with self.assertRaises(AttributeError):
+            strategy.__dict__["initial_cost"] = Money("999.00")
+        with self.assertRaises(TypeError):
+            strategy.__setstate__({"initial_cost": Money("999.00")})
 
 
 class DeclaredConstantsTests(unittest.TestCase):
