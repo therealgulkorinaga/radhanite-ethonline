@@ -128,10 +128,10 @@ Each step has:
 - **`strategy`** — which way of attempting the job was on the table.
 - **`escalating`** — `false` for a first attempt, `true` for the dearer
   follow-up attempt.
-- **`decision`** — whether to spend, and why. **A step has none exactly when
-  nothing has been judged yet**: the spending rule decides from a result. That is
-  the first attempt, and the case where nothing was ever affordable so no attempt
-  happened at all.
+- **`decision`** — whether to spend, and why. A step can have none, and there are
+  exactly two reasons: **nothing had been judged yet** (the first attempt, or a
+  run where nothing was ever affordable), or **nothing remained to decide about**
+  (every option already tried). The record always says which.
 - **`remaining_budget`** and **`unusable`** — filled in on the final step when
   nothing was left worth choosing, listing each remaining option with its price,
   what it offered, and which test it failed.

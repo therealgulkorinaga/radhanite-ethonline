@@ -19,7 +19,7 @@ happen. **This completes the first authorized piece of work.**
 | `radhanite/run.py` | The loop, and the record of what it did |
 | `radhanite/cli.py` | A way to run it and see the result |
 | `radhanite/__main__.py` | Lets `python -m radhanite` work |
-| `tests/test_run.py` | 52 checks on the loop and the record |
+| `tests/test_run.py` | 53 checks on the loop and the record |
 | `tests/test_cli.py` | 6 checks on the entry point |
 | `docs/RUN_RECORDS.md` | A guide to reading a record, for a non-technical reader |
 | `radhanite/__init__.py` | Updated to say the task is complete |
@@ -28,9 +28,10 @@ happen. **This completes the first authorized piece of work.**
 | `docs/reviews/PR-013_CODEX_REVIEW.md` | The review prompt, committed before the review |
 | `docs/reviews/README.md` | Its row added to the index of reviews |
 
-Eleven files. The test count went from 183 to 241 — 58 new.
+Eleven files. The test count went from 183 to 242 — 59 new.
 
-This pull request was **rejected three times** and the loop was rebuilt twice.
+This pull request went through **two explicit rejections plus one pass whose
+output arrived corrupted**, and the loop was rebuilt twice.
 Thirteen problems in total. Several were mistakes of exactly the kind this
 document flagged in advance as possible — decisions the specification did not
 force, which turned out to be wrong — and one was a fix that overcorrected into a
@@ -73,8 +74,10 @@ $20.00 if finished, done when the tests pass. Here is the one that matters most:
    already achieved.
    → nothing worked → Not met.
 
-4. Progressive Escalation (start) — Stop: it would not improve the chance of
-   success at all (still 0.75), so it is worth nothing against a cost of $0.10.
+4. Progressive Escalation (start) — selected for the terminal decision because
+   it is first remaining in declared order.
+   Stop: it would make success *less* likely (0.75 to 0.55), so it is worth less
+   than nothing — an expected value of **-$4.00** — against a cost of $0.10.
    Also unusable: Exhaustive Attempt (escalate) costs $1.50 and only $1.40
    remains.
 
@@ -90,8 +93,13 @@ stopping with 70% of the money still there.
 Two steps are worth noticing. Step 1 has **no economic decision at all**, on
 purpose: the rule decides from a result, and before the first attempt there is
 not one. Step 4 is the opposite — nothing was left worth choosing, so the rule
-was asked about the first remaining option and refused it. That refusal is what
-ended the run, and it is the product working.
+was asked about the first remaining option and refused it. Note *why*: that
+option would have made success **less likely**, so buying it was worth minus four
+dollars. That refusal ended the run, and it is the product working.
+
+A record never leaves an absence unexplained. Where a step carries no economic
+decision, it says which of the two reasons applies: nothing had been judged yet,
+or nothing remained to decide about.
 
 Nobody told it to stop. It worked out that stopping was the right answer.
 
@@ -210,11 +218,11 @@ $ python --version
 Python 3.12.13
 
 $ python -m unittest discover
-Ran 241 tests in 0.101s
+Ran 242 tests in 0.105s
 OK
 ```
 
-58 tests are new: 52 on the loop and record, 6 on the entry point. The ones that
+59 tests are new: 53 on the loop and record, 6 on the entry point. The ones that
 matter most:
 
 - The first attempt carries no money decision, and every later one does.
@@ -223,8 +231,12 @@ matter most:
 - A refusal ends the run. Nothing is bought after one, checked for both reasons
   a refusal can happen — and both reasons are produced by the spending rule
   itself rather than by the step that chooses what to consider.
-- A decision is absent **exactly when nothing has been judged yet**, checked
-  across six scenarios and verified by deliberately issuing one too early.
+- Every absent decision is explained, and the explanation matches why it is
+  actually absent — checked across seven scenarios, including a single strategy
+  exhausting itself, which the previous version of this test never reached.
+- The terminal step names its subject and says why that one: first remaining in
+  declared order. Verified by mutation — taking the last remaining instead fails
+  it.
 - A list of options that changes while being read cannot desynchronise a run.
 - Eight runs into one directory leave eight records; a claimed name is never
   handed out twice.
