@@ -19,7 +19,7 @@ happen. **This completes the first authorized piece of work.**
 | `radhanite/run.py` | The loop, and the record of what it did |
 | `radhanite/cli.py` | A way to run it and see the result |
 | `radhanite/__main__.py` | Lets `python -m radhanite` work |
-| `tests/test_run.py` | 27 checks on the loop and the record |
+| `tests/test_run.py` | 37 checks on the loop and the record |
 | `tests/test_cli.py` | 6 checks on the entry point |
 | `docs/RUN_RECORDS.md` | A guide to reading a record, for a non-technical reader |
 | `radhanite/__init__.py` | Updated to say the task is complete |
@@ -28,7 +28,13 @@ happen. **This completes the first authorized piece of work.**
 | `docs/reviews/PR-013_CODEX_REVIEW.md` | The review prompt, committed before the review |
 | `docs/reviews/README.md` | Its row added to the index of reviews |
 
-Eleven files. The test count went from 183 to 216 — 33 new.
+Eleven files. The test count went from 183 to 226 — 43 new.
+
+This pull request was **rejected on review** and the loop was rebuilt. Eight
+problems were found. Two of them were mistakes of exactly the kind this document
+had flagged in advance as possible — decisions the specification did not force,
+which turned out to be wrong. The record is in
+`docs/reviews/PR-013_CODEX_REVIEW.md`.
 
 ## 3. Why the change was needed
 
@@ -82,31 +88,39 @@ what was left could not be afforded.
 
 Nobody told it to stop. It worked out that stopping was the right answer.
 
-### Three decisions that were not forced
+### Two decisions that were wrong, and how
 
-The specification does not settle these. Each was chosen, and each is flagged
-for the reviewer, because deciding something the specification did not say is
-how this project has gone wrong before.
+This document originally flagged three decisions the specification did not force
+and asked the reviewer to judge them. Two were wrong. Both failed in the same
+way: they treated the spending rule as something to consult whenever convenient,
+rather than as one step of a sequence with a fixed place and a final answer.
 
-**Every purchase is weighed, including the first.** There is no free opening
-attempt. Buying one lifts the chance of success from nothing to whatever that
-way of working offers, which is exactly the question the spending rule answers.
-A job worth a penny does not get a two-penny attempt merely because it is the
-first one, and a test covers precisely that: a task worth $0.05 buys **nothing
-at all**.
+**The rule was being asked before there was anything to decide.** The original
+loop weighed even the very first attempt, against a made-up starting chance of
+zero. That reads plausibly — surely the first purchase should be justified too —
+but the specification sets out an order: choose an approach, do the work, judge
+the result, *then* decide whether to spend more. The rule decides **from a
+result**, and before the first attempt there is no result. The consequence was
+not academic: a low-value job was refused its first attempt entirely, by a rule
+that only ever had authority over *additional* spending.
 
-**Choosing a dearer approach is weighed the same way.** "Is the next, more
-expensive approach worth buying?" is the same question as "is spending more on
-this one worth it?" — how much would it improve the chances, and is that worth
-more than it costs. The rule already agreed for one is used unchanged for the
-other, rather than inventing a second.
+The first attempt is now simply chosen and made. The rule speaks once there is
+something for it to speak about.
 
-**A refusal ends an approach, not the run.** The first version of this stopped
-the moment anything was refused. That was wrong, and running it showed why: it
-walked away from a job it could still have finished, with $1.90 of $2.00
-unspent, because the *cheapest* remaining option happened to be a poor buy. A
-dearer one was worth buying and was never considered. Each purchase is judged on
-its own merits.
+**"Stop" did not stop.** The original loop treated a refusal as "skip this one
+and look at something else". A run could be told to stop and then carry on to
+succeed. That quietly demoted the rule's only refusal into a suggestion — and it
+is the refusal that the entire product is *for*.
+
+The fix came from the reviewer, and is better than a patch. The loop now decides
+**what to do next** before asking whether to do it: it picks the first option
+that is affordable and actually improves on what has already been achieved.
+Skipping something that offers no improvement is a matter of *choosing*, not of
+economics. So the rule is only ever asked about an option genuinely worth
+considering — and when it says stop, the run stops. Always.
+
+The third decision — that choosing a dearer approach is the same economic
+question as spending more on the current one — was accepted.
 
 ### The money cannot be overspent
 
@@ -123,8 +137,16 @@ budget, the remainder never goes negative, and the two always add back up.
 
 ### The record
 
-Every run writes a file listing every purchase it considered — including the
-ones it refused, and why. Each records the numbers the decision was made from.
+Every run writes a file. That was not true when this was first submitted — the
+record was built in memory and only saved if the caller happened to ask, which
+meant most runs left no trace at all while this document claimed otherwise.
+Saving it is now part of running.
+
+The file lists every step, including the ones where nothing was bought, and each
+records **why that option was chosen** as well as the numbers behind the money
+decision. The original recorded only the second of those, so a reader could
+recheck the economics but could not see how the option had been arrived at, or
+what had been passed over to reach it.
 
 **Any decision can be checked by hand.** Subtract the two probabilities,
 multiply by what the job is worth, compare against the cost. Every number needed
@@ -160,10 +182,17 @@ something not worth it, which is the behaviour the whole product is for.
   real model. The reasoning is real; the work is not.
 - **The chances of success are invented.** Every decision is only as good as
   those figures, and nothing here can tell whether they are right.
-- **The three unforced decisions above could be wrong.** They are choices, not
-  consequences, and the reviewer is asked about each by name.
+- **The rule for choosing what to do next is a choice, not a consequence.**
+  Taking the first affordable option that improves on what has been achieved is
+  simple and inspectable, and it is not the only defensible rule. A cleverer one
+  might spend better.
+- **Skipping is invisible to the money rule.** An option passed over during
+  choosing never reaches the spending rule at all. That is deliberate — it is
+  what lets a refusal be final — but it means the choosing rule now carries
+  weight it did not before, and a bad choosing rule would not be caught by the
+  economics.
 - **Stopping early could be the wrong call** in a case nobody has thought of.
-  The rule is deliberately simple; simple rules have edges.
+  Simple rules have edges.
 - **The demonstration is a fixed scenario.** It shows the machinery working, not
   that it would work on real jobs.
 
@@ -174,33 +203,41 @@ $ python --version
 Python 3.12.13
 
 $ python -m unittest discover
-Ran 216 tests in 0.036s
+Ran 226 tests in 0.055s
 OK
 ```
 
-33 tests are new: 27 on the loop and record, 6 on the entry point. The ones that
+43 tests are new: 37 on the loop and record, 6 on the entry point. The ones that
 matter most:
 
+- The first attempt carries no money decision, and every later one does.
+- A low-value job still gets its first attempt, and is then refused further
+  spending — the corrected behaviour, where the original refused it outright.
+- A refusal ends the run. Nothing is bought after one, checked for both reasons
+  a refusal can happen.
+- An option offering no improvement is passed over while *choosing*, and the
+  record names it as passed over.
 - Spending never exceeds the budget, across 32 combinations of scenario and
   budget, with the remainder never negative and always adding back up.
-- A task worth less than the cheapest attempt buys nothing at all.
-- A run stops with money unspent, and that counts as a correct outcome.
-- A refusal does not end the run: a dearer approach is still considered, and the
-  scenario proving it would have failed under the first version of the loop.
-- No approach is ever tried twice.
 - Every decision recomputed from the record — from the objects, and again from
   the saved file.
+- A saved record says which condition failed, an approved one says none failed,
+  and the two kinds of refusal are distinguishable. Verified by deleting that
+  field and confirming four tests fail; before the review, deleting it broke
+  nothing.
+- A run that could not afford anything still records why nothing happened.
 - The same scenario produces the same run, twenty times over.
-- The demonstration produces **both** outcomes; a demonstration that only ever
-  succeeded would hide the product's actual claim.
+- The demonstration produces **both** outcomes.
 
 ## 11. Assumptions made
 
-- That the spending rule applies to every purchase, not only to escalations.
-- That choosing a dearer approach is the same economic question, so the same
-  rule serves.
-- That a refusal ends an approach rather than the run — corrected after watching
-  the first version abandon a winnable job with most of the money unspent.
+- That choosing a dearer approach is the same economic question as spending more
+  on the current one, so the same rule serves. This was the one of three flagged
+  decisions that survived review.
+- That skipping an option which offers no improvement belongs to *choosing*
+  rather than to the money rule — which is what allows a refusal to be final.
+- That the first attempt is not the money rule's business, because the rule
+  decides from a result and there is not one yet.
 - That saving amounts as text is worth the small awkwardness, because the
   alternative risks a wrong number in the permanent record.
 
@@ -234,9 +271,9 @@ whether it is done. It works out which approach to buy, whether buying it is
 worth the money, whether the job got finished, and **when to walk away**.
 
 In the demonstration it spends two cents, fails, spends eight more, fails again,
-**refuses** an option that would not have helped, buys a better one for fifty
-cents, fails once more, and then stops — with $1.40 of $2.00 still unspent —
-because what remained cost more than it was worth.
+**passes over** an option that would not have improved anything, buys a better
+one for fifty cents, fails once more, and then stops — with $1.40 of $2.00 still
+unspent — because what remained cost more than it was worth.
 
 That refusal is the product. Any agent can spend your money. This one can tell
 you, in a sentence, why it declined to spend more: *"only $1.40 remains, which
@@ -245,6 +282,13 @@ cannot cover the $1.50 this would cost."*
 And every one of those decisions can be checked. The record keeps the numbers
 each was made from, so you can redo the arithmetic yourself rather than taking
 its word for it.
+
+It is worth adding that this pull request was rejected the first time. The loop
+asked the money question before there was anything to answer it about, and
+treated the answer "stop" as a suggestion rather than an instruction — so a run
+could be told to stop and carry on anyway. An independent review caught both,
+and the fix for the second came from the reviewer rather than from us. The
+version described here is the corrected one.
 
 The work being simulated is not a hedge. It is the point of this stage: you
 cannot prove reasoning about uncertain outcomes is *correct* while the outcomes
