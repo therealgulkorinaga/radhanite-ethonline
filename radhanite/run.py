@@ -36,19 +36,21 @@ permits negative amounts by design, so it cannot catch an overspend; the review
 of PR-006 noted that a running balance would have to enforce this itself, and
 this is where that happens.
 
-**A consequence worth stating.** Because selection filters on affordability
-before §2.5 is consulted, the rule is never offered a candidate the budget
-cannot cover — so **§2.5's budget condition is unreachable through this loop**.
-Running out of money is real and is recorded, but at selection rather than as a
-failed condition on a decision: a terminal step carries each remaining candidate
-with its cost, what it offered, and which condition blocked it.
+**Selection may pass over; it may not refuse.** While a usable candidate remains,
+selection skips ones that are unaffordable or offer no improvement — that is
+choosing between options, and it is what allows a Stop to be terminal.
 
-That is a deliberate consequence of making a Stop terminal. Offering §2.5 a
-candidate the budget cannot cover would produce a Stop that must not end the
-run, which is the defect this loop was rebuilt to remove. Whether recording the
-budget failure at selection satisfies acceptance criterion 9 as well as a §2.5
-verdict would have is a judgement for review, and is flagged for it rather than
-assumed.
+But **terminating is the rule's job, not selection's**. §2.5 says no improvement
+produces Stop with no special case, and criterion 9 names failure of the budget
+condition. An earlier version filtered both out before the rule was consulted,
+which made those two branches unreachable and moved the product's only refusals
+somewhere they could not be seen.
+
+So when selection can choose nothing, §2.5 is applied to the first remaining
+candidate in declared order — the one selection would have considered first, so
+the subject is determined rather than picked. Its Stop ends the run and names
+the real failing condition, and every other remaining candidate is recorded
+beside it with the quantities that disqualified it.
 """
 
 from __future__ import annotations
@@ -439,18 +441,25 @@ def run(
             "so an unordered collection cannot produce a deterministic run."
         )
 
+    # Read the sequence exactly once. Constructing `available` from it and then
+    # selecting from it again reads it twice, so a sequence yielding different
+    # contents on a second traversal could execute one strategy while the list
+    # tracked another — which crashed after the money had already been spent,
+    # leaving no record at all.
+    catalogue = tuple(strategies)
+
     ledger = _Ledger(task.budget)
     steps: list[Step] = []
-    available = [_Candidate(strategy, False) for strategy in strategies]
+    available = [_Candidate(strategy, False) for strategy in catalogue]
 
     # §2's pipeline opens with selection and execution. §2.5 decides from a
     # verdict, and there is not one yet, so the rule is not consulted here.
-    opening = select(list(strategies), ledger.remaining)
+    opening = select(catalogue, ledger.remaining)
     if opening is None:
         blocked = tuple(
             Unusable(strategy.name, False, strategy.initial_cost,
                      strategy.initial_success_probability, FailedCondition.BUDGET)
-            for strategy in strategies
+            for strategy in catalogue
         )
         steps.append(
             Step(
@@ -481,11 +490,34 @@ def run(
         candidate, why, unusable = _next_action(available, achieved, ledger.remaining)
 
         if candidate is None:
-            # Selection chose nothing, so §2.5 ruled on nothing. Attaching a
-            # decision to whichever leftover happened to be cheapest would put
-            # a verdict in the record about a candidate selection had already
-            # rejected — and it would not be the reason the run ended. The
-            # blocking conditions and their quantities are recorded instead.
+            # Selection may pass over a dominated candidate while a usable one
+            # remains — that is choosing. It may not *terminate* that way. §2.5
+            # says no improvement produces Stop with no special case, and
+            # criterion 9 names failure of the budget condition, so both
+            # refusals have to come from the rule rather than from selection.
+            #
+            # The rule is therefore applied to the first remaining candidate in
+            # declared order: the one selection would have considered first, so
+            # the choice of subject is deterministic rather than arbitrary. Its
+            # Stop ends the run, and the failing condition it names is the real
+            # one. Every other remaining candidate is recorded alongside it.
+            if available:
+                subject = available[0]
+                decision = decide(
+                    current_success_probability=achieved,
+                    post_escalation_success_probability=subject.offers,
+                    task_value=task.task_value,
+                    escalation_cost=subject.cost,
+                    remaining_budget=ledger.remaining,
+                )
+                steps.append(
+                    Step(len(steps) + 1, subject.strategy.name, subject.escalating,
+                         why, decision, unusable=unusable,
+                         remaining_budget=ledger.remaining)
+                )
+                return _finish(task, RunOutcome.STOPPED, steps, ledger,
+                               decision.reason, record_directory)
+
             steps.append(
                 Step(len(steps) + 1, None, False, why,
                      unusable=unusable, remaining_budget=ledger.remaining)

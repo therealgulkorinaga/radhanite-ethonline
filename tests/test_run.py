@@ -94,10 +94,43 @@ class TheRuleRunsAfterAVerdictTests(unittest.TestCase):
         self.assertIsNone(record.steps[0].decision)
         self.assertTrue(record.steps[0].bought)
 
-    def test_every_later_step_does_carry_one(self) -> None:
-        for step in a_run([LOST, PARTIAL, WON]).steps[1:]:
-            with self.subTest(step=step.number):
-                self.assertIsNotNone(step.decision)
+    def test_a_decision_is_absent_exactly_when_no_verdict_exists_yet(self) -> None:
+        """The invariant, stated and checked rather than assumed.
+
+        The claim used to be "None for the opening attempt only", and the test
+        for it only ran a scenario that succeeded before a terminal step could
+        occur — so it could not detect that a terminal step also had none.
+
+        The true rule is narrower and does not depend on position: a step has no
+        §2.5 decision exactly when no attempt has yet been judged. That is the
+        opening attempt, and the case where nothing was ever affordable so no
+        opening attempt happened at all.
+        """
+        scenarios = [
+            ([WON], a_task()),
+            ([LOST, PARTIAL, WON], a_task()),
+            ([LOST] * 6, a_task()),
+            ([LOST] * 6, a_task(budget=Money("0.09"))),
+            ([LOST] + [PARTIAL] * 5, a_task(task_value=Money("0.30"))),
+            ([], a_task(budget=Money("0.01"))),
+        ]
+        for script, task in scenarios:
+            record = a_run(script, task=task)
+            judged = False
+            for step in record.steps:
+                with self.subTest(script=len(script), step=step.number):
+                    if judged:
+                        self.assertIsNotNone(
+                            step.decision,
+                            "a verdict exists, so §2.5 must have been consulted",
+                        )
+                    else:
+                        self.assertIsNone(
+                            step.decision,
+                            "no verdict yet, so §2.5 cannot have decided",
+                        )
+                if step.evaluation is not None:
+                    judged = True
 
     def test_a_low_value_task_still_gets_its_opening_attempt(self) -> None:
         # The rule may refuse to spend *more*; it does not gate the first
@@ -140,6 +173,37 @@ class TheBudgetCeilingTests(unittest.TestCase):
         record = a_run([WON], task=a_task(budget=Money("0")))
         self.assertIs(record.outcome, RunOutcome.STOPPED)
         self.assertEqual(record.spent, Money("0"))
+
+    def test_a_changing_sequence_cannot_desynchronise_the_run(self) -> None:
+        # run() read the sequence more than once — to build the candidate list,
+        # then again to select — so a sequence yielding different contents on a
+        # second traversal executed one strategy while the list tracked another,
+        # crashing after the money was spent and leaving no record.
+        import collections.abc
+
+        class ShiftingCatalogue(collections.abc.Sequence):
+            def __init__(self):
+                self.traversals = 0
+                self._first = [DECLARED_STRATEGIES[0]]
+                self._later = [DECLARED_STRATEGIES[2]]
+
+            def _contents(self):
+                return self._first if self.traversals == 0 else self._later
+
+            def __len__(self):
+                return len(self._contents())
+
+            def __getitem__(self, index):
+                contents = self._contents()
+                item = contents[index]
+                if index == len(contents) - 1:
+                    self.traversals += 1
+                return item
+
+        record = a_run([LOST, LOST], strategies=ShiftingCatalogue())
+        self.assertIsNotNone(record)
+        names = {s.strategy_name for s in record.steps if s.strategy_name}
+        self.assertEqual(names, {"Direct Attempt"})
 
     def test_running_out_mid_run_is_recorded_with_its_quantities(self) -> None:
         # $0.09 affords the $0.02 opening but not the $0.08 escalation.
@@ -185,15 +249,34 @@ class AStopTerminatesTheRunTests(unittest.TestCase):
         )
         self.assertEqual(stopped_at, len(record.steps) - 1)
 
-    def test_running_out_of_budget_ends_the_run(self) -> None:
-        # Since selection filters on affordability, §2.5 is never offered a
-        # candidate the budget cannot cover — so its budget condition is
-        # unreachable through the loop, and running out is recorded at
-        # selection instead. See the note in radhanite/run.py.
+    def test_a_budget_condition_stop_ends_the_run(self) -> None:
+        # Criterion 9. Selection may pass over an unaffordable candidate while a
+        # usable one remains, but terminating is §2.5's job — an earlier version
+        # filtered the budget failure out before the rule saw it, which made
+        # this branch unreachable.
         record = a_run([LOST] * 6, task=a_task(budget=Money("0.09")))
         self.assertIs(record.outcome, RunOutcome.STOPPED)
-        blocked = {u.blocked_by for u in record.steps[-1].unusable}
-        self.assertIn(FailedCondition.BUDGET, blocked)
+        self.assertIn(
+            FailedCondition.BUDGET, record.steps[-1].decision.failed_conditions
+        )
+
+    def test_a_no_improvement_stop_ends_the_run(self) -> None:
+        # Criterion 11. §2.5 requires this to fall out of the arithmetic rather
+        # than a special path, so the rule must be the thing that refuses.
+        flat = Strategy(
+            name="Flat", initial_cost=Money("0.02"),
+            initial_success_probability=Probability("0.50"),
+            escalation_cost=Money("0.05"),
+            escalated_success_probability=Probability("0.50"),
+        )
+        record = a_run([LOST, LOST], strategies=(flat,))
+        self.assertIs(record.outcome, RunOutcome.STOPPED)
+        terminal = record.steps[-1]
+        self.assertIs(terminal.decision.decision, Decision.STOP)
+        self.assertIn(FailedCondition.VALUE, terminal.decision.failed_conditions)
+        self.assertEqual(
+            terminal.decision.incremental_expected_value, Money("0")
+        )
 
 
 class SelectionPassesOverWhatIsNotWorthRulingOnTests(unittest.TestCase):
@@ -223,14 +306,17 @@ class SelectionPassesOverWhatIsNotWorthRulingOnTests(unittest.TestCase):
         seen = [(s.strategy_name, s.escalating) for s in record.steps]
         self.assertEqual(len(seen), len(set(seen)))
 
-    def test_the_summary_reason_explains_the_ending_not_the_cheapest_leftover(self) -> None:
-        # The recorded §2.5 decision speaks about whichever candidate was
-        # cheapest, which need not be the one whose unaffordability ended the
-        # run. The summary must name every remaining candidate and why.
+    def test_a_terminal_step_records_every_remaining_candidate(self) -> None:
+        # §2.5 rules on the first remaining candidate in declared order, so the
+        # decision names one. Every other candidate still appears, with the
+        # quantities that disqualified it, so a reader can see the whole
+        # position rather than only the subject of the verdict.
         record = a_run([LOST] * 6)
-        self.assertIn("Nothing left is worth selecting", record.reason)
-        self.assertIn("Exhaustive Attempt", record.reason)
-        self.assertIn("only", record.reason)
+        terminal = record.steps[-1]
+        self.assertIsNotNone(terminal.decision)
+        self.assertIs(terminal.decision.decision, Decision.STOP)
+        names = {u.strategy_name for u in terminal.unusable}
+        self.assertIn("Exhaustive Attempt", names)
 
     def test_a_run_ends_when_nothing_is_left_to_select(self) -> None:
         record = a_run([PARTIAL] * 8, task=a_task(budget=Money("100.00")))
@@ -363,9 +449,9 @@ class TheJsonRecordTests(unittest.TestCase):
 
         by_budget = a_run([LOST] * 6, task=a_task(budget=Money("0.09")))
         last_budget = by_budget.as_dict()["steps"][-1]
-        self.assertIsNone(last_budget["decision"])
+        self.assertEqual(last_budget["decision"]["verdict"], "stop")
         self.assertIn(
-            "budget", {u["blocked_by"] for u in last_budget["unusable"]}
+            "budget", last_budget["decision"]["failed_conditions"]
         )
 
     def test_the_json_carries_everything_a_decision_was_made_from(self) -> None:
@@ -498,9 +584,9 @@ class TerminalStepsRecordTheirReasonTests(unittest.TestCase):
 
     def test_an_exhausted_run_records_every_remaining_candidate(self) -> None:
         step = a_run([LOST] * 6).as_dict()["steps"][-1]
-        self.assertIsNone(step["decision"])
+        self.assertIsNotNone(step["decision"])
+        self.assertEqual(step["decision"]["verdict"], "stop")
         blocked = {b["strategy"]: b["blocked_by"] for b in step["unusable"]}
-        self.assertIn("Progressive Escalation", blocked)
         self.assertIn("Exhaustive Attempt", blocked)
 
     def test_both_blocking_conditions_are_distinguishable(self) -> None:
@@ -518,10 +604,18 @@ class TerminalStepsRecordTheirReasonTests(unittest.TestCase):
                     self.assertIsNotNone(step.strategy_name)
                     self.assertTrue(step.bought or step.decision.decision is Decision.STOP)
 
-    def test_a_terminal_step_names_no_strategy(self) -> None:
+    def test_a_terminal_step_names_the_candidate_the_rule_ruled_on(self) -> None:
+        # Determined, not arbitrary: the first remaining candidate in declared
+        # order, which is the one selection would have considered first.
         step = a_run([LOST] * 6).steps[-1]
-        self.assertIsNone(step.strategy_name)
+        self.assertIsNotNone(step.strategy_name)
+        self.assertIsNotNone(step.decision)
         self.assertTrue(step.unusable)
+
+    def test_a_run_with_nothing_left_at_all_names_no_strategy(self) -> None:
+        record = a_run([], task=a_task(budget=Money("0.01")))
+        self.assertIsNone(record.steps[0].strategy_name)
+        self.assertIsNone(record.steps[0].decision)
 
 
 class RefusalTests(unittest.TestCase):
