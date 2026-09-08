@@ -19,7 +19,7 @@ still needs a separate decision from the product owner.
 | File | What it is |
 |---|---|
 | `tasks/TASK-002_..._OPENROUTER.md` | Real inference, so the money actually leaves an account |
-| `tasks/TASK-003_..._PRIVY.md` | A wallet the agent controls, and limits on what it may spend |
+| `tasks/TASK-003_..._PRIVY.md` | Authority over the agent that it cannot grant itself |
 | `tasks/TASK-004_..._HEDERA_AND_X402.md` | The agent paying for its own purchases |
 | `docs/ARCHITECTURE.md` | The plan, and a payments direction that was missing |
 | `tasks/BACKLOG.md` | Those items now point at their specifications |
@@ -54,8 +54,10 @@ Three pieces of work, in the order their dependencies force:
 
 1. **Real inference.** Buy the work from an actual provider. The money in a
    record becomes money that actually left an account.
-2. **A wallet.** The agent holds an account it controls from a server, with
-   limits that hold even if the code is wrong.
+2. **Authority it cannot grant itself.** The agent gets a wallet, and — the part
+   that matters — someone outside decides what it may spend. A spend beyond that
+   is refused by the wallet, not by Radhanite's own check, and the agent cannot
+   raise its own limit.
 3. **Paying for itself.** The agent settles its own purchases, on a public
    ledger, with no human in the transaction.
 
@@ -80,9 +82,21 @@ apart: a payment can be declined, time out, or arrive late. "Decided to buy",
 system has never had to tell them apart.
 
 **A budget belongs to one job; a wallet does not.** Each run gets a fresh
-allowance and throws it away afterwards. A wallet keeps its balance between
-jobs, so one job can spend what the next one needed. Nothing currently thinks
-about that at all.
+allowance and throws it away afterwards. A wallet keeps its balance between jobs,
+so one job can spend what the next one needed. Nothing currently thinks about
+that at all.
+
+**Every limit the system has, it set for itself.** This is the one that cannot be
+fixed from inside. The spending ceiling holds because the code chooses to respect
+it — the ledger belongs to the system, runs inside it, and checks a budget the
+system was handed. If the rule that decides spending were wrong, nothing outside
+would notice. An agent that decides its own limits is marking its own homework,
+and no amount of better arithmetic fixes that.
+
+The answer is authority granted from outside: a person decides what the agent may
+spend, the wallet refuses anything beyond it, and the agent cannot widen what it
+was given. Which is exactly the rule this project already runs on for code — the
+AI may not approve its own work — applied to money.
 
 ### A direction that was missing
 
@@ -120,10 +134,14 @@ Nothing.
   hard parts are named from reading the code rather than from trying.
 - **It could read as more progress than it is.** Writing a specification is not
   building anything, and a repository full of plans is not a product.
-- **One of the tools may not fit.** The specification for the wallet says
-  plainly that the documented path for that service is a browser flow with a
-  person logging in, which is the wrong shape for something that spends while
-  nobody is watching. It asks whether that tool earns its place at all.
+- **One of the tools may not fit.** The documented path for the authority
+  service is a browser flow with a person logging in, which is the wrong shape
+  for something that spends while nobody is watching. Whether its server-side
+  product does what is needed is unverified, and two of the three planned pieces
+  now depend on it.
+- **The authority layer could turn out to be decoration.** If what it enforces
+  is the same limit the system already enforces on itself, it adds nothing. The
+  specification says to check that and report it either way.
 - **The deadline may make the order impossible.** Three pieces of work are
   specified. There is not obviously time for three.
 
@@ -184,6 +202,14 @@ system assumes that will stop being true. Prices are decided in advance, and rea
 prices are not. Deciding to spend is treated as the same event as having spent,
 and with real payments it is not. A budget belongs to one job, and a wallet does
 not.
+
+The fourth is the interesting one. **Every limit this system has, it set for
+itself.** It respects its budget because its own code says so. Give it authority
+granted from outside — where the wallet refuses a spend the agent wanted to make,
+and the agent cannot raise its own limit — and you get two independent judgements
+that can disagree. A payment going through proves the plumbing works. A payment
+the agent wanted to make and *was not allowed* to make proves the control is
+real.
 
 Those are the three places this gets genuinely hard, and they are written down
 before any of it is built rather than discovered halfway through.
