@@ -20,12 +20,13 @@ gone quietly wrong.
 | `tasks/TASK-001_...md` | Marked as delivered; it still said "not yet implemented" |
 | `tasks/BACKLOG.md` | The Circle entry now points at the task that covers it |
 | `docs/ARCHITECTURE.md` | Four integration tasks, not three; why Arc; a fifth broken assumption |
-| `docs/reviews/PR-013_CODEX_REVIEW.md` | The third review of PR #13, which was never recorded |
+| `tasks/TASK-004_..._HEDERA_AND_X402.md` | Stale claims removed; its rail question deferred to TASK-005 |
+| `docs/reviews/PR-013_CODEX_REVIEW.md` | Two reviews of PR #13 that were never recorded |
 | `docs/pr_explanations/PR-015_...md` | This document |
 | `docs/reviews/PR-015_CODEX_REVIEW.md` | The review prompt, committed before the review |
 | `docs/reviews/README.md` | Its row added to the index |
 
-Nine files. No code. The test count is unchanged at 242.
+Ten files. No code. The test count is unchanged at 242.
 
 ## 3. Why the change was needed
 
