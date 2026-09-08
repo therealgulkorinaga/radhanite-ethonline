@@ -183,6 +183,37 @@ class Step:
     def bought(self) -> bool:
         return self.attempt is not None
 
+    @property
+    def why_no_decision(self) -> str | None:
+        """Why §2.5 did not rule on this step, or None if it did.
+
+        There are exactly two reasons a step can carry no economic decision, and
+        they are different situations rather than one absence:
+
+        - **Nothing judged yet.** §2.5 decides from a verdict, and the opening
+          attempt happens before there is one. The same applies when nothing was
+          ever affordable, so no opening attempt occurred at all.
+        - **Nothing left to rule on.** Every candidate has been tried, so there
+          is no purchase to weigh. The rule cannot refuse a choice that does not
+          exist.
+
+        An earlier version left both as a bare `None` and asserted an invariant
+        covering only the first, which no test exercised the second against.
+        """
+        if self.decision is not None:
+            return None
+        if self.attempt is not None:
+            return "no verdict existed yet: this attempt had not been judged"
+        if self.unusable:
+            # Nothing was affordable, so no opening attempt happened at all —
+            # still the pre-verdict case, since §2.5 decides from a verdict and
+            # there has not been one.
+            return (
+                "no verdict existed yet: nothing was affordable, so no attempt "
+                "was made"
+            )
+        return "no candidate remained to rule on"
+
     def __str__(self) -> str:
         if self.strategy_name is None:
             return f"{self.number}. {self.selection_reason}"
@@ -405,7 +436,13 @@ def _next_action(
         return candidate, reason, ()
 
     if not passed_over:
-        return None, "Nothing remains untried.", ()
+        return (
+            None,
+            "Every candidate has been tried. No purchase remains for the "
+            "economic rule to weigh, so no decision is recorded — there is "
+            "nothing left to decide about.",
+            (),
+        )
     return (
         None,
         "Nothing left is worth selecting. " + "; ".join(passed_over) + ".",
@@ -510,10 +547,16 @@ def run(
                     escalation_cost=subject.cost,
                     remaining_budget=ledger.remaining,
                 )
+                stage = "escalate" if subject.escalating else "start"
                 steps.append(
-                    Step(len(steps) + 1, subject.strategy.name, subject.escalating,
-                         why, decision, unusable=unusable,
-                         remaining_budget=ledger.remaining)
+                    Step(
+                        len(steps) + 1, subject.strategy.name, subject.escalating,
+                        f"{subject.strategy.name} ({stage}) was selected for the "
+                        "terminal decision because it is first remaining in "
+                        f"declared order. {why}",
+                        decision, unusable=unusable,
+                        remaining_budget=ledger.remaining,
+                    )
                 )
                 return _finish(task, RunOutcome.STOPPED, steps, ledger,
                                decision.reason, record_directory)

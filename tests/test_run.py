@@ -106,31 +106,62 @@ class TheRuleRunsAfterAVerdictTests(unittest.TestCase):
         opening attempt, and the case where nothing was ever affordable so no
         opening attempt happened at all.
         """
+        only = Strategy(
+            name="Only", initial_cost=Money("0.02"),
+            initial_success_probability=Probability("0.35"),
+            escalation_cost=Money("0.08"),
+            escalated_success_probability=Probability("0.55"),
+        )
         scenarios = [
-            ([WON], a_task()),
-            ([LOST, PARTIAL, WON], a_task()),
-            ([LOST] * 6, a_task()),
-            ([LOST] * 6, a_task(budget=Money("0.09"))),
-            ([LOST] + [PARTIAL] * 5, a_task(task_value=Money("0.30"))),
-            ([], a_task(budget=Money("0.01"))),
+            ([WON], a_task(), DECLARED_STRATEGIES),
+            ([LOST, PARTIAL, WON], a_task(), DECLARED_STRATEGIES),
+            ([LOST] * 6, a_task(), DECLARED_STRATEGIES),
+            ([LOST] * 6, a_task(budget=Money("0.09")), DECLARED_STRATEGIES),
+            ([LOST] + [PARTIAL] * 5, a_task(task_value=Money("0.30")), DECLARED_STRATEGIES),
+            ([], a_task(budget=Money("0.01")), DECLARED_STRATEGIES),
+            # The case the previous version of this test never reached: a single
+            # strategy, both attempts made and failed, so the catalogue is
+            # exhausted and there is nothing left for the rule to weigh.
+            ([LOST, LOST], a_task(), (only,)),
         ]
-        for script, task in scenarios:
-            record = a_run(script, task=task)
+        for script, task, strategies in scenarios:
+            record = a_run(script, task=task, strategies=strategies)
             judged = False
             for step in record.steps:
                 with self.subTest(script=len(script), step=step.number):
-                    if judged:
-                        self.assertIsNotNone(
-                            step.decision,
-                            "a verdict exists, so §2.5 must have been consulted",
-                        )
+                    if step.decision is None:
+                        # Every absence must be explained, and the explanation
+                        # must match why it is actually absent.
+                        self.assertIsNotNone(step.why_no_decision)
+                        if judged:
+                            self.assertIn("remained to rule on", step.why_no_decision)
+                        else:
+                            self.assertIn("no verdict", step.why_no_decision)
                     else:
-                        self.assertIsNone(
-                            step.decision,
-                            "no verdict yet, so §2.5 cannot have decided",
-                        )
+                        self.assertTrue(judged, "§2.5 ruled before any verdict existed")
+                        self.assertIsNone(step.why_no_decision)
                 if step.evaluation is not None:
                     judged = True
+
+    def test_an_exhausted_catalogue_says_why_no_decision_exists(self) -> None:
+        # A single strategy, both attempts failed. Nothing remains, so there is
+        # no purchase to weigh — a different absence from "nothing judged yet",
+        # and one no scenario previously exercised.
+        only = Strategy(
+            name="Only", initial_cost=Money("0.02"),
+            initial_success_probability=Probability("0.35"),
+            escalation_cost=Money("0.08"),
+            escalated_success_probability=Probability("0.55"),
+        )
+        record = a_run([LOST, LOST], strategies=(only,))
+        self.assertIs(record.outcome, RunOutcome.STOPPED)
+        terminal = record.steps[-1]
+        self.assertIsNone(terminal.decision)
+        self.assertEqual(
+            terminal.why_no_decision, "no candidate remained to rule on"
+        )
+        self.assertIn("Every candidate has been tried", terminal.selection_reason)
+        self.assertEqual(len([s for s in record.steps if s.bought]), 2)
 
     def test_a_low_value_task_still_gets_its_opening_attempt(self) -> None:
         # The rule may refuse to spend *more*; it does not gate the first
@@ -604,12 +635,19 @@ class TerminalStepsRecordTheirReasonTests(unittest.TestCase):
                     self.assertIsNotNone(step.strategy_name)
                     self.assertTrue(step.bought or step.decision.decision is Decision.STOP)
 
-    def test_a_terminal_step_names_the_candidate_the_rule_ruled_on(self) -> None:
-        # Determined, not arbitrary: the first remaining candidate in declared
-        # order, which is the one selection would have considered first.
+    def test_the_terminal_subject_is_the_first_remaining_in_declared_order(self) -> None:
+        # Determined, not arbitrary — and the record must say so, since §2.6
+        # requires the strategy chosen and why. Progressive Escalation is first
+        # remaining once Direct Attempt is exhausted and Exhaustive Attempt has
+        # been bought, so it is the subject.
         step = a_run([LOST] * 6).steps[-1]
-        self.assertIsNotNone(step.strategy_name)
+        self.assertEqual(step.strategy_name, "Progressive Escalation")
         self.assertIsNotNone(step.decision)
+        self.assertIn(
+            "Progressive Escalation (start) was selected for the terminal "
+            "decision because it is first remaining in declared order.",
+            step.selection_reason,
+        )
         self.assertTrue(step.unusable)
 
     def test_a_run_with_nothing_left_at_all_names_no_strategy(self) -> None:
