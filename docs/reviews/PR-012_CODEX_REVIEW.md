@@ -4,8 +4,8 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md`, `docs/PREREQ-001_PRODUCT_DEFINITION.md`, `docs/ARCHITECTURE.md`
 **Date issued:** 2026-09-08
-**Outcome:** **Rejected** — `CODEX-PR012-01` left criterion 4 unimplemented and `-02` left the simulator's determinism unenforced at its public boundary. All three findings corrected.
-**Commit reviewed:** `ad55b32`
+**Outcome:** Rejected at `ad55b32`, then **Approved with corrections** at `5c91db7`. Five findings in total, all corrected.
+**Reviews:** three passes — a first review, a second that was truncated, and a complete re-run. All recorded below as received.
 
 ---
 
@@ -457,6 +457,14 @@ the comparison is real without any change to the specification.
 git log --grep=CODEX-PR012
 ```
 
+### Corrections after the re-run
+
+| Finding | Correction commit | What changed |
+|---|---|---|
+| `CODEX-PR012-03` | `33ec86b` | The last absolute test name, `test_cannot_be_mutated` in `tests/test_money.py`, renamed and strengthened. The previous round's search missed it because the pattern looked for one phrasing of the defect and this was another. |
+| `CODEX-PR012-05` | `33ec86b` | The "verbatim" claim corrected to "as received", with the transmission path stated: a review is copied out of the review tool by a person, and some formatting does not survive that hop. Nothing was restored, since restoring formatting never received would be reconstruction rather than record. The truncated response stays as it arrived; the re-run is recorded separately in §2d. |
+| `CODEX-PR012-04` | `6c2b62d` | File count corrected to twelve with twelve rows. Counts had been taken as the last step of the previous round, and another round landed on top. |
+
 ### Verification after correction
 
 ```
@@ -464,6 +472,10 @@ $ python -m unittest discover
 Ran 183 tests in 0.015s
 OK
 ```
+
+Twelve files, twelve table rows, 26 execution tests, 18 evaluation tests, 44
+new, 183 total. Every commit hash cited in this record was read back from git
+rather than typed, after two were written wrong earlier in this pull request.
 
 The finding, retested:
 
