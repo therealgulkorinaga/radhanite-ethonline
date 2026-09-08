@@ -93,9 +93,17 @@ class TheValueConditionTests(unittest.TestCase):
         self.assertIs(d.decision, Decision.STOP)
         self.assertEqual(d.failed_conditions, (FailedCondition.VALUE,))
 
-    def test_a_hair_above_the_tie_does_escalate(self) -> None:
+    def test_a_penny_below_the_tie_does_escalate(self) -> None:
+        # Gain $6.00 against a cost of $5.99.
         d = ruling(escalation_cost=Money("5.99"), remaining_budget=Money("10.00"))
         self.assertTrue(d.escalated)
+
+    def test_a_penny_above_the_tie_does_not(self) -> None:
+        # Gain $6.00 against a cost of $6.01. The other side of the boundary,
+        # which the explanation claimed and no test covered.
+        d = ruling(escalation_cost=Money("6.01"), remaining_budget=Money("10.00"))
+        self.assertIs(d.decision, Decision.STOP)
+        self.assertEqual(d.failed_conditions, (FailedCondition.VALUE,))
 
     def test_no_improvement_stops_with_no_special_case(self) -> None:
         # §2.5: equal probabilities give exactly zero, which fails the strict >.
@@ -190,11 +198,51 @@ class TheDecisionRecordTests(unittest.TestCase):
         self.assertEqual(d.remaining_budget, Money("2.00"))
 
     def test_the_decision_can_be_recomputed_from_what_it_recorded(self) -> None:
-        d = ruling()
-        change = (
-            d.post_escalation_success_probability - d.current_success_probability
-        )
-        self.assertEqual(d.task_value * change, d.incremental_expected_value)
+        """Re-derive the whole verdict from the record alone, not just the value.
+
+        §2.6 requires a decision to be recomputable from what was recorded. That
+        means the verdict and the failed conditions, not only the arithmetic
+        that fed them — so this applies both of §2.5's conditions independently
+        and checks the conclusion matches.
+        """
+        for case in (
+            {},
+            {"remaining_budget": Money("0.20")},
+            {"post_escalation_success_probability": Probability("0.51")},
+            {
+                "post_escalation_success_probability": Probability("0.51"),
+                "remaining_budget": Money("0.20"),
+            },
+            {"escalation_cost": Money("6.00"), "remaining_budget": Money("10.00")},
+            {"post_escalation_success_probability": Probability("0.40")},
+        ):
+            with self.subTest(case=case):
+                d = ruling(**case)
+
+                change = (
+                    d.post_escalation_success_probability
+                    - d.current_success_probability
+                )
+                expected_value = d.task_value * change
+                self.assertEqual(expected_value, d.incremental_expected_value)
+
+                budget_allows = d.remaining_budget >= d.escalation_cost
+                value_justifies = expected_value > d.escalation_cost
+
+                expected_failures = tuple(
+                    condition
+                    for condition, held in (
+                        (FailedCondition.BUDGET, budget_allows),
+                        (FailedCondition.VALUE, value_justifies),
+                    )
+                    if not held
+                )
+                expected_decision = (
+                    Decision.ESCALATE if not expected_failures else Decision.STOP
+                )
+
+                self.assertEqual(d.failed_conditions, expected_failures)
+                self.assertEqual(d.decision, expected_decision)
 
     def test_the_reason_names_the_quantities_that_produced_it(self) -> None:
         reason = ruling().reason
