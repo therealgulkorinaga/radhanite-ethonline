@@ -38,6 +38,8 @@ have destroyed the economic model.
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+from radhanite._immutable import refuse_rehydration
 from enum import Enum
 
 from radhanite.money import Money
@@ -64,7 +66,8 @@ class FailedCondition(Enum):
     VALUE = "value"
 
 
-@dataclass(frozen=True)
+@refuse_rehydration
+@dataclass(frozen=True, slots=True)
 class EscalationDecision:
     """A decision, with everything needed to recompute it.
 

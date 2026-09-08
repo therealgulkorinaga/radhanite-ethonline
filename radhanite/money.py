@@ -33,6 +33,8 @@ item 8.
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+from radhanite._immutable import refuse_rehydration
 from decimal import Decimal, InvalidOperation, localcontext
 
 from radhanite._exactness import exact as _exact
@@ -42,7 +44,8 @@ CURRENCY = "USD"
 __all__ = ["CURRENCY", "Money"]
 
 
-@dataclass(frozen=True, order=True)
+@refuse_rehydration
+@dataclass(frozen=True, order=True, slots=True)
 class Money:
     """An exact amount of US dollars.
 
@@ -147,6 +150,42 @@ class Money:
             exponent = magnitude.as_tuple().exponent
             places = max(2, -exponent) if isinstance(exponent, int) else 2
             return f"{sign}${magnitude:.{places}f}"
+
+    def __format__(self, spec: str) -> str:
+        """Format the displayed amount, e.g. right-aligned in a column.
+
+        The spec applies to the *rendered string* — `f"{money:>9}"` pads
+        `"$2.00"` to nine characters. Numeric specs such as `.2f` are not
+        supported and will raise: the currency symbol is part of an amount's
+        representation, and the number of places is decided by the amount
+        itself, not by the caller (see `__str__`).
+
+        Without this, `f"{money}"` would work while `f"{money:>9}"` raised, which
+        is exactly the sort of surprise that shows up first in a column of
+        output nobody tested.
+        """
+        # A leading fill character may itself be a dot — "{:.>10}" pads with
+        # dots — so the fill and alignment prefix is removed before looking for
+        # a precision. Rejecting on a bare "." in the spec would refuse a
+        # perfectly good dot-leader column.
+        body = spec
+        if len(body) >= 2 and body[1] in "<>^=":
+            body = body[2:]
+        elif body[:1] in "<>^=":
+            body = body[1:]
+
+        if "." in body:
+            # format(Money("123.456"), ".2") would return "$1" — string
+            # precision silently truncating an exact amount into a different,
+            # wrong one. TASK-001 §6.6 requires exact USD values and PREREQ-001
+            # §8 requires decisions to stay inspectable; a quietly shortened
+            # amount defeats both. Alignment is all this needs to support.
+            raise ValueError(
+                f"Money format spec {spec!r} would truncate the amount. "
+                "Only fill, alignment and width are supported; the number of "
+                "decimal places is decided by the amount itself."
+            )
+        return format(str(self), spec)
 
     def __repr__(self) -> str:
         return f"Money('{self.amount}')"

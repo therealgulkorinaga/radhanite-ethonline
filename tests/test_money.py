@@ -218,6 +218,44 @@ class PresentationTests(unittest.TestCase):
         self.assertEqual(str(Money("-0.50")), "-$0.50")
 
 
+class FormattingTests(unittest.TestCase):
+    def test_can_be_padded_in_a_column(self) -> None:
+        # f"{money}" worked while f"{money:>9}" raised TypeError, which would
+        # have surfaced first in a column of output nobody tested.
+        self.assertEqual(f"{Money('2.00'):>9}", "    $2.00")
+        self.assertEqual(f"{Money('2.00'):<9}|", "$2.00    |")
+
+    def test_plain_interpolation_still_works(self) -> None:
+        self.assertEqual(f"{Money('2.00')}", "$2.00")
+
+    def test_numeric_specs_are_refused_rather_than_guessed_at(self) -> None:
+        with self.assertRaises(ValueError):
+            f"{Money('2.00'):.2f}"
+
+    def test_truncating_specs_are_refused(self) -> None:
+        # format(Money("123.456"), ".2") returned "$1" — a different amount
+        # entirely, produced silently. An amount that quietly becomes another
+        # amount defeats both exactness and inspectability.
+        for spec in (".2", ".4", ".10"):
+            with self.subTest(spec=spec), self.assertRaises(ValueError):
+                format(Money("123.456"), spec)
+
+    def test_a_dot_fill_is_not_mistaken_for_a_precision(self) -> None:
+        # "{:.>10}" pads with dots — a dot-leader column, which is exactly what
+        # a table of amounts wants. The first guard against truncation refused
+        # any spec containing a dot and so refused this too.
+        self.assertEqual(format(Money("2.00"), ".>10"), ".....$2.00")
+        self.assertEqual(format(Money("2.00"), ".<10"), "$2.00.....")
+        self.assertEqual(format(Money("2.00"), ".^10"), "..$2.00...")
+
+    def test_a_precision_after_a_dot_fill_is_still_refused(self) -> None:
+        with self.assertRaises(ValueError):
+            format(Money("123.456"), ".>10.2")
+
+    def test_alignment_still_works_on_a_long_amount(self) -> None:
+        self.assertEqual(format(Money("123.456"), ">10"), "  $123.456")
+
+
 class ImmutabilityTests(unittest.TestCase):
     def test_cannot_be_mutated(self) -> None:
         with self.assertRaises(Exception):
