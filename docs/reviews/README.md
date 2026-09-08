@@ -72,6 +72,10 @@ If a reviewer other than Codex is ever used, substitute its name.
    definition, architecture document, task specification, code and tests remain
    authoritative. A reviewer can be wrong, and the record preserves what it said
    rather than endorsing it.
+6. **Recording a review updates this directory, the index below, and the pull
+   request itself — in one step** (`AI_BUILD_GOVERNANCE.md` §7.4). A review
+   recorded in some places but not others leaves the repository contradicting
+   itself. Where a pull request and a record disagree, the record is correct.
 
 ## Index
 
