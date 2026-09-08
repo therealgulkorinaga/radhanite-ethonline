@@ -1,6 +1,7 @@
 # TASK-001 — Deterministic Economic Loop
 
-**Status:** Specified, all decisions resolved — **ready for implementation, not yet implemented**
+**Status:** **Implemented and merged.** All seventeen acceptance criteria met; 242 tests pass on Python 3.12.
+**Delivered by:** PR #3, #6, #9, #11, #12, #13. Independently reviewed across 13 passes, which raised 43 findings, all corrected. The final round of corrections was merged without a further review.
 **Authorization:** Authorized by the human product owner
 **Traces to:** [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §5
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md)
