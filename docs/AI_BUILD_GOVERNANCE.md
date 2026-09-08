@@ -316,6 +316,45 @@ The record is a transcript, not a source of truth. A reviewer can be wrong, and
 the record preserves what it said rather than endorsing it. See
 [`docs/reviews/README.md`](reviews/README.md).
 
+### 7.4 Recording a review is one step, not several
+
+> **A review is recorded everywhere at once, or it is not recorded.**
+
+Recording a review has three parts, and they are a single action:
+
+1. the review record in `docs/reviews/PR-<NNN>_CODEX_REVIEW.md` — prompt,
+   findings verbatim, outcome, corrections;
+2. its row in `docs/reviews/README.md`;
+3. **every claim about review status in the pull request itself.**
+
+None may be left for later. A review recorded in two of the three places has
+produced a repository that contradicts itself, which is worse than one that had
+not been reviewed at all — a reader cannot tell which statement to believe.
+
+#### Why this rule exists
+
+It was written after the failure it prevents. Pull request #6 was reviewed
+twice, rejected twice, and ten findings were corrected — while its own
+description still read *"Codex: has not yet reviewed"* throughout. The record in
+`docs/reviews/` was accurate; the pull request was months of process away from
+it, and a reader would have seen the false claim first.
+
+That was the fourth instance of the same defect: a change made in one place and
+a claim about it left stale in another. Two were caught by review
+(`CODEX-PR003-04`, `CODEX-PR006-09`), one by the implementing agent, and one by
+the product owner reading the pull request.
+
+#### Prefer pointing over repeating
+
+The durable fix for a claim that goes stale is to stop making it twice. Where a
+pull request needs to state review status, prefer a reference to the review
+record over a restatement of its contents. A summary that must be kept in step
+is a summary that will eventually fall out of step.
+
+Where a pull request and a review record disagree, **the review record is
+correct**, on the same reasoning as §4.3: the record is the primary artifact and
+the description is a convenience.
+
 ## 8. Amending this document
 
 This document may be changed only by the human product owner. No AI agent may
