@@ -329,7 +329,7 @@ begun to name:
   older tests still made absolute claims while asserting only that ordinary
   assignment raises.
 
-Both are corrected in `f0a2b1e`. **Whether these are what the finding names is
+Both are corrected in `36c364a`. **Whether these are what the finding names is
 unknown.** If it identifies something else, `CODEX-PR012-03` remains outstanding,
 and the outcome of this second review is unrecorded because it was never
 received.
