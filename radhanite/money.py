@@ -42,7 +42,7 @@ CURRENCY = "USD"
 __all__ = ["CURRENCY", "Money"]
 
 
-@dataclass(frozen=True, order=True)
+@dataclass(frozen=True, order=True, slots=True)
 class Money:
     """An exact amount of US dollars.
 
@@ -161,6 +161,17 @@ class Money:
         is exactly the sort of surprise that shows up first in a column of
         output nobody tested.
         """
+        if "." in spec:
+            # format(Money("123.456"), ".2") would return "$1" — string
+            # precision silently truncating an exact amount into a different,
+            # wrong one. TASK-001 §6.6 requires exact USD values and PREREQ-001
+            # §8 requires decisions to stay inspectable; a quietly shortened
+            # amount defeats both. Alignment is all this needs to support.
+            raise ValueError(
+                f"Money format spec {spec!r} would truncate the amount. "
+                "Only fill, alignment and width are supported; the number of "
+                "decimal places is decided by the amount itself."
+            )
         return format(str(self), spec)
 
     def __repr__(self) -> str:

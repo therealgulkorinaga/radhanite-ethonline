@@ -27,7 +27,7 @@ from radhanite.money import Money
 __all__ = ["Task"]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Task:
     """A unit of work with an economic frame around it.
 

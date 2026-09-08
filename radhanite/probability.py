@@ -27,7 +27,7 @@ _ZERO = Decimal(0)
 _ONE = Decimal(1)
 
 
-@dataclass(frozen=True, order=True)
+@dataclass(frozen=True, order=True, slots=True)
 class Probability:
     """A probability between 0 and 1 inclusive.
 

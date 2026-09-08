@@ -64,7 +64,7 @@ class FailedCondition(Enum):
     VALUE = "value"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class EscalationDecision:
     """A decision, with everything needed to recompute it.
 

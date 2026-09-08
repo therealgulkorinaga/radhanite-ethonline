@@ -32,7 +32,7 @@ from radhanite.probability import Probability
 __all__ = ["DECLARED_STRATEGIES", "Strategy", "select"]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Strategy:
     """One way of attempting a task, and the dearer attempt it escalates to.
 
@@ -137,6 +137,19 @@ def select(
     >>> select(DECLARED_STRATEGIES, Money("0.01")) is None
     True
     """
+    if not isinstance(strategies, Sequence) or isinstance(strategies, (str, bytes)):
+        # A set is not a Sequence, and iterating one returns strategies in an
+        # order that depends on the process's hash seed — so the same catalogue
+        # and the same budget could choose differently between runs. Criterion 2
+        # requires identical inputs to produce an identical selection, and a
+        # collection with no order cannot satisfy that. Refused at the boundary
+        # rather than processed into a hash-dependent economic decision.
+        raise TypeError(
+            "strategies must be an ordered sequence, not "
+            f"{type(strategies).__name__}. Selection depends on declared order, "
+            "so an unordered collection cannot produce a deterministic choice."
+        )
+
     if remaining_budget.is_negative:
         raise ValueError(
             f"remaining_budget cannot be negative, got {remaining_budget}. "
