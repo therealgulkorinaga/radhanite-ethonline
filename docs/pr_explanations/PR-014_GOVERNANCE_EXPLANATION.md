@@ -28,7 +28,7 @@ still needs a separate decision from the product owner.
 | `docs/reviews/PR-014_CODEX_REVIEW.md` | The review prompt, committed before the review |
 | `docs/reviews/README.md` | Its row added to the index of reviews |
 
-Nine files. No code, and no change to the test count, which stays at 183 on the
+Nine files. No code, and no change to the test count, which stays at 242 on the
 main branch.
 
 ## 3. Why the change was needed
@@ -158,7 +158,7 @@ Nothing.
 
 **No tests were run**, and none changed. This pull request contains no code.
 
-The existing suite is unaffected: 183 tests on the main branch.
+The existing suite is unaffected: 242 tests on the main branch.
 
 What was checked instead: that the new section in the product definition did not
 renumber any existing one, since other documents — including review transcripts
