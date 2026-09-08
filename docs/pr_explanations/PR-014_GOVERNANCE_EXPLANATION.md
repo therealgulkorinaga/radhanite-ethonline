@@ -98,6 +98,15 @@ spend, the wallet refuses anything beyond it, and the agent cannot widen what it
 was given. Which is exactly the rule this project already runs on for code — the
 AI may not approve its own work — applied to money.
 
+That matters twice over once there is more than one agent. **Ten agents each
+perfectly respecting a $2 budget is $20 of exposure nobody agreed to.** Every one
+of them is individually correct; the total is unbounded, and no agent can see the
+others. That is not a limit a better-written agent could impose on itself — it is
+a kind of limit self-imposed ceilings cannot express. Running several agents is
+recorded as a future idea and is not approved; the point here is that it is the
+clearest argument for granting authority from outside rather than trusting each
+agent to police itself.
+
 ### A direction that was missing
 
 The architecture described payments in one direction only: **other machines

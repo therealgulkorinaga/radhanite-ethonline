@@ -55,12 +55,22 @@ recorded separately rather than letting the two blur.
 | BL-09 | Multi-task budget allocation across a portfolio of tasks | **UNAUTHORIZED** |
 | BL-10 | Human-facing UI for submitting tasks and reviewing run records | **UNAUTHORIZED** |
 | BL-11 | Verticals beyond software engineering | **UNAUTHORIZED** |
+| BL-12 | Several Radhanite agents under shared, externally granted authority | **UNAUTHORIZED** |
 
 ## Notes
 
 BL-05 and BL-06 are the natural successors to TASK-001's deterministic rules and
 are the most likely to be built by accident. They are explicitly excluded from
 TASK-001 in that task's §3, and remain unauthorized here.
+
+BL-12 is distinct from `BL-09`, and the difference is worth stating. `BL-09` is
+Radhanite dividing a budget across several tasks — one agent, many jobs. `BL-12`
+is several agents under one grant of authority, which raises a limit no single
+agent can enforce: ten agents each correctly respecting a $2 budget is $20 of
+exposure nobody authorized, and none of them can see the others. It is the
+strongest argument for `BL-02`'s authority layer being an external grant rather
+than an internal check, and it is recorded here so that argument does not get
+mistaken for permission to build a fleet.
 
 BL-01 through BL-04 correspond to the systems Radhanite must never reimplement.
 When they are eventually authorized, they will be integrations at the boundary —

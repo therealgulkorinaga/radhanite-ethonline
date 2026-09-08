@@ -91,6 +91,39 @@ budget is fixed when a run starts.
 **A bounded blast radius.** If the escalation rule is wrong, the loss is capped
 by something the rule cannot reach.
 
+### 4.1 Why this stops being optional once there is more than one agent
+
+With a single agent, external authority is a second opinion: Radhanite caps
+itself, the wallet caps it too, and the second copy catches the case where the
+first is wrong. Valuable, but redundant when everything works.
+
+With several agents it enforces something **no agent can enforce for itself**.
+
+Ten agents each perfectly respecting a $2 budget is $20 of exposure nobody
+authorized. Every one is individually correct, and the total is unbounded. No
+quality of code inside any single agent addresses this, because none of them can
+see the others. A limit that spans agents has to live outside all of them, and
+that is not a refinement of the self-imposed ceiling — it is a kind of limit the
+self-imposed ceiling cannot express at all.
+
+Three further properties appear only at that scale:
+
+- **Different scope, identical code.** One agent works on $2 tasks and another on
+  $200. As a self-imposed limit that is a configuration value each deployment is
+  trusted to honour. As granted authority it is a property of the agent's
+  identity, which its code cannot alter.
+- **Revocation without redeployment.** An agent misbehaves and is cut off,
+  immediately, without touching the others and without shipping a change to
+  something that is currently spending money.
+- **Agents paying agents.** Once one agent buys a service from another, authority
+  decides who may pay whom, for what, and how much. None of that is expressible
+  when each agent knows only its own budget.
+
+**Radhanite itself remains a single agent** in TASK-003, and running several is
+`BL-12` and unauthorized. This section is the justification for building the
+authority layer as an external grant rather than an internal check — not a
+licence to build a fleet.
+
 ## 5. Out of scope
 
 | Excluded | Note |
