@@ -24,6 +24,7 @@ Neither decides anything yet. They are the nouns the rest of the system will use
 | `radhanite/__init__.py` | Updated to say what is now built and what is not |
 | `docs/pr_explanations/PR-006_...md` | This document |
 | `docs/reviews/PR-006_CODEX_REVIEW.md` | The independent review of this pull request |
+| `docs/reviews/README.md` | Its row added to the index of reviews |
 
 The test count went from 3 to 52.
 
@@ -132,9 +133,14 @@ Success condition: tests pass
 
 ## 7. What the system decides
 
-**Nothing yet.** This pull request adds no decision-making at all. It only
-refuses input that could not support a decision later: no money, nothing to
-gain, or no way to tell whether the work succeeded.
+**Nothing yet.** This pull request adds no decision-making at all.
+
+It refuses only what could never support a decision: an input that is missing
+entirely, or an amount below zero. It deliberately **accepts** a budget of zero
+and an outcome worth zero, because those are economic situations rather than
+invalid ones, and the rule for deciding whether to spend already answers them
+correctly — with "stop, this is not worth it", which is a correct outcome and
+must remain reachable.
 
 ## 8. What comes out
 
@@ -152,8 +158,11 @@ Nothing. These are things to be held and passed around, not run.
   small for the work, or an outcome worth nothing. That is not rejected here,
   deliberately: it is the spending rule's job to notice and stop, and stopping is
   a correct outcome.
-- **Precision is kept, not enforced.** Nothing rounds amounts to whole cents,
-  because sub-penny costs are real. A display somewhere could still round badly.
+- **Precision is kept, not enforced elsewhere.** Nothing rounds amounts to whole
+  cents, because sub-penny costs are real. Display was itself a defect once —
+  the printed amount could be rounded by unrelated settings — and now runs under
+  the same exact rules as the arithmetic. Any *other* place that formats an
+  amount could still round it badly.
 
 ## 10. Tests run, and their results
 
@@ -172,7 +181,10 @@ OK
 - `0.1 + 0.2` equals exactly `0.3`, and subtracting ten cents from a dollar ten
   times lands on exactly zero rather than drifting.
 - A sum that the ordinary settings would round is computed exactly, and changing
-  those settings from outside cannot alter the answer.
+  those settings from outside cannot alter the answer — for arithmetic,
+  negation, and for the printed form of an amount.
+- Printing an amount cannot be made to round, and cannot be made to fail, by
+  settings changed elsewhere in the program.
 - An operation that genuinely could not be represented exactly raises an error
   rather than returning an approximation.
 - Infinity and "not-a-number" are refused at creation.
