@@ -86,3 +86,4 @@ If a reviewer other than Codex is ever used, substitute its name.
 | [#9](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/9) | [PR-009](PR-009_CODEX_REVIEW.md) | **Approved with corrections** → 3 findings, all corrected; rule itself found correct |
 | [#11](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/11) | [PR-011](PR-011_CODEX_REVIEW.md) | Rejected → Rejected again → 11 findings, all corrected |
 | [#12](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/12) | [PR-012](PR-012_CODEX_REVIEW.md) | Rejected → **Approved with corrections** → 5 findings, all corrected; evaluation rebuilt |
+| [#13](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/13) | [PR-013](PR-013_CODEX_REVIEW.md) | pending |
