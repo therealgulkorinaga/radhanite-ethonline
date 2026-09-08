@@ -17,14 +17,18 @@ To give Radhanite something that *attempts* a task, and something that decides
 |---|---|
 | `radhanite/execution.py` | The stand-in for doing the work |
 | `radhanite/evaluation.py` | Judging whether the work met the requirement |
-| `tests/test_execution.py` | 16 checks on the first |
-| `tests/test_evaluation.py` | 14 checks on the second |
+| `tests/test_execution.py` | 26 checks on the first |
+| `tests/test_evaluation.py` | 18 checks on the second |
 | `radhanite/__init__.py` | Updated to say what is now built |
 | `docs/pr_explanations/PR-012_...md` | This document |
 | `docs/reviews/PR-012_CODEX_REVIEW.md` | The review prompt, committed before the review |
 | `docs/reviews/README.md` | Its row added to the index of reviews |
 
-Eight files. The test count went from 139 to 169 — 30 new.
+Eight files. The test count went from 139 to 183 — 44 new.
+
+This pull request was **rejected on review** and substantially reworked. Three
+problems were found, one of them serious enough that the judging step had to be
+rebuilt. The record is in `docs/reviews/PR-012_CODEX_REVIEW.md`.
 
 ## 3. Why the change was needed
 
@@ -41,8 +45,21 @@ Nothing executed and nothing was judged.
 ### Attempting the work
 
 The thing that "does the work" does no work at all. It is **told in advance what
-happens** — succeed, fail, or get part of the way — and reports that, charging
-the price the chosen strategy declared.
+becomes true** — and reports that, charging the price the chosen strategy
+declared.
+
+What it reports is *evidence*, not a verdict, and the difference turned out to
+matter enormously. The first version of this pull request had it report
+"success" or "failure" directly. The reviewer pointed out that this meant the
+pretend-worker was handing down the answer and the judging step was only
+relabelling it — the same attempt counted as a success against **any**
+requirement, including ones it plainly had not met. Judging something is not the
+same as being told the answer, and the two stages exist separately for that
+reason.
+
+So an attempt now reports **which conditions became true**, plus a sentence
+describing what happened for a human reader. Nothing decides anything from that
+sentence.
 
 That sounds like cheating, and it is deliberate. The task specification requires
 it. The purpose of this stage is to prove the *economic reasoning* is right, and
@@ -63,20 +80,37 @@ than stopping.
 
 ### Judging the result
 
-Two verdicts: the requirement was met, or it was not. There is deliberately no
-third, and a test asserts there are exactly two so a third cannot be quietly
-added.
+The requirement is met if, and only if, it is among the things the attempt
+actually achieved. Same attempt, three different requirements:
 
-**The important part is what happens to partial progress.** An attempt that got
-part of the way is **not met**. That is the single most dangerous mistake
-available in this whole system: if "made progress" were treated as success,
-Radhanite would conclude the job was finished, stop spending, and report an
-outcome that never happened. The specification forbids it in those words, and
-four separate tests hold the line.
+```
+achieved "tests pass"   judged against "tests pass"        ->  met
+achieved "tests pass"   judged against "issue #184 closed"  ->  not met
+achieved "tests pass"   judged against "2 + 2 == 5"         ->  not met
+```
 
-Partial progress and outright failure share a verdict but not a record. Both are
-"not met", and the record keeps which actually happened, with a different
-sentence for each, so nothing is lost.
+That is the comparison the specification asks for, and the first version of this
+pull request did not have it.
+
+There is no partial credit for near misses either. An attempt that achieved
+"the tests pass" has **not** achieved "tests pass" — no synonyms, no
+approximate matching. Inventing either would be exactly the interpretation the
+specification forbids, and there is a test for it.
+
+Two verdicts: met, or not. There is deliberately no third, and a test asserts
+there are exactly two so a third cannot be quietly added.
+
+**The important part is what happens to partial progress.** An attempt that
+achieved *something else* has not achieved what was asked for. That is the
+single most dangerous mistake available in this whole system: if "made progress"
+were treated as success, Radhanite would conclude the job was finished, stop
+spending, and report an outcome that never happened. The specification forbids
+it in those words.
+
+It now falls out of the comparison rather than needing a rule of its own, which
+is better — there is no "partial" case to accidentally soften. Progress and
+outright failure share a verdict but not a record: both are "not met", and the
+record keeps exactly what *was* achieved, so nothing is lost.
 
 A task with no way of measuring success is refused outright. Without one there
 is nothing to judge, and — as the product definition puts it — nothing Radhanite
@@ -86,8 +120,8 @@ can make an economic decision about.
 
 ```
 chose     Direct Attempt
-attempt   Direct Attempt (initial attempt, 0.35 likely) cost $0.02, ended in partial_progress
-verdict   Not met: the attempt made partial progress, which is not "tests pass".
+attempt   Direct Attempt (initial attempt, 0.35 likely) cost $0.02: it builds, tests still red
+verdict   Not met: "tests pass" is not among what the attempt achieved (code compiles).
 decision  ESCALATE — raising the chance of success from 0.35 to 0.55 on a $20.00
           outcome is worth $4.00, against a cost of $0.08, with $1.98 remaining.
 ```
@@ -121,10 +155,10 @@ can be altered afterwards.
 - **The judgement is only as good as the input.** Since the outcome is supplied
   rather than observed, this stage cannot detect a scenario that describes
   something implausible.
-- **The verdict follows the outcome, not an independent check.** Judging is
-  where a real requirement would actually be tested, once real work exists.
-  Today it turns a reported outcome into a verdict against a recorded
-  requirement.
+- **The evidence is supplied, not gathered.** The comparison is real, but what
+  it compares against is written into the scenario rather than observed from a
+  running system. Once real work exists, this is where a real requirement gets
+  checked against a real result; the comparison itself does not change.
 - **Softening remains the risk.** Every future change here should be read with
   one question in mind: does this make "nearly done" count as done?
 
@@ -135,42 +169,55 @@ $ python --version
 Python 3.12.13
 
 $ python -m unittest discover
-Ran 169 tests in 0.018s
+Ran 183 tests in 0.015s
 OK
 ```
 
-30 tests are new: 16 on attempting, 14 on judging. The ones that matter most:
+44 tests are new: 26 on attempting, 18 on judging. The ones that matter most:
 
-- Partial progress is not success, checked four ways, including one test
-  asserting there are exactly two possible verdicts.
-- Partial progress and failure keep different records despite sharing a verdict.
-- A strategy that never succeeds still reports a scripted success, twenty times
-  over — proof that nothing is being sampled.
-- The same script produces the same run, twenty times over.
-- Each of the three outcomes can be produced on demand.
-- A first attempt is charged the first price and a second the second, with the
-  matching stated chance of success.
+- **The same attempt is judged differently against different requirements.**
+  This is the test the reworked design exists for; the first version could not
+  have passed it.
+- The sentence describing an attempt is never consulted — one claiming "complete
+  and total success" while achieving nothing is still judged a failure.
+- Achieving something under a slightly different name does not count.
+- Achieving something *other* than what was asked is not met, however much of it
+  there is.
+- Progress and total failure keep different records despite sharing a verdict.
+- Exactly two verdicts exist.
+- A strategy that never succeeds still reports a scripted achievement, twenty
+  times over — proof nothing is being sampled.
+- The same script produces the same run, twenty times over, and two runs of one
+  script do not interfere.
+- A scenario that changes between readings cannot smuggle in something
+  unchecked. Verified by reverting the fix and watching the test fail.
 - Asking for an unscripted attempt raises rather than inventing one.
 - A missing measure of success is refused.
-- Records cannot be altered after the fact, including by the back door found in
-  the previous pull request's review.
+- Records refuse ordinary alteration and refuse to be rebuilt wholesale. They
+  are **not** proof against a caller deliberately reaching past the language's
+  normal mechanisms — `radhanite/_immutable.py` states exactly what is and is
+  not prevented, and the test names now say so too.
 
 ## 11. Assumptions made
 
-- That the outcome of an attempt must be an input rather than something
+- That what an attempt achieves must be an input rather than something
   discovered, because the specification asks for exactly that and because
   economic reasoning cannot be tested against results that vary.
-- That partial progress deserves to exist as a distinct outcome even though it
-  never counts as success, because a run record that could not tell it apart
-  from failure would lose real information.
+- That the pretend-worker should report *evidence* and the judge should reach
+  the *verdict*, rather than the worker reporting a verdict. This was the
+  correction forced by review, and it is the right division regardless.
+- That matching a requirement should be exact. Synonyms and approximate matching
+  are precisely the interpretation the specification forbids.
 - That asking for an attempt the scenario never described is a fault in the
   caller rather than an outcome to invent.
 
 ## 12. Known limitations
 
 - No real work is done, and none is authorized.
-- The judgement mirrors the supplied outcome rather than independently checking
-  anything.
+- The comparison is real, but the evidence it compares is written into the
+  scenario rather than observed from a running system.
+- Records are protected against accident and ordinary misuse, not against a
+  determined caller. The limits are documented rather than claimed away.
 - Nothing yet drives these steps in a loop, tracks the running budget, or writes
   a record of the whole run.
 
@@ -197,12 +244,18 @@ uncertain. Fix what happens, and every money decision becomes checkable. Real
 execution is a later, separate piece of work that is explicitly not authorized
 yet.
 
-The judging is where the honesty lives. There are two verdicts — met, or not —
-and an attempt that got *part* of the way counts as **not met**. That sounds
-harsh, and it is the most important line in this pull request. If "nearly there"
-counted as success, Radhanite would decide the job was finished, stop spending
-your money, and tell you it had succeeded at something it had not. The
-specification forbids that in those words, and four tests hold it in place.
+The judging is where the honesty lives, and it is where this pull request was
+initially wrong. The first version had the pretend-worker announce "success" and
+the judge simply agree — which meant one attempt counted as a success against
+*any* requirement, including "2 + 2 == 5". An independent review caught it and
+rejected the work.
+
+It now compares properly: an attempt reports what it actually achieved, and the
+requirement is met only if it is among those things. An attempt that got *part*
+of the way counts as **not met**. That sounds harsh, and it is the most
+important line here. If "nearly there" counted as success, Radhanite would
+decide the job was finished, stop spending your money, and tell you it had
+succeeded at something it had not.
 
 ---
 
