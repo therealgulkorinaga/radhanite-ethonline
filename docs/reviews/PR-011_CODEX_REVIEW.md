@@ -108,6 +108,106 @@ End with exactly ONE outcome, per §7.2:
   - Rejected  (state which specification or boundary was departed from)
 ```
 
+## 1b. Second review prompt
+
+Issued after the six corrections were pushed, and committed before that second
+review was run, per §7.5.
+
+```text
+You are the independent review agent for the Radhanite repository, per
+docs/AI_BUILD_GOVERNANCE.md §1.3.
+
+This is a SECOND review of pull request #11:
+https://github.com/therealgulkorinaga/radhanite-ethonline/pull/11
+
+You reviewed it at commit a4d10f7 and REJECTED it with six findings,
+CODEX-PR011-01 through -06. Four correction commits have since been pushed:
+b463c28, 21683af, 5aad0a8 and one further fix described below. Your first review
+is recorded verbatim in docs/reviews/PR-011_CODEX_REVIEW.md.
+
+Review against these authoritative documents ONLY:
+  - tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md
+  - docs/PREREQ-001_PRODUCT_DEFINITION.md
+  - docs/ARCHITECTURE.md
+
+Do NOT treat the PR explanation as evidence of correctness (§4.3).
+
+DISCLOSURE
+
+While writing this prompt, the implementing agent found and fixed a regression
+it had introduced in the CODEX-PR011-03 correction: the guard rejected any
+format spec containing a dot, which also refused a legitimate dot FILL
+character, so "{:.>10}" — a dot-leader column — stopped working. The fix strips
+the fill and alignment prefix before looking for a precision. Verify that fix
+too, and treat it with the same suspicion as the others.
+
+PART A — do the six fixes hold?
+
+  -01  slots=True was added to Money, Probability, Task, Strategy and
+       EscalationDecision. Try every route you can find to mutate a declared
+       strategy or any nested value from outside: __dict__, object.__setattr__,
+       ctypes, __reduce__, copy/deepcopy round-trips, dataclasses.replace,
+       pickling. Report anything that gets through.
+  -02  select() now refuses non-Sequence collections. Confirm sets and
+       frozensets are refused and lists and tuples accepted. Does it wrongly
+       refuse any legitimate ordered collection — a Sequence subclass, a
+       range, a deque, a custom __getitem__ sequence?
+  -03  Money.__format__ refuses precision specs. Confirm ".2", ".4", ">10.2"
+       and ".2f" are refused and ".>10", ".<10", ".^10", ">10" work. Try to
+       find a spec that still truncates, or a legitimate one still refused.
+  -04  The fixture test now parses the source with ast. Confirm your original
+       substitution fails it. Then try to defeat the ast check: a computed
+       value that still parses as a literal, a value assembled elsewhere and
+       referenced by name, a strategy appended after the tuple is built.
+  -05  The statelessness test snapshots module and function state. Try to hide
+       state where the snapshot does not look — a closure, a class attribute,
+       an lru_cache, a mutable default argument, state on an imported module.
+  -06  Verify every count independently: files in the diff, per-file and total
+       test counts, and that the file table has one row per file.
+
+PART B — did any correction introduce a NEW defect?
+
+This matters most. The dot-fill regression above is one example already found.
+
+  - slots=True is the largest structural change in this PR. Does it break
+    equality, hashing, ordering, copying, pickling, or dataclass field
+    introspection anywhere? Do the doctests still hold? Does anything in the
+    project rely on an instance __dict__?
+  - Does the Sequence guard change behaviour for any input that previously
+    worked?
+  - Does the ast-based test depend on file layout in a way that would break if
+    the module were reformatted but not changed in meaning?
+
+PART C — claims
+
+Re-check every factual claim in the explanation and in
+docs/reviews/PR-011_CODEX_REVIEW.md. Confirm your first-round findings are
+reproduced literally verbatim, punctuation included — non-verbatim transcription
+was CODEX-PR006-10.
+
+The review record also states that an early mutation run reported a false pass
+due to a stale bytecode cache. Assess whether that account is accurate.
+
+FORMAT
+
+Number any NEW findings continuing the sequence, per §3.1 — identifiers are
+never reused, so start at:
+
+    CODEX-PR011-07
+
+If a previous finding is not properly fixed, say so against its ORIGINAL
+identifier rather than issuing a new one.
+
+If you find nothing new and all six fixes hold, say so explicitly.
+
+CONCLUDE
+
+End with exactly ONE outcome, per §7.2:
+  - Approved
+  - Approved with corrections  (list the finding identifiers)
+  - Rejected  (state which specification or boundary was departed from)
+```
+
 ## 2. Findings returned
 
 Recorded verbatim, as returned. Not summarized, softened, or filtered.
