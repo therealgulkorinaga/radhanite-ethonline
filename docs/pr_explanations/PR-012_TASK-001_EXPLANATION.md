@@ -20,15 +20,26 @@ To give Radhanite something that *attempts* a task, and something that decides
 | `tests/test_execution.py` | 26 checks on the first |
 | `tests/test_evaluation.py` | 18 checks on the second |
 | `radhanite/__init__.py` | Updated to say what is now built |
+| `tests/test_money.py` | One test renamed to stop claiming more than it checks |
+| `tests/test_strategy.py` | The same |
+| `tests/test_task.py` | The same |
+| `tests/test_escalation.py` | The same |
 | `docs/pr_explanations/PR-012_...md` | This document |
-| `docs/reviews/PR-012_CODEX_REVIEW.md` | The review prompt, committed before the review |
+| `docs/reviews/PR-012_CODEX_REVIEW.md` | The review prompts and findings |
 | `docs/reviews/README.md` | Its row added to the index of reviews |
 
-Eight files. The test count went from 139 to 183 — 44 new.
+Twelve files. The test count went from 139 to 183 — 44 new.
 
-This pull request was **rejected on review** and substantially reworked. Three
-problems were found, one of them serious enough that the judging step had to be
-rebuilt. The record is in `docs/reviews/PR-012_CODEX_REVIEW.md`.
+This pull request was **rejected on review**, substantially reworked, and then
+reviewed twice more. Five findings in total: one serious enough that the judging
+step had to be rebuilt, and four about claims that were stronger than the truth.
+The record is in `docs/reviews/PR-012_CODEX_REVIEW.md`.
+
+The four files outside this pull request's original scope — the money, strategy,
+task and escalation tests — are here because a claim made *in* this pull request
+was false about them. It said the test names had been corrected to stop claiming
+absolute immutability; only two files had been. Making the claim true meant
+fixing the rest.
 
 ## 3. Why the change was needed
 
