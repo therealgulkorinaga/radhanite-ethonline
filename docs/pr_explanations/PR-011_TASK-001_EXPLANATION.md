@@ -16,14 +16,24 @@ that always makes the same choice given the same situation.
 | File | What it is |
 |---|---|
 | `radhanite/strategy.py` | The ways of attempting a task, and the rule for picking one |
-| `tests/test_strategy.py` | 24 checks on those |
-| `radhanite/money.py` | Amounts can now be laid out in columns, not only printed |
-| `tests/test_money.py` | 3 added for that |
+| `tests/test_strategy.py` | 29 checks on those |
+| `radhanite/money.py` | Amounts can be laid out in columns; truncating formats refused |
+| `tests/test_money.py` | 5 added for that |
+| `radhanite/probability.py` | Hardened so its value cannot be rewritten from outside |
+| `radhanite/task.py` | Hardened the same way |
+| `radhanite/escalation.py` | Hardened the same way |
 | `radhanite/__init__.py` | Updated to say what is now built |
 | `docs/pr_explanations/PR-011_...md` | This document |
-| `docs/reviews/PR-011_CODEX_REVIEW.md` | The review prompt, committed before the review |
+| `docs/reviews/PR-011_CODEX_REVIEW.md` | The review prompt and findings |
+| `docs/reviews/README.md` | Its row added to the index of reviews |
 
-Seven files. The test count went from 106 to 130.
+Eleven files. The test count went from 103 to 137 — 34 new.
+
+This pull request was **rejected on review** and revised. Six problems were
+found: three ways the guarantees could be got around, two tests that claimed
+more than they proved, and a stale set of counts. All six are fixed, and the
+sections below describe the corrected state. The record is in
+`docs/reviews/PR-011_CODEX_REVIEW.md`.
 
 ## 3. Why the change was needed
 
@@ -60,8 +70,19 @@ experience — that is explicitly future work and explicitly not permitted here,
 because a system that learned its own numbers could not be tested for making the
 same decision twice.
 
-A test writes all twelve figures out longhand and checks each one. If anything
-ever starts *calculating* these rather than *declaring* them, that test fails.
+A test writes all twelve figures out longhand and checks each one. That alone
+turned out to be too weak: comparing values cannot tell a *declared* 0.35 from a
+*calculated* 0.30 + 0.05, since both come out equal, and the reviewer proved the
+test passed after making exactly that substitution. So a second test now reads
+the source code itself and requires each figure to be written as a plain literal
+handed straight to the money or probability type — no arithmetic, no lookups, no
+calls. Twelve are checked, and the reviewer's substitution now fails it.
+
+The figures also could not previously be relied on to *stay* declared. The
+objects holding them were supposedly unchangeable, and were not: Python leaves a
+back door open unless you close it explicitly, and the reviewer walked through
+it and altered a strategy's price from outside, changing which strategy got
+chosen. That door is now shut on every value in the project.
 
 ### Choosing one
 
@@ -80,9 +101,24 @@ and shows the choice changes, which proves the order really is what decides.
 
 That matters because the task specification demands the same situation always
 produce the same choice. That is tested rather than asserted: fifty repeated
-choices at each of five budgets, all identical; choices unaffected by other
-choices made in between; and the function checked to confirm it remembers
-nothing between calls.
+choices at each of five budgets, all identical, and choices unaffected by other
+choices made in between.
+
+Two holes in that were found on review.
+
+**An unordered collection was accepted.** Handed a set of strategies rather than
+a list, the code would happily work through it in whatever order the language
+felt like that day — and the reviewer got three different answers from the same
+budget. A collection with no order cannot produce the same answer twice, so one
+is now refused outright rather than turned into an economic decision that
+depends on the weather.
+
+**The staleness check checked nothing.** The test that claimed the chooser
+remembers nothing between calls only looked at the list of arguments it takes —
+so the reviewer added a hidden running log inside it and the test carried on
+passing. It now takes a full picture of everything the module and the function
+are holding, makes a series of choices, and demands the picture be unchanged.
+Both ways of hiding a memory now fail it.
 
 ### Two things deliberately not done
 
@@ -97,12 +133,19 @@ made once and had caught in review.
 accepting something only to ignore it is how unused machinery accumulates. It
 can be added when a rule actually needs it.
 
-### An unrelated small fix
+### A small fix, and the bigger one hiding behind it
 
 Amounts of money could be printed but not laid out — putting one in a column of
-fixed width failed outright. This surfaced while printing budgets against
-chosen strategies, which is precisely where it would have surfaced later, in
-output nobody had tested. Fixed.
+fixed width failed outright. This surfaced while printing budgets against chosen
+strategies, which is precisely where it would have surfaced later, in output
+nobody had tested.
+
+The fix was too permissive, and review caught it. It accepted any instruction at
+all, including ones that **shortened the number**: asked to show `$123.456` in a
+narrow form, it produced `$1` — silently, a different amount entirely. An amount
+that quietly becomes another amount defeats the whole point of holding money
+exactly. Instructions that would shorten a value are now refused; laying one out
+in a column still works.
 
 ## 6. What goes into the system
 
@@ -131,6 +174,9 @@ A strategy, or nothing.
   to revisit, not for this code to improvise.
 - **Nothing checks that a strategy is sensible.** A strategy that costs a
   fortune and never works is accepted; the spending rule declines to buy it.
+- **Guarantees have to be closed deliberately.** Three of the six problems found
+  on review were ways around a promise the code appeared to make. Each is shut
+  now, and each was invisible until somebody tried it.
 
 ## 10. Tests run, and their results
 
@@ -139,20 +185,33 @@ $ python --version
 Python 3.12.13
 
 $ python -m unittest discover
-Ran 130 tests in 0.008s
+Ran 137 tests in 0.012s
 OK
 ```
 
-27 tests are new: 24 on strategies and selection, 3 on laying out amounts. The
+34 tests are new: 29 on strategies and selection, 5 on displaying amounts. The
 ones that matter most:
 
-- All twelve declared figures, each asserted individually.
-- The list cannot be added to after the fact, and names do not repeat, since a
-  run record refers to a strategy by name.
+- All twelve declared figures, each asserted individually — **and** the source
+  itself read to confirm each is written as a literal rather than calculated.
+- A declared strategy cannot be altered from outside, by any route.
+- An unordered collection of strategies is refused.
+- A display instruction that would shorten an amount is refused.
 - Reversing the list changes the choice — proving the order is the policy.
 - Exactly affordable counts as affordable; a penny short does not.
 - Fifty repeated choices at each of five budgets give one answer.
-- The chooser's own signature is asserted, so it cannot quietly gain a memory.
+- Nothing accumulates between calls, checked by taking a full picture of what
+  the module and the function hold rather than by reading the argument list.
+
+Each of the last several was confirmed by deliberately reintroducing the fault
+and watching the test fail.
+
+One correction to how that checking was done. An early run reported the hidden
+running log as *undetected*. That was a stale compiled-code cache rather than a
+passing test: re-run in isolation with caches cleared, it failed as it should.
+The first result was wrong, and it is recorded here rather than quietly dropped,
+because a verification method that can report a false pass is worth knowing
+about.
 
 ## 11. Assumptions made
 
@@ -194,6 +253,14 @@ Choosing is deliberately boring: take the cheapest one you can afford. All the
 intelligence lives in the *other* rule — the one that decides whether escalating
 is worth the money — and keeping the choice dumb is what makes that rule
 testable, because the same situation always produces the same choice.
+
+This pull request was rejected on its first review, and it is worth saying why.
+Three of the six problems were promises the code appeared to keep and did not: a
+strategy's price could be changed from outside despite being declared fixed, an
+unordered list of strategies would produce a different answer on different days,
+and asking to display an amount narrowly could silently turn `$123.456` into
+`$1`. None was visible by reading the code. All three were found by somebody
+trying to break it.
 
 The honest caveat, which is stated in the code, the commit and this document:
 **those chances of success are invented.** They are there so the economics can
