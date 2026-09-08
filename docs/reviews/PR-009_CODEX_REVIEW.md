@@ -4,7 +4,8 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md`, `docs/PREREQ-001_PRODUCT_DEFINITION.md`, `docs/ARCHITECTURE.md`
 **Date issued:** 2026-09-08
-**Outcome:** _pending — review not yet run_
+**Outcome:** **Approved with corrections** — `CODEX-PR009-01`, `-02`, `-03`, all since corrected. The rule itself was found correct.
+**Commit reviewed:** `be267c7`
 
 ---
 
@@ -123,12 +124,100 @@ End with exactly ONE outcome, per §7.2:
 
 ## 2. Findings returned
 
-_Pending. Codex has not yet reviewed this pull request._
+Recorded verbatim, as returned. Not summarized, softened, or filtered.
+
+> Reviewed PR #9 at `be267c7`.
+>
+> The escalation implementation is correct. Across 26,136 generated input combinations, its result matched TASK-001 §2.5 exactly. The worked example, equality boundaries, zero-improvement case, budget ceiling, independent budget/value roles, recorded quantities, and dual failure reporting all held.
+>
+> Exactness also held:
+>
+> - Ambient decimal precision and traps neither changed results nor leaked state.
+> - Values within the 200-digit context remained exact.
+> - Operations exceeding it raised `Inexact` rather than returning rounded data.
+> - Money formatting preserved large, tiny, zero, negative, and sub-cent values.
+> - Accepted extreme-precision values can fail loudly beyond 200 digits, but cannot produce an incorrectly rounded decision. This matches the documented exact-or-stop policy.
+>
+> Rejecting negative escalation costs and negative remaining balances is justified as domain-integrity validation. A negative remaining balance means the hard ceiling has already been breached; treating that corrupted state as an ordinary Stop would conceal the breach.
+>
+> No external dependency, excluded integration, learned probability, database, speculative future abstraction, or USDC misrepresentation appears. `Probability`, `FailedCondition`, and the shared exactness helper are all used directly by the current authorized rule. All five commits map explicitly to TASK-001.
+>
+> The complete suite passes: 102 tests on Python 3.12.13. All requested mutations were detected:
+>
+> - Value `>` changed to `>=`: tie test failed.
+> - Budget `>=` changed to `>`: two boundary tests failed.
+> - Budget and task value swapped: both separation tests failed.
+> - Dual-condition reporting short-circuited: the both-fail test failed.
+>
+> Three documentation/test-evidence corrections remain.
+>
+> CODEX-PR009-01
+>
+> File and line: `docs/pr_explanations/PR-009_TASK-001_EXPLANATION.md:18`
+>
+> The changed-file/test inventory is inaccurate. The PR changes 11 files, but the table omits `docs/reviews/README.md`. It also says `tests/test_escalation.py` contains 27 checks, whereas test discovery finds 30: 29 test methods and one doctest. The overall 57-to-102 and 45-new-test counts are correct.
+>
+> This departs from the review prompt’s requirement to verify every file and test count accurately.
+>
+> CODEX-PR009-02
+>
+> File and line: `tests/test_escalation.py:192`; `docs/pr_explanations/PR-009_TASK-001_EXPLANATION.md:119`
+>
+> `test_the_decision_can_be_recomputed_from_what_it_recorded` does not recompute the decision. It only recomputes `incremental_expected_value`; it never independently applies the budget and value conditions or compares the resulting verdict and failed conditions. The explanation consequently overstates what the test proves.
+>
+> The record contains sufficient information to recompute the decision, so this is a test-evidence and claim defect rather than an implementation defect. It departs from TASK-001 §2.5’s recomputability requirement and §7’s prohibition on claiming behavior tests do not demonstrate.
+>
+> CODEX-PR009-03
+>
+> File and line: `docs/pr_explanations/PR-009_TASK-001_EXPLANATION.md:175`; `tests/test_escalation.py:96`
+>
+> The explanation claims that “one cent either side of the tie decides opposite ways.” The tests cover the exact tie and one cent on the escalating side (`$5.99` cost against `$6.00` value), but no `$6.01` case covers the stopping side. Either add that boundary test or narrow the claim.
+>
+> This departs from TASK-001 §7’s requirement that documentation claims be demonstrated by tests.
+>
+> Approved with corrections (CODEX-PR009-01, CODEX-PR009-02, CODEX-PR009-03)
 
 ## 3. Outcome
 
-_Pending._
+**Approved with corrections.** All three findings were accepted without dispute
+and corrected.
+
+This is the first review in the project to find **no defect in the
+implementation**. The rule was checked against TASK-001 §2.5 across 26,136
+generated input combinations and matched in every one, and all four requested
+mutations were detected by the existing tests.
+
+Two questions the prompt raised explicitly were answered against the implementing
+agent's own doubt:
+
+- Raising on a negative remaining balance was found **justified** as
+  domain-integrity validation, not a recurrence of `CODEX-PR006-04`. A negative
+  balance means the ceiling has already been breached, and treating it as an
+  ordinary Stop would conceal the breach.
+- `Probability`, `FailedCondition` and the shared exactness helper were found to
+  be used directly by the authorized rule, not speculative abstraction under
+  ARCHITECTURE §6 item 7.
+
+All three findings concerned what the documentation and tests **claimed**, not
+what the code did. `-01` was the fifth instance of a hand-maintained count left
+behind by a later change.
 
 ## 4. Corrections
 
-_None yet._
+| Finding | Correction commit | What changed |
+|---|---|---|
+| `CODEX-PR009-01` | `d710bb2` | File table corrected to eleven, escalation test count to 31. Every count verified against `git diff --name-only` and `unittest discover` before being written. |
+| `CODEX-PR009-02` | `5479e41` | The recompute test now re-derives the whole verdict from the record alone — both conditions applied independently — across six cases. Verified by mutation: forcing the rule to always escalate fails 18 tests. |
+| `CODEX-PR009-03` | `5479e41` | Added the `$6.01` case, the stopping side of the tie boundary the claim asserted and no test covered. |
+
+```
+git log --grep=CODEX-PR009
+```
+
+### Verification after correction
+
+```
+$ python -m unittest discover
+Ran 103 tests in 0.006s
+OK
+```
