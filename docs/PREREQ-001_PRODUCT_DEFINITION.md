@@ -76,6 +76,38 @@ autonomous work.
 This records intended direction, not authorization. Only the V1 use case in §6
 is being built.
 
+### 2.2 Why this matters now: agents that pay
+
+The problem in §2 has existed for as long as agents have. What changes it from a
+budgeting annoyance into a control problem is that **agents are beginning to hold
+wallets and pay for things themselves** — inference, tools, data, compute, and
+services offered by other agents.
+
+Once an agent can pay, three things stop being hypothetical:
+
+1. **Every purchase is a decision somebody has to be accountable for**, made
+   without a human present at the moment it happens.
+2. **Spending is no longer bounded by an invoice arriving later.** It is bounded
+   by whatever the agent decides, or by nothing.
+3. **"Can I afford it?" and "is it worth it?" come apart.** A wallet answers the
+   first. Nothing answers the second.
+
+An agent with a wallet and no answer to the second question is a spending limit
+with extra steps. It will exhaust its balance on work that was never worth
+finishing, and stop short of work that was, and in both cases the money is gone
+before anyone knows.
+
+Radhanite is the layer that answers the second question. That is why the input
+contract in §4 carries **task value** alongside budget, and why §5.4's decision
+is an economic judgement rather than a spending check. It is also why the
+measurable success condition in §4.5 is not optional: an agent that pays for
+outcomes must be able to tell whether it got one.
+
+Making the agent an actual payer — rather than a decider about someone else's
+money — is specified in
+[`TASK-004`](../tasks/TASK-004_AGENTIC_PAYMENTS_VIA_HEDERA_AND_X402.md) and is
+not authorized.
+
 ## 3. The shift in the unit of instruction
 
 The core idea of Radhanite is a change in what the user hands to the system.
