@@ -111,6 +111,113 @@ End with exactly ONE outcome, per §7.2:
   - Rejected  (state which specification or boundary was departed from)
 ```
 
+## 1b. Second review prompt
+
+Issued after the three corrections were pushed, and committed before that second
+review was run, per §7.5.
+
+```text
+You are the independent review agent for the Radhanite repository, per
+docs/AI_BUILD_GOVERNANCE.md §1.3.
+
+This is a SECOND review of pull request #12:
+https://github.com/therealgulkorinaga/radhanite-ethonline/pull/12
+
+You reviewed it at commit ad55b32 and REJECTED it with three findings,
+CODEX-PR012-01 through -03. Three correction commits have since been pushed:
+65e36d0, a32e241 and 3f824a0. Your first review is recorded verbatim in
+docs/reviews/PR-012_CODEX_REVIEW.md.
+
+Review against these authoritative documents ONLY:
+  - tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md
+  - docs/PREREQ-001_PRODUCT_DEFINITION.md
+  - docs/ARCHITECTURE.md
+
+Do NOT treat the PR explanation as evidence of correctness (§4.3).
+
+WHAT CHANGED, AND WHY IT NEEDS HARD LOOKING AT
+
+CODEX-PR012-01 was not fixed by patching evaluate(). The execution stage was
+rebuilt: the Outcome enum is gone, and the simulator now reports an Observation
+carrying `satisfied` — the set of conditions that became true — plus a `note`
+for human readers. evaluate() decides MET if and only if the task's success
+condition is a member of that set.
+
+This is a substantial redesign made in response to a single finding, under
+deadline pressure, by the agent whose previous design you rejected. Treat it
+accordingly.
+
+PART A — is the comparison now real?
+
+1. Confirm the same attempt is judged differently against different conditions.
+   Try to find any input where the verdict does not depend on the condition.
+2. Confirm nothing but `satisfied` reaches the verdict — not the note, not the
+   strategy, not its stated probability, not the cost, not the escalated flag.
+3. Membership is exact after stripping. Is exact matching correct under §2.4,
+   or has the implementing agent now invented a matching rule the specification
+   does not state? Consider case, punctuation, and the fact that a task's
+   success condition and a scripted observation are written by the same person.
+4. Does the redesign leave criterion 4 genuinely implemented, or has the
+   tautology simply moved — is scripting `satisfied={"tests pass"}` for a task
+   whose condition is "tests pass" the same trick in a new place? This is the
+   question I most want answered.
+
+PART B — did the rebuild break or lose anything?
+
+5. §2.3 requires success, failure AND partial progress each producible on
+   demand. With Outcome gone, is partial progress still a first-class,
+   exercisable case, or has it become an accident of set membership?
+6. Is the distinction between partial progress and outright failure still
+   preserved in the record, as §2.4 requires?
+7. Determinism: re-attack it. Same script, same run? Two simulators
+   independent? Does Observation's frozenset introduce any iteration-order
+   dependence in the reason string or anywhere else?
+8. CODEX-PR012-02: the script is now snapshotted once and the snapshot
+   validated. Retry your stateful-Sequence attack and any variant. Can anything
+   unvalidated still be stored?
+9. Does anything now accept an input the specification does not require
+   rejecting, or reject one it does not require rejecting (CODEX-PR006-04)?
+   Assess Observation's rejection of blank conditions and its required note.
+
+PART C — claims
+
+10. CODEX-PR012-03: confirm the immutability claims in the explanation and the
+    test names are now bounded and accurate, and that radhanite/_immutable.py
+    still describes reality.
+11. Verify every count and factual claim in the explanation independently,
+    including the commit hashes cited in the review record — one round of those
+    was written wrong and corrected before pushing.
+12. Confirm your first-round findings are reproduced literally verbatim,
+    punctuation and link formatting included. Non-verbatim transcription was
+    CODEX-PR006-10 and recurred as CODEX-PR011-07.
+
+PART D — mutations
+
+13. Confirm these fail: make membership a substring test; make evaluate() return
+    MET when `satisfied` is non-empty; make the simulator reuse one Observation
+    for every attempt; make Observation.satisfied a plain set rather than
+    frozenset.
+
+FORMAT
+
+Number any NEW findings continuing the sequence, per §3.1 — identifiers are
+never reused, so start at:
+
+    CODEX-PR012-04
+
+If a previous finding is not properly fixed, say so against its ORIGINAL
+identifier rather than issuing a new one.
+
+If you find nothing new and all three fixes hold, say so explicitly.
+
+CONCLUDE
+
+End with exactly ONE outcome, per §7.2:
+  - Approved
+  - Approved with corrections  (list the finding identifiers)
+  - Rejected  (state which specification or boundary was departed from)
+```
+
 ## 2. Findings returned
 
 Recorded verbatim, as returned. Not summarized, softened, or filtered.
@@ -204,9 +311,9 @@ the comparison is real without any change to the specification.
 
 | Finding | Correction commit | What changed |
 |---|---|---|
-| `CODEX-PR012-01` | `a5cbfa5` | The simulator reports an `Observation` — the set of conditions that became true — instead of a `SUCCESS`/`FAILURE` label. Evaluation compares the task's success condition against that set and nothing else. The `Outcome` enum is removed entirely, since a descriptive label beside the evidence would invite the same tautology back. No synonym or approximate matching. |
-| `CODEX-PR012-02` | `a5cbfa5` | The script is snapshotted once and the snapshot validated, so what is stored is what was checked. Verified by mutation: restoring validate-then-copy fails the new test. |
-| `CODEX-PR012-03` | `1e0bd28` | The absolute immutability claim and the test names are bounded, and point at `radhanite/_immutable.py`, which states what is and is not prevented. |
+| `CODEX-PR012-01` | `65e36d0` | The simulator reports an `Observation` — the set of conditions that became true — instead of a `SUCCESS`/`FAILURE` label. Evaluation compares the task's success condition against that set and nothing else. The `Outcome` enum is removed entirely, since a descriptive label beside the evidence would invite the same tautology back. No synonym or approximate matching. |
+| `CODEX-PR012-02` | `65e36d0` | The script is snapshotted once and the snapshot validated, so what is stored is what was checked. Verified by mutation: restoring validate-then-copy fails the new test. |
+| `CODEX-PR012-03` | `a32e241` | The absolute immutability claim and the test names are bounded, and point at `radhanite/_immutable.py`, which states what is and is not prevented. |
 
 ```
 git log --grep=CODEX-PR012
