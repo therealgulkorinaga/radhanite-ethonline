@@ -10,7 +10,19 @@
 
 ## 1. Prompt issued
 
-Recorded verbatim, before the review was run.
+Recorded before the review was run.
+
+**On what was issued.** The prompt below is the formal body. The message that
+delivered it to the reviewer also carried a closing sentence written in the
+session, after the prompt block:
+
+> Part D question 11 is the one that matters most — I'm claiming all 17 criteria
+> are met, and that claim deserves an independent walk rather than my word.
+
+That sentence reached the reviewer as part of the pasted text and was missing
+from this record, which claimed the prompt was recorded verbatim. It is restored
+here. The lesson is that "the prompt" is whatever was actually sent, not only
+the part inside the code block.
 
 ```text
 You are the independent review agent for the Radhanite repository, per
