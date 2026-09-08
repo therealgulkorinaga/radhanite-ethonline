@@ -11,3 +11,6 @@ venv/
 
 # macOS
 .DS_Store
+
+# Generated run records
+runs/
