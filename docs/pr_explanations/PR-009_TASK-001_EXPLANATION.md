@@ -22,13 +22,18 @@ Everything before this was groundwork. This is the thing Radhanite is for.
 | `radhanite/_exactness.py` | The shared arithmetic settings both use |
 | `radhanite/money.py` | Now shares those settings; tidier display |
 | `radhanite/__init__.py` | Updated to say what is now built |
-| `tests/test_escalation.py` | 27 checks on the rule |
+| `tests/test_escalation.py` | 31 checks on the rule |
 | `tests/test_probability.py` | 13 checks on probabilities |
 | `tests/test_money.py` | 2 added for the tidier display |
 | `docs/pr_explanations/PR-009_...md` | This document |
 | `docs/reviews/PR-009_CODEX_REVIEW.md` | The review prompt, committed before the review |
+| `docs/reviews/README.md` | Its row added to the index of reviews |
 
-Tests went from 57 to 102.
+Eleven files, and the test count went from 57 to 103.
+
+This pull request was **approved with corrections** on review. Three problems
+were found — none in the rule itself, all in what the documentation and tests
+claimed. The record is in `docs/reviews/PR-009_CODEX_REVIEW.md`.
 
 ## 3. Why the change was needed
 
@@ -116,8 +121,10 @@ worth nothing against a cost of $0.50.
 Stop: only $0.20 remains, which cannot cover the $0.50 this would cost.
 ```
 
-A test recomputes the answer using only what was recorded, so a decision that
-could not be re-derived would fail.
+A test re-derives the entire verdict — not merely the arithmetic — using only
+what the decision recorded, applying both of the rule's conditions
+independently and comparing the conclusion. A decision that could not be
+reconstructed from its own record would fail that test.
 
 ## 6. What goes into the system
 
@@ -156,6 +163,10 @@ altered afterwards.
   one, which surfaces the fault instead of hiding it.
 - **The explanations are prose.** They can be read by a person, but not
   reliably parsed by a machine.
+- **The chances are exact, but the arithmetic is only as good as its inputs.**
+  Review generated 26,136 input combinations and found the rule matched the
+  specification in every one; that establishes the rule is implemented
+  correctly, not that the numbers fed to it are right.
 
 ## 10. Tests run, and their results
 
@@ -164,22 +175,26 @@ $ python --version
 Python 3.12.13
 
 $ python -m unittest discover
-Ran 102 tests in 0.006s
+Ran 103 tests in 0.006s
 OK
 ```
 
-45 tests are new. The ones that matter most:
+46 tests are new. The ones that matter most:
 
 - The specification's worked example, reproduced exactly, down to the `$6.00`.
 - The tie: an improvement worth exactly its cost stops.
-- One cent either side of the tie decides opposite ways.
+- One cent either side of the tie decides opposite ways — $5.99 escalates,
+  $6.01 stops, against a gain of exactly $6.00.
 - No improvement stops; a worsening attempt stops.
 - The budget being exactly enough is allowed; a penny short is not.
 - A vast budget cannot rescue a worthless attempt, and a valuable outcome cannot
   be bought without budget.
 - The rule's own list of inputs is asserted, so money already spent cannot be
   added later without a test failing.
-- A decision is recomputed from only what it recorded.
+- The whole verdict is re-derived from only what a decision recorded — both
+  conditions applied independently, across six cases including each single
+  failure and both failing together. Verified by mutation: forcing the rule to
+  always escalate makes 18 tests fail.
 
 Three tests failed when first written. Two were my error — they set a cost
 higher than the budget, so both conditions failed rather than the one under
