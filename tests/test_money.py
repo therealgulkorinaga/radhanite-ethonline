@@ -218,6 +218,21 @@ class PresentationTests(unittest.TestCase):
         self.assertEqual(str(Money("-0.50")), "-$0.50")
 
 
+class FormattingTests(unittest.TestCase):
+    def test_can_be_padded_in_a_column(self) -> None:
+        # f"{money}" worked while f"{money:>9}" raised TypeError, which would
+        # have surfaced first in a column of output nobody tested.
+        self.assertEqual(f"{Money('2.00'):>9}", "    $2.00")
+        self.assertEqual(f"{Money('2.00'):<9}|", "$2.00    |")
+
+    def test_plain_interpolation_still_works(self) -> None:
+        self.assertEqual(f"{Money('2.00')}", "$2.00")
+
+    def test_numeric_specs_are_refused_rather_than_guessed_at(self) -> None:
+        with self.assertRaises(ValueError):
+            f"{Money('2.00'):.2f}"
+
+
 class ImmutabilityTests(unittest.TestCase):
     def test_cannot_be_mutated(self) -> None:
         with self.assertRaises(Exception):

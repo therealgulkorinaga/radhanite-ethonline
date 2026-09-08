@@ -148,6 +148,21 @@ class Money:
             places = max(2, -exponent) if isinstance(exponent, int) else 2
             return f"{sign}${magnitude:.{places}f}"
 
+    def __format__(self, spec: str) -> str:
+        """Format the displayed amount, e.g. right-aligned in a column.
+
+        The spec applies to the *rendered string* — `f"{money:>9}"` pads
+        `"$2.00"` to nine characters. Numeric specs such as `.2f` are not
+        supported and will raise: the currency symbol is part of an amount's
+        representation, and the number of places is decided by the amount
+        itself, not by the caller (see `__str__`).
+
+        Without this, `f"{money}"` would work while `f"{money:>9}"` raised, which
+        is exactly the sort of surprise that shows up first in a column of
+        output nobody tested.
+        """
+        return format(str(self), spec)
+
     def __repr__(self) -> str:
         return f"Money('{self.amount}')"
 
