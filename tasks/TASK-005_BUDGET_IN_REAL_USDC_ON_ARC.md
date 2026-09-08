@@ -6,6 +6,7 @@
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §3.3, §6 item 8
 **Replaces backlog entry:** `BL-03`
 **Depends on:** TASK-002 and TASK-003 complete and merged
+**Blocked by:** §7.5 and §7.6 — two unresolved product decisions
 
 ---
 
@@ -125,6 +126,56 @@ now is. Anything simulated stays labelled as simulated.
    faucet. These must come from Circle's own documentation. Values circulated
    secondhand are not good enough to build on and have not been confirmed.
 
+### 7.5 UNRESOLVED — what the Arc balance actually buys
+
+**This task cannot be implemented until this is settled, and it may block
+TASK-004 as well.**
+
+This task requires recorded spend to correspond to USDC that moved on Arc. It
+defines no recipient and no purchase operation. The only task that has the agent
+pay for something is TASK-004 — and that settles on **Hedera**, a different
+chain. Bridging and converting are excluded by §5.
+
+So the same money cannot presently be both the budget on Arc and the payment on
+Hedera. As specified, criterion 2 is unsatisfiable: there is nothing for the Arc
+balance to be spent on.
+
+Three routes, none chosen:
+
+1. **Spend the Arc balance on Arc.** Requires something on Arc worth buying, and
+   leaves the Hedera work needing its own funding.
+2. **Move TASK-004's settlement to Arc.** Coherent, and it removes Hedera as the
+   payment rail — which matters if Hedera is being targeted for its own sake.
+3. **Authorize cross-chain movement explicitly.** Currently excluded by §5, and
+   would be a substantial addition rather than a clarification.
+
+A fourth possibility is two balances — one per chain — which makes "the budget"
+a thing with two locations and needs its own thinking.
+
+**This is a product decision and the implementing agent must not make it.**
+
+### 7.6 UNRESOLVED — transaction fees against the budget
+
+**Identified by review as the fourth broken assumption, which §4 missed.**
+
+§2 argues that USDC-denominated gas gives cost a single unit of account. That is
+true and it is not sufficient. Nothing here says:
+
+- whether a transaction fee counts against the **task budget**;
+- how enough is reserved for the fee **before** a purchase is authorized;
+- how an estimated fee is reconciled against the actual one.
+
+The failure is concrete. A run can authorize spending its entire remaining
+budget, and then need a further amount in USDC to execute the transaction at
+all. Either the wallet cannot cover it, or the total spent on the task exceeds
+the ceiling that TASK-001 criterion 12 and PREREQ-001 §4.2 make absolute.
+
+**Using one currency makes the comparison possible; it does not enforce the
+ceiling.** An acceptance criterion covering *purchase amount plus fee* is
+required, and the rule it tests has to be decided first.
+
+**This is a product decision and the implementing agent must not make it.**
+
 ## 8. Review notes
 
 - Confirm no token accounting, transfer, or settlement logic is reimplemented.
@@ -136,3 +187,7 @@ now is. Anything simulated stays labelled as simulated.
   demonstration output and the documentation.
 - Confirm chain parameters came from Circle's documentation rather than a
   secondhand source.
+- Confirm §7.5 and §7.6 were settled by the product owner before any code, and
+  that the implementation follows what was settled rather than a reading of it.
+- Confirm the budget ceiling holds against **purchase plus transaction fee**,
+  not the purchase alone.

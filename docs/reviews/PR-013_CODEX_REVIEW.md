@@ -552,10 +552,37 @@ Run after the corrections following the corrupted pass. Recorded as received.
 >
 > Rejected — TASK-001 §§2.2, 2.5 and 2.6 and acceptance criteria 1, 2, 5, 9, 11 and 14 are departed from.
 
+## 2e. Fourth review
+
+Run against commit `9fae266`, after the corrections to the third pass. Recorded
+as received.
+
+It confirmed `CODEX-PR013-10` and `-13` fixed, reported `-06`, `-11` and `-12`
+still unresolved, and prioritised the remainder for hackathon speed.
+
+> For hackathon speed, prioritize by acceptance risk:
+>
+> 1. P0 — `CODEX-PR013-11`: fix the exhausted-catalogue path. After a failed final attempt, the run must either produce an honest §2.5 `Stop` or explicitly model why no economic decision exists. Add the missing single-strategy exhaustion test. Don't spend time refactoring.
+>
+> 2. P0 — `CODEX-PR013-06`: make the terminal record say:
+>    "Progressive Escalation was selected for the terminal decision because it is first remaining in declared order."
+>    Assert that exact subject. Confirm changing `available[0]` to `available[-1]` fails.
+>
+> 3. P1 — `CODEX-PR013-12`: mechanical documentation cleanup:
+>    - `0.75 → 0.55`
+>    - incremental value `-$4.00`
+>    - actual value-condition stopping reason
+>    - "two explicit rejections plus one corrupted pass"
+>    - remove obsolete terminal/no-decision docstrings
+>
+> Suggested delivery: one code-and-tests commit for `-06/-11`, then one documentation commit for `-12`. Run the focused loop tests, then all 241+ tests. Avoid any broader cleanup until PR #13 is accepted.
+
+Commits `92681be` and `fe79183` followed, and are the corrections that were
+ultimately merged **unreviewed**. No fifth pass was run.
+
 ### How these were worked
 
-The product owner prioritised them for hackathon speed rather than requesting a
-full pass: `-11` and `-06` as P0, `-12` as P1, with an instruction to avoid any
+The product owner relayed the prioritisation rather than requesting a full pass: `-11` and `-06` as P0, `-12` as P1, with an instruction to avoid any
 broader refactoring until PR #13 was accepted.
 
 `-10` was the consequential one, and it was the fix for `-02` overcorrecting.
@@ -570,7 +597,8 @@ candidate in declared order and its Stop ends the run.
 exhausting itself leaves nothing to rule on, which is a different absence from
 "nothing judged yet". Both are now modelled explicitly.
 
-**PR #13 was merged with these corrections unreviewed.** No fourth pass was run.
+**PR #13 was merged with the corrections from the fourth pass unreviewed.** The
+fourth pass is recorded above in §2e; no fifth pass followed it.
 
 ## 3. Outcome
 

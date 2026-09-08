@@ -62,9 +62,14 @@ chain, which someone can go and look at.
 
 The division from the Privy task is real rather than administrative. **One
 establishes the account and who may spend from it; the other makes the money in
-it real.** Authority over an empty account is still authority — a refused
-payment is refused whether or not the balance was ever real — so each can be
-built and judged on its own.
+it real.**
+
+An earlier draft of this document claimed the two could be *built* independently.
+That was wrong, and review caught it: the money task explicitly depends on the
+account task. What is independent is the *idea* — authority over an empty account
+is still authority, and a refused payment is refused whether or not the balance
+was ever real — which is why the two deserve separate specifications. It is not
+a claim that either could be built first.
 
 ### Why this chain, stated as a property
 
@@ -84,6 +89,10 @@ sets the task and fixed for its duration. A real balance changes without asking:
 someone tops it up, another run draws it down, something else sharing the account
 spends from it.
 
+Review found a **fourth** problem this section had missed, and a fifth that stops
+the task being implementable at all. Both are recorded as decisions for the
+product owner rather than answered here.
+
 Three consequences, none of them currently handled:
 
 - A task may declare a budget larger than the money available.
@@ -98,16 +107,42 @@ Three consequences, none of them currently handled:
 That last one is the sort of thing found late and painfully, so it is written
 down first.
 
+**The fourth: paying to pay.** Moving money costs money. This document argued
+that one currency for both the price and the fee means "what did this cost" has a
+single answer — which is true, and does not solve anything by itself. A run can
+approve spending every remaining penny and then discover it needs a further
+amount to move the money at all. Either the account cannot cover it, or the total
+spent exceeds the limit that is supposed to be absolute. Using one currency makes
+the two comparable; it does not make the limit hold.
+
+**The fifth: there is nothing to buy.** This task says the recorded spend must
+correspond to money that actually moved on the chain — but it never says *to
+whom*, or *for what*. The only planned work where the agent buys something has it
+paying on a **different chain**, and moving money between chains is explicitly
+excluded. So as written, the money cannot be spent on the thing it was meant to
+buy, and the requirement cannot be satisfied.
+
+That is not a detail. It is the difference between a budget that is real and a
+budget that merely exists, and it has to be settled before any of this is built.
+
 ### Two records put right
 
 The first task is marked delivered, with figures that were counted rather than
-remembered: **43 problems raised across 13 independent reviews, all corrected**,
-and the final round merged without a further review — which is true and belongs
-in the record.
+remembered: **42 problems raised across 14 independent reviews, all corrected**, and the
+final round merged without a further review — which is true and belongs in the
+record.
 
-The missing review is now recorded in full, including its judgement that six of
-seventeen requirements were unmet at the time, and a note that the product owner
-prioritised the findings for speed instead of asking for a further pass.
+An earlier draft said 43 across 13, and both were wrong. One review had been
+missed entirely, and the counting method credited an identifier that appeared
+only in a prompt telling the reviewer where to start numbering, never as an
+actual finding.
+
+**Two** missing reviews are now recorded, not one. The first is the third pass,
+including its judgement that six of seventeen requirements were unmet at the
+time. The second is a fourth pass that this document originally denied had
+happened at all — it confirmed two problems fixed, reported three still open, and
+prioritised them for speed. The corrections that followed it are the ones that
+were merged without any further review.
 
 ## 6. What goes into the system
 
