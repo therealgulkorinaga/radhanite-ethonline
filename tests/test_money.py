@@ -90,6 +90,43 @@ class ExactnessTests(unittest.TestCase):
         with self.assertRaises(Inexact):
             huge * Decimal("1." + "1" * 150)
 
+    def test_negation_ignores_ambient_precision(self) -> None:
+        # Negation previously bypassed the exact context entirely: under an
+        # ambient precision of 3 it silently returned -1.23.
+        with localcontext() as ctx:
+            ctx.prec = 3
+            negated = -Money("1.23456789")
+        self.assertEqual(negated.amount, Decimal("-1.23456789"))
+
+    def test_display_ignores_ambient_precision(self) -> None:
+        # Formatting previously went through ambient arithmetic, so a lowered
+        # precision rounded the displayed amount to $1230.00000.
+        with localcontext() as ctx:
+            ctx.prec = 3
+            shown = str(Money("1234.56789"))
+        self.assertEqual(shown, "$1234.56789")
+
+    def test_display_does_not_raise_under_an_ambient_trap(self) -> None:
+        # Merely printing money must never raise because some unrelated code
+        # armed a trap.
+        with localcontext() as ctx:
+            ctx.traps[Inexact] = True
+            self.assertEqual(str(Money("1234.56789")), "$1234.56789")
+
+    def test_display_keeps_more_digits_than_the_default_context(self) -> None:
+        # 29 significant digits: one more than the default context allows.
+        amount = "1.2345678901234567890123456789"
+        self.assertEqual(str(Money(amount)), f"${amount}")
+
+    def test_the_exact_context_cannot_be_tampered_with(self) -> None:
+        # A shared, mutable Context could have its precision lowered or its
+        # traps cleared by anything holding a reference, silently removing the
+        # guarantee. There is no shared context to reach for.
+        import radhanite.money as money_module
+
+        self.assertFalse(hasattr(money_module, "EXACT"))
+        self.assertNotIn("EXACT", money_module.__all__)
+
     def test_a_decimal_built_from_a_float_still_gets_through(self) -> None:
         # Known limitation, recorded rather than hidden. Once a float has been
         # converted to Decimal by the caller, its provenance is unrecoverable.
