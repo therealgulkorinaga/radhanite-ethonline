@@ -143,9 +143,14 @@ here.
 
 ## 8. What comes out
 
-A record of the attempt (which strategy, first or second, what happened, what it
-cost, what its stated chance was) and a verdict with the reason for it. Neither
-can be altered afterwards.
+A record of the attempt (which strategy, first or second, what became true, what
+it cost, what its stated chance was) and a verdict with the reason for it.
+
+Neither can be altered by ordinary assignment, by reaching into the object's
+internals, or by having its contents replaced wholesale. Neither is proof
+against a caller who deliberately goes around the language's normal mechanisms —
+`radhanite/_immutable.py` sets out precisely what is and is not prevented, and
+why the stronger guarantee is not available.
 
 ## 9. How it can fail
 
