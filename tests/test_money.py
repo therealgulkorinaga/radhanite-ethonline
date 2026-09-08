@@ -232,6 +232,17 @@ class FormattingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             f"{Money('2.00'):.2f}"
 
+    def test_truncating_specs_are_refused(self) -> None:
+        # format(Money("123.456"), ".2") returned "$1" — a different amount
+        # entirely, produced silently. An amount that quietly becomes another
+        # amount defeats both exactness and inspectability.
+        for spec in (".2", ".4", ".10"):
+            with self.subTest(spec=spec), self.assertRaises(ValueError):
+                format(Money("123.456"), spec)
+
+    def test_alignment_still_works_on_a_long_amount(self) -> None:
+        self.assertEqual(format(Money("123.456"), ">10"), "  $123.456")
+
 
 class ImmutabilityTests(unittest.TestCase):
     def test_cannot_be_mutated(self) -> None:

@@ -72,6 +72,17 @@ class StrategyTests(unittest.TestCase):
 class DeclaredConstantsTests(unittest.TestCase):
     """Criterion 13: static declared constants, never estimated at runtime."""
 
+    def test_a_declared_strategy_cannot_be_mutated_through_its_dict(self) -> None:
+        # A frozen dataclass blocks attribute assignment but, without slots,
+        # leaves the instance dictionary writable — so the catalogue could be
+        # rewritten from outside despite the guarantee.
+        strategy = DECLARED_STRATEGIES[0]
+        with self.assertRaises(AttributeError):
+            strategy.__dict__["initial_cost"] = Money("9.00")
+        with self.assertRaises(AttributeError):
+            strategy.initial_cost.__dict__["amount"] = 9
+        self.assertEqual(DECLARED_STRATEGIES[0].initial_cost, Money("0.02"))
+
     def test_the_fixtures_hold_exactly_the_declared_figures(self) -> None:
         # Written out longhand on purpose. If anything ever computes these
         # rather than declaring them, this test is what notices.
@@ -91,6 +102,51 @@ class DeclaredConstantsTests(unittest.TestCase):
                 self.assertEqual(
                     s.escalated_success_probability, Probability(esc_chance)
                 )
+
+    def test_every_declared_figure_is_a_literal_in_the_source(self) -> None:
+        """Criterion 13 forbids computing these, not merely getting them right.
+
+        Comparing values cannot tell a declared 0.35 from a computed
+        0.30 + 0.05 — both compare equal. So this reads the source itself and
+        requires every figure inside DECLARED_STRATEGIES to be a literal
+        constant handed straight to Money or Probability, with no arithmetic,
+        no name lookup, and no call in between.
+        """
+        import ast
+        import pathlib
+
+        source = pathlib.Path(strategy_module.__file__).read_text(encoding="utf-8")
+        tree = ast.parse(source)
+
+        declaration = None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.AnnAssign) and getattr(
+                node.target, "id", None
+            ) == "DECLARED_STRATEGIES":
+                declaration = node.value
+            elif isinstance(node, ast.Assign) and any(
+                getattr(t, "id", None) == "DECLARED_STRATEGIES" for t in node.targets
+            ):
+                declaration = node.value
+        self.assertIsNotNone(declaration, "DECLARED_STRATEGIES not found in source")
+
+        checked = 0
+        for call in (n for n in ast.walk(declaration) if isinstance(n, ast.Call)):
+            callee = getattr(call.func, "id", None)
+            if callee not in {"Money", "Probability"}:
+                continue
+            for argument in call.args:
+                self.assertIsInstance(
+                    argument,
+                    ast.Constant,
+                    f"{callee}(...) in DECLARED_STRATEGIES is built from "
+                    f"{ast.dump(argument)}, not a literal constant",
+                )
+                self.assertIsInstance(argument.value, str)
+                checked += 1
+
+        # Three strategies x two costs and two probabilities.
+        self.assertEqual(checked, 12)
 
     def test_the_figures_do_not_change_between_reads(self) -> None:
         first = tuple(DECLARED_STRATEGIES)
@@ -148,6 +204,20 @@ class SelectionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             select(DECLARED_STRATEGIES, Money("-0.01"))
 
+    def test_an_unordered_catalogue_is_refused(self) -> None:
+        # Iterating a set depends on the process hash seed, so the same
+        # catalogue and budget could choose differently between runs. Criterion
+        # 2 cannot hold for a collection with no order, so it is refused rather
+        # than turned into a hash-dependent economic decision.
+        with self.assertRaises(TypeError):
+            select(set(DECLARED_STRATEGIES), Money("2.00"))
+        with self.assertRaises(TypeError):
+            select(frozenset(DECLARED_STRATEGIES), Money("2.00"))
+
+    def test_ordered_collections_are_accepted(self) -> None:
+        as_list = list(DECLARED_STRATEGIES)
+        self.assertEqual(select(as_list, Money("2.00")).name, "Direct Attempt")
+
 
 class DeterminismTests(unittest.TestCase):
     """Criterion 2: identical inputs produce an identical selection, every time."""
@@ -168,9 +238,34 @@ class DeterminismTests(unittest.TestCase):
         again = select(DECLARED_STRATEGIES, Money("2.00"))
         self.assertEqual(first, again)
 
-    def test_the_selector_holds_no_state(self) -> None:
-        # A selector that remembered anything between calls could not be
-        # deterministic on identical input alone.
+    def test_the_selector_accumulates_no_state(self) -> None:
+        """Checking the signature proves nothing; a history list needs no argument.
+
+        This snapshots every mutable value the module holds, and every attribute
+        hung on the function itself, runs a series of selections, and requires
+        the snapshot to be unchanged. A selector that remembered anything
+        between calls would show up here.
+        """
+        def snapshot():
+            module_state = {
+                name: repr(value)
+                for name, value in vars(strategy_module).items()
+                if not name.startswith("__")
+                and isinstance(value, (list, dict, set, bytearray))
+            }
+            function_state = {
+                name: repr(value)
+                for name, value in vars(select).items()
+                if not name.startswith("__")
+            }
+            return module_state, function_state
+
+        before = snapshot()
+        for budget in ("2.00", "0.10", "0.02", "0", "100.00", "0.50"):
+            select(DECLARED_STRATEGIES, Money(budget))
+        self.assertEqual(snapshot(), before)
+
+    def test_the_selector_takes_only_what_it_needs(self) -> None:
         import inspect
 
         self.assertEqual(
