@@ -12,8 +12,11 @@ Implemented so far:
 - ``radhanite.strategy`` — declared strategy fixtures and deterministic selection
 - ``radhanite.execution`` — the scripted simulator standing in for real work
 - ``radhanite.evaluation`` — judging an outcome against the success condition
+- ``radhanite.run`` — the loop that drives them, and the run record
+- ``radhanite.cli`` — a developer entry point: ``python -m radhanite``
 
-Not yet implemented: the loop that drives them, and the run record.
+TASK-001 is complete. Nothing beyond it is authorized: no real inference, no
+wallet, no tokens, no interface, and no learning.
 
 Intended behaviour, once complete: Radhanite is given a task, a budget, a task
 value, constraints and a measurable success condition. It selects an execution
@@ -29,6 +32,7 @@ from radhanite.evaluation import Evaluation, Verdict, evaluate
 from radhanite.execution import Attempt, Observation, ScriptedSimulator
 from radhanite.money import CURRENCY, Money
 from radhanite.probability import Probability
+from radhanite.run import RunOutcome, RunRecord, Step, run
 from radhanite.strategy import DECLARED_STRATEGIES, Strategy, select
 from radhanite.task import Task
 
@@ -45,12 +49,16 @@ __all__ = [
     "Observation",
     "Money",
     "Probability",
+    "RunOutcome",
+    "RunRecord",
     "ScriptedSimulator",
+    "Step",
     "Strategy",
     "Task",
     "Verdict",
     "__version__",
     "decide",
     "evaluate",
+    "run",
     "select",
 ]
