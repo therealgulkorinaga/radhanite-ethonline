@@ -303,6 +303,26 @@ behind by a later change.
 git log --grep=CODEX-PR009
 ```
 
+### Merged before the second review
+
+The second review prompt above was committed, but **the pull request was merged
+before that review ran**. Two correction commits therefore entered `main`
+unexamined:
+
+| Commit | What it changed |
+|---|---|
+| `5479e41` | Rewrote the recompute test across six cases; added the `$6.01` boundary case |
+| `d710bb2` | Corrected the file and test counts in the explanation |
+
+The human product owner may merge at any point — `§1.1` is unconditional. This is
+recorded rather than glossed, because on two previous pull requests the second
+pass found defects in exactly this kind of commit, and `§7.5` was written from
+those cases.
+
+The specific risk the prompt raised and nobody has checked: the rewritten
+recompute test iterates six cases with `subTest`, and a `subTest` loop can look
+thorough while a case asserts nothing.
+
 ### Verification after correction
 
 ```
