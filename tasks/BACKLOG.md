@@ -26,12 +26,23 @@ An AI agent that implements anything from this file has violated
 
 ## Integration placeholders
 
-| ID | Concept | Status |
-|---|---|---|
-| BL-01 | Real inference execution via OpenRouter | **UNAUTHORIZED** |
-| BL-02 | Wallet and permission model via Privy | **UNAUTHORIZED** |
-| BL-03 | Agent budget denominated in Arc / USDC | **UNAUTHORIZED** |
-| BL-04 | Radhanite exposed as a paid machine service via Hedera / x402 | **UNAUTHORIZED** |
+These four now have task files. **A task file is a specification, not an
+authorization** — each remains unauthorized until the human product owner says
+otherwise, exactly as `BACKLOG.md`'s rules require.
+
+| ID | Concept | Specified in | Status |
+|---|---|---|---|
+| BL-01 | Real inference execution via OpenRouter | [TASK-002](TASK-002_REAL_INFERENCE_VIA_OPENROUTER.md) | **UNAUTHORIZED** |
+| BL-02 | Wallet and permission model via Privy | [TASK-003](TASK-003_AGENT_WALLET_AND_PERMISSIONS_VIA_PRIVY.md) | **UNAUTHORIZED** |
+| BL-03 | Agent budget denominated in a real token | [TASK-004](TASK-004_AGENTIC_PAYMENTS_VIA_HEDERA_AND_X402.md) | **UNAUTHORIZED** |
+| BL-04 | The agent paying for its own purchases, over x402 on Hedera | [TASK-004](TASK-004_AGENTIC_PAYMENTS_VIA_HEDERA_AND_X402.md) | **UNAUTHORIZED** |
+| BL-04b | Radhanite consumed as a paid machine service — the inbound direction | *(none)* | **UNAUTHORIZED** |
+
+`BL-04` previously described only the inbound direction — other machines paying
+Radhanite. The outbound direction, Radhanite's agent paying for what it buys, is
+the one that makes this an economic control layer for agentic payments, and it
+had no entry at all. It has one now, and `BL-04b` keeps the inbound direction
+recorded separately rather than letting the two blur.
 
 ## Capability placeholders
 
