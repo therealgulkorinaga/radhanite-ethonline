@@ -4,8 +4,8 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md`, `docs/PREREQ-001_PRODUCT_DEFINITION.md`, `docs/ARCHITECTURE.md`
 **Date issued:** 2026-09-08
-**Outcome:** **Rejected** — criteria 2 and 13 were not structurally guaranteed, and Money formatting could silently truncate an exact amount. All six findings corrected.
-**Commit reviewed:** `a4d10f7`
+**Outcome:** **Rejected twice.** First pass at `a4d10f7`: 6 findings. Second pass at `edd342a`: 4 of the 6 fixes insufficient, plus 1 new. Eleven findings in total, all corrected.
+**Reviews:** two passes, both recorded below verbatim.
 
 ---
 
@@ -297,6 +297,97 @@ Recorded verbatim, as returned. Not summarized, softened, or filtered.
 > This departs from the prompt’s factual-claim requirement and TASK-001 §7’s review-evidence requirement.
 >
 > Rejected — TASK-001 §2.2 and acceptance criteria 2 and 13 are not structurally guaranteed, and Money formatting can silently truncate exact USD values contrary to TASK-001 §6.6 and PREREQ-001 §8.
+
+## 2c. Second review findings
+
+Recorded verbatim, as returned.
+
+> Reviewed PR #11 at `edd342a`. The suite passes 139 tests on Python 3.12.13.
+>
+> `CODEX-PR011-02` and `CODEX-olders`? typo no. Need carefully.
+>
+> ## Fixes that hold
+>
+> - `CODEX-PR011-02` is fixed. Sets and frozensets are rejected. Lists, tuples, `UserList`, `range`, `deque`, and proper `Sequence` subclasses are accepted.
+> - `CODEX-PR011-03` is fixed. `.2`, `.4`, `>10.2`, and `.2f` are refused; `.>10`, `.<10`, `.^10`, and `>10` work without truncation. Reintroducing the original dot guard makes the new dot-fill test fail.
+> - Slots did not break equality, hashing, ordering, copying, deep-copying, pickle round-trips, `dataclasses.replace`, field introspection, or doctests.
+> - Ordinary source reformatting does not break the AST test.
+> - No external dependency or TASK-001 §3 excluded capability was introduced.
+>
+> ## Unresolved original findings
+>
+> CODEX-PR011-01
+>
+> File and line: [radhanite/strategy.py:35](/Users/arkoganguli/Projects/radhanite-ethonline/radhanite/strategy.py:35); [radhanite/strategy.py:95](/Users/arkoganguli/Projects/radhanite-ethonline/radhanite/strategy.py:95); [radhanite/money.py:45](/Users/arkoganguli/Projects/radhanite-ethonline/radhanite/money.py:45)
+>
+> `slots=True` removes `__dict__`, but the declared objects remain externally mutable. These routes succeeded:
+>
+> ```python
+> object.__setattr__(strategy, "initial_cost", Money("9.00"))
+> object.__setattr__(strategy.initial_cost, "amount", Decimal("9.00"))
+> strategy.__setstate__([...])
+> ctypes.pythonapi.PyObject_GenericSetAttr(...)
+> ```
+>
+> Frozen slotted dataclasses expose writable slot descriptors and a generated `__setstate__`. Copying, deep-copying, pickling, and `dataclasses.replace` are safe by themselves, but do not close those routes.
+>
+> The explanation’s claims that the mutation door is shut “on every value” and that strategies cannot be altered “by any route” are false. This remains a departure from TASK-001 §2.2 and acceptance criterion 13.
+>
+> CODEX-PR011-04
+>
+> File and line: [tests/test_strategy.py:106](/Users/arkoganguli/Projects/radhanite-ethonline/tests/test_strategy.py:106); [docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:73](/Users/arkoganguli/Projects/radhanite-ethonline/docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:73)
+>
+> The original direct arithmetic substitution now fails, but the AST test remains defeatable. I moved the calculation into a helper and used an unused literal to preserve the counter:
+>
+> ```python
+> initial_success_probability=(
+>     _computed_probability(),
+>     Probability("0.35"),
+> )[0]
+> ```
+>
+> The runtime value came from the calculation, yet all 29 strategy tests passed with a fresh bytecode cache. The AST walk ignores helper calls while counting the decoy literal.
+>
+> The fixtures currently are literal, but the claimed enforcement of “no arithmetic, no lookups, no calls” does not exist. This remains a departure from TASK-001 acceptance criterion 13 and §7.
+>
+> CODEX-PR011-05
+>
+> File and line: [tests/test_strategy.py:241](/Users/arkoganguli/Projects/radhanite-ethonline/tests/test_strategy.py:241); [docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:116](/Users/arkoganguli/Projects/radhanite-ethonline/docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:116)
+>
+> The snapshot checks direct mutable module values and attributes placed directly on `select`. It does not inspect indirect state.
+>
+> I introduced accumulating state through a closure, class attribute, `lru_cache`, mutable default argument, and attribute on an imported module. Every path was exercised, but all 29 strategy tests passed with a fresh bytecode cache.
+>
+> The implementation is currently stateless; the defect is that the test and explanation claim a guarantee they do not enforce. This remains a departure from TASK-001 §7.
+>
+> CODEX-PR011-06
+>
+> File and line: [docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:21](/Users/arkoganguli/Projects/radhanite-ethonline/docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:21); [docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:30](/Users/arkoganguli/Projects/radhanite-ethonline/docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:30); [docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:188](/Users/arkoganguli/Projects/radhanite-ethonline/docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:188); [docs/reviews/PR-011_CODEX_REVIEW.md:333](/Users/arkoganguli/Projects/radhanite-ethonline/docs/reviews/PR-011_CODEX_REVIEW.md:333)
+>
+> The counts were corrected and then made stale again when the dot-fill correction added two tests:
+>
+> - Eleven changed files and eleven table rows are correct.
+> - Strategy discovery finds 29 tests.
+> - `tests/test_money.py` adds seven tests, not five.
+> - The complete suite has 139 tests, not 137.
+> - The increase from the 103-test baseline is 36, not 34.
+> - All twelve declared economic figures are correct.
+>
+> This reopens the original finding under TASK-001 §7’s factual-claim requirement.
+>
+> ## New finding
+>
+> CODEX-PR011-07
+>
+> File and line: [docs/reviews/PR-011_CODEX_REVIEW.md:213](/Users/arkoganguli/Projects/radhanite-ethonline/docs/reviews/PR-011_CODEX_REVIEW.md:213); [docs/reviews/PR-011_CODEX_REVIEW.md:233](/Users/arkoganguli/Projects/radhanite-ethonline/docs/reviews/PR-011_CODEX_REVIEW.md:233)
+>
+> The record says the first-round findings are reproduced literally verbatim, but their file references were changed. The returned review used Markdown links containing absolute targets; the record replaces them with inline-code relative paths.
+>
+> The substantive wording and punctuation remain intact, but the transcript is not literal. This departs from AI_BUILD_GOVERNANCE.md §7.3.
+>
+> The stale-bytecode explanation is technically plausible, and the current test catches direct module-level state in a cache-isolated run. The historical cause cannot be established from committed artifacts, so I cannot independently confirm that attribution. There is insufficient contrary evidence for another finding.
+>
+> Rejected — TASK-001 §2.2, acceptance criterion 13, and §7 remain departed from by CODEX-PR011-01, CODEX-PR011-04, CODEX-PR011-05, and CODEX-PR011-06; CODEX-PR011-07 also violates AI_BUILD_GOVERNANCE.md §7.3.
 
 ## 3. Outcome
 
