@@ -9,9 +9,10 @@ Implemented so far:
 - ``radhanite.probability.Probability`` — an exact probability of success
 - ``radhanite.task.Task`` — the five inputs a task is defined by
 - ``radhanite.escalation.decide`` — the escalate-or-stop rule, TASK-001 §2.5
+- ``radhanite.strategy`` — declared strategy fixtures and deterministic selection
 
-Not yet implemented: strategy fixtures, strategy selection, execution, outcome
-evaluation, the loop that drives them, and the run record.
+Not yet implemented: simulated execution, outcome evaluation, the loop that
+drives them, and the run record.
 
 Intended behaviour, once complete: Radhanite is given a task, a budget, a task
 value, constraints and a measurable success condition. It selects an execution
@@ -25,18 +26,22 @@ See docs/PREREQ-001_PRODUCT_DEFINITION.md for the product definition.
 from radhanite.escalation import Decision, EscalationDecision, FailedCondition, decide
 from radhanite.money import CURRENCY, Money
 from radhanite.probability import Probability
+from radhanite.strategy import DECLARED_STRATEGIES, Strategy, select
 from radhanite.task import Task
 
 __version__ = "0.1.0"
 
 __all__ = [
     "CURRENCY",
+    "DECLARED_STRATEGIES",
     "Decision",
     "EscalationDecision",
     "FailedCondition",
     "Money",
     "Probability",
+    "Strategy",
     "Task",
     "__version__",
     "decide",
+    "select",
 ]
