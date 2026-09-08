@@ -17,8 +17,9 @@ that always makes the same choice given the same situation.
 |---|---|
 | `radhanite/strategy.py` | The ways of attempting a task, and the rule for picking one |
 | `tests/test_strategy.py` | 29 checks on those |
+| `radhanite/_immutable.py` | Exactly what "unchangeable" does and does not mean here |
 | `radhanite/money.py` | Amounts can be laid out in columns; truncating formats refused |
-| `tests/test_money.py` | 5 added for that |
+| `tests/test_money.py` | 7 added for that |
 | `radhanite/probability.py` | Hardened so its value cannot be rewritten from outside |
 | `radhanite/task.py` | Hardened the same way |
 | `radhanite/escalation.py` | Hardened the same way |
@@ -27,13 +28,12 @@ that always makes the same choice given the same situation.
 | `docs/reviews/PR-011_CODEX_REVIEW.md` | The review prompt and findings |
 | `docs/reviews/README.md` | Its row added to the index of reviews |
 
-Eleven files. The test count went from 103 to 137 — 34 new.
+Twelve files. The test count went from 103 to 139 — 36 new.
 
-This pull request was **rejected on review** and revised. Six problems were
-found: three ways the guarantees could be got around, two tests that claimed
-more than they proved, and a stale set of counts. All six are fixed, and the
-sections below describe the corrected state. The record is in
-`docs/reviews/PR-011_CODEX_REVIEW.md`.
+This pull request was **rejected twice**. The first review found six problems;
+the second found that four of the six fixes were not good enough, and added one
+more. Eleven findings in total, all now fixed, and the sections below describe
+the corrected state. The record is in `docs/reviews/PR-011_CODEX_REVIEW.md`.
 
 ## 3. Why the change was needed
 
@@ -71,18 +71,39 @@ because a system that learned its own numbers could not be tested for making the
 same decision twice.
 
 A test writes all twelve figures out longhand and checks each one. That alone
-turned out to be too weak: comparing values cannot tell a *declared* 0.35 from a
-*calculated* 0.30 + 0.05, since both come out equal, and the reviewer proved the
-test passed after making exactly that substitution. So a second test now reads
-the source code itself and requires each figure to be written as a plain literal
-handed straight to the money or probability type — no arithmetic, no lookups, no
-calls. Twelve are checked, and the reviewer's substitution now fails it.
+was too weak: comparing values cannot tell a *declared* 0.35 from a *calculated*
+0.30 + 0.05, since both come out equal, and the reviewer proved the test passed
+after making exactly that substitution.
 
-The figures also could not previously be relied on to *stay* declared. The
-objects holding them were supposedly unchangeable, and were not: Python leaves a
-back door open unless you close it explicitly, and the reviewer walked through
-it and altered a strategy's price from outside, changing which strategy got
-chosen. That door is now shut on every value in the project.
+A second test now reads the source code itself. The first version of that was
+also defeated — it checked only what was handed to the money and probability
+types, so a helper could quietly supply the real value while a decoy literal sat
+beside it. It now permits *nothing* in that part of the source except the lists
+themselves, direct calls to the three value types, and plain text. Arithmetic, a
+lookup by name, a helper call, or a subscript all fail. All three of the
+reviewer's substitutions were replayed against it and all three now fail.
+
+The figures also could not be relied on to *stay* declared. The objects holding
+them were supposedly unchangeable and were not — the reviewer altered a
+strategy's price from outside and changed which strategy got chosen. Two rounds
+of fixing later, here is the honest position, because the first two attempts at
+stating it were both wrong:
+
+**Prevented:** ordinary assignment; writing through the object's internal
+dictionary, which no longer exists; and replacing the whole object's contents at
+once.
+
+**Not prevented, and not preventable:** a caller who deliberately reaches past
+the normal mechanism using the language's own low-level tools. Python offers no
+way to stop that for an object that holds named values, and the `ctypes` module
+can rewrite the memory of *anything*, including things the language calls
+immutable.
+
+So the claim is bounded: **these figures cannot be changed by accident or by any
+ordinary route, and are not defended against somebody determined to change
+them.** What the task actually requires is that Radhanite itself never
+calculates or updates them, and that is enforced by reading the source code, not
+by armouring the objects.
 
 ### Choosing one
 
@@ -115,10 +136,16 @@ depends on the weather.
 
 **The staleness check checked nothing.** The test that claimed the chooser
 remembers nothing between calls only looked at the list of arguments it takes —
-so the reviewer added a hidden running log inside it and the test carried on
-passing. It now takes a full picture of everything the module and the function
-are holding, makes a series of choices, and demands the picture be unchanged.
-Both ways of hiding a memory now fail it.
+so the reviewer added a hidden running log and the test carried on passing. The
+first repair was still too shallow, and the reviewer defeated it four more ways.
+
+It now looks everywhere a test can reach: values the module holds, anything
+attached to the function, what the function closes over, its default arguments,
+whether it has been wrapped in a cache, and anything stored on the types the
+module defines. All four hiding places now fail it.
+
+One limit remains and is stated rather than glossed: state hidden inside a
+*different* module cannot be seen from here.
 
 ### Two things deliberately not done
 
@@ -185,11 +212,11 @@ $ python --version
 Python 3.12.13
 
 $ python -m unittest discover
-Ran 137 tests in 0.012s
+Ran 139 tests in 0.012s
 OK
 ```
 
-34 tests are new: 29 on strategies and selection, 5 on displaying amounts. The
+36 tests are new: 29 on strategies and selection, 7 on displaying amounts. The
 ones that matter most:
 
 - All twelve declared figures, each asserted individually — **and** the source
@@ -204,7 +231,8 @@ ones that matter most:
   the module and the function hold rather than by reading the argument list.
 
 Each of the last several was confirmed by deliberately reintroducing the fault
-and watching the test fail.
+and watching the test fail — including all seven of the ways the reviewer
+defeated the earlier versions of these tests.
 
 One correction to how that checking was done. An early run reported the hidden
 running log as *undetected*. That was a stale compiled-code cache rather than a
