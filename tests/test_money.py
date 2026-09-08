@@ -257,9 +257,16 @@ class FormattingTests(unittest.TestCase):
 
 
 class ImmutabilityTests(unittest.TestCase):
-    def test_cannot_be_mutated(self) -> None:
+    def test_ordinary_assignment_and_rehydration_are_refused(self) -> None:
+        # Bounded, not absolute: object.__setattr__ and ctypes remain open by
+        # design. radhanite/_immutable.py states what is and is not prevented.
+        amount = Money("1.00")
         with self.assertRaises(Exception):
-            Money("1.00").amount = Decimal("999")
+            amount.amount = Decimal("999")
+        with self.assertRaises(AttributeError):
+            amount.__dict__["amount"] = Decimal("999")
+        with self.assertRaises(TypeError):
+            amount.__setstate__({"amount": Decimal("999")})
 
 
 def load_tests(loader, tests, ignore):

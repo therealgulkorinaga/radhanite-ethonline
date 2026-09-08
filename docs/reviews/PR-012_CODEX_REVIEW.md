@@ -220,7 +220,20 @@ End with exactly ONE outcome, per §7.2:
 
 ## 2. Findings returned
 
-Recorded verbatim, as returned. Not summarized, softened, or filtered.
+Recorded as received. Not summarized, softened, or filtered.
+
+**On fidelity.** A review reaches this record by being copied out of the review
+tool by a person and pasted into the implementing agent's session. Wording and
+punctuation survive that hop; some formatting does not. The reviewer has since
+established that its original output placed `ad55b32` in inline code, labelled
+its links `radhanite/evaluation.py:59` rather than `radhanite/evaluation.py
+(line 59)`, and used code fences that did not arrive.
+
+None of that is restored here, because restoring formatting that was never
+received would be reconstructing the transcript rather than recording it. What
+follows is exactly what arrived. §7.3's requirement is met to the fidelity the
+transmission path allows, and that limit is stated rather than glossed. Whether
+§7.3 should say so explicitly is a question for the product owner.
 
 > Reviewed PR #12 at ad55b32. The unmodified suite passes 169 tests on Python 3.12.13.
 >
@@ -333,6 +346,87 @@ Both are corrected in `36c364a`. **Whether these are what the finding names is
 unknown.** If it identifies something else, `CODEX-PR012-03` remains outstanding,
 and the outcome of this second review is unrecorded because it was never
 received.
+
+## 2d. Second review, re-run in full
+
+The truncated response in §2c is left exactly as it arrived. This is the
+complete re-run, recorded separately rather than by rewriting what was actually
+received — as the reviewer itself advised.
+
+> Re-ran the complete second review at `5c91db7`. The suite passes 183 tests on Python 3.12.13.
+>
+> The substantive redesign holds:
+>
+> - `CODEX-PR012-01` is fixed. The same observation can satisfy one condition and fail another. The tautology did not move: the simulator supplies controlled evidence, while evaluation independently applies the condition.
+> - Exact matching after trimming is the correct non-interpretive rule. Case, punctuation, and wording remain significant.
+> - `CODEX-PR012-02` is fixed. The script is snapshotted once and that snapshot is validated. The changing-sequence attack stores only the validated first value; late invalid elements are refused.
+> - Partial progress remains an explicit, controllable relational case: a non-empty set of achieved conditions that does not contain the target. Failure records no achieved conditions. The record distinguishes them.
+> - Frozenset order cannot affect explanations because achieved conditions are sorted before rendering.
+> - Separate simulators do not interfere, and source-list mutation after construction has no effect.
+> - Rejecting blank satisfied conditions is justified because they cannot constitute measurable evidence. Requiring a human-readable note is defensible as part of reporting what happened and does not influence the verdict.
+> - The four requested mutations all fail:
+>   - substring matching: one failure;
+>   - treating any non-empty evidence as success: six failures;
+>   - reusing the first observation: two failures;
+>   - storing a plain set: two failures and one error.
+> - All cited correction hashes now exist and resolve correctly.
+> - No dependency or excluded TASK-001 §3 capability appears.
+>
+> `CODEX-PR012-03` remains unresolved, although your correction fixed most of it.
+>
+> CODEX-PR012-03
+>
+> File and line: [tests/test_money.py:260](/Users/arkoganguli/Projects/radhanite-ethonline/tests/test_money.py:260); [docs/pr_explanations/PR-012_TASK-001_EXPLANATION.md:201](/Users/arkoganguli/Projects/radhanite-ethonline/docs/pr_explanations/PR-012_TASK-001_EXPLANATION.md:201)
+>
+> Your search found the intended surviving explanation sentence, and its replacement at lines 149–153 is now accurate. Renaming and strengthening the Strategy, Task, and EscalationDecision tests was also correct.
+>
+> One older absolute test name remains:
+>
+> ```python
+> def test_cannot_be_mutated(self) -> None:
+>     with self.assertRaises(Exception):
+>         Money("1.00").amount = Decimal("999")
+> ```
+>
+> It tests only ordinary assignment. `object.__setattr__` and `ctypes` can still mutate the value, as `_immutable.py` correctly discloses. Consequently, the test name remains absolute and the explanation’s claim that “the test names now say so too” is still false.
+>
+> This is the same defect as the original finding, so the original identifier remains open rather than receiving a new one. It departs from TASK-001 §7’s requirement that behavioral claims match what tests demonstrate.
+>
+> .
+>
+> New findings:
+>
+> CODEX-PR012-04
+>
+> File and line: [docs/pr_explanations/PR-012_TASK-001_EXPLANATION.md:16](/Users/arkoganguli/Projects/radhanite-ethonline/docs/pr_explanations/PR-012_TASK-001_EXPLANATION.md:16); [docs/pr_explanations/PR-012_TASK-001_EXPLANATION.md:27](/Users/arkoganguli/Projects/radhanite-ethonline/docs/pr_explanations/PR-012_TASK-001_EXPLANATION.md:27)
+>
+> The explanation says the PR changes eight files and provides eight table rows. The correction for `CODEX-PR012-03` added changes to:
+>
+> - `tests/test_escalation.py`
+> - `tests/test_strategy.py`
+> - `tests/test_task.py`
+>
+> The final PR therefore changes eleven files, not eight, and the file table omits three rows.
+>
+> The test counts remain correct: 26 execution tests, 18 evaluation tests, 44 new tests, and 183 total.
+>
+> This departs from the prompt’s factual-claim requirement and TASK-001 §7.
+>
+> CODEX-PR012-05
+>
+> File and line: [docs/reviews/PR-012_CODEX_REVIEW.md:223](/Users/arkoganguli/Projects/radhanite-ethonline/docs/reviews/PR-012_CODEX_REVIEW.md:223); [docs/reviews/PR-012_CODEX_REVIEW.md:225](/Users/arkoganguli/Projects/radhanite-ethonline/docs/reviews/PR-012_CODEX_REVIEW.md:225); [docs/reviews/PR-012_CODEX_REVIEW.md:231](/Users/arkoganguli/Projects/radhanite-ethonline/docs/reviews/PR-012_CODEX_REVIEW.md:231)
+>
+> The record claims the first-round findings were reproduced verbatim, but their formatting was changed:
+>
+> - The returned opening placed `ad55b32` in inline code; the record removed that formatting.
+> - The original link label was `radhanite/evaluation.py:59`; the record changes it to `radhanite/evaluation.py (line 59)`.
+> - Code fences and numerous inline-code markers were removed.
+>
+> The substantive words largely remain, but the transcript is not literal. This repeats the record-integrity class previously identified as `CODEX-PR011-07` and departs from AI_BUILD_GOVERNANCE.md §7.3.
+>
+> The earlier truncated response was accurately preserved as truncated. It should remain in the record; this complete replacement review can be recorded separately rather than rewriting what was actually received.
+>
+> Approved with corrections — CODEX-PR012-03, CODEX-PR012-04, CODEX-PR012-05
 
 ## 3. Outcome
 
