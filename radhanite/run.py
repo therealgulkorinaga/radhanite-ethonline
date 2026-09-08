@@ -35,6 +35,20 @@ The budget is spent through a ledger that refuses to go below zero. `Money`
 permits negative amounts by design, so it cannot catch an overspend; the review
 of PR-006 noted that a running balance would have to enforce this itself, and
 this is where that happens.
+
+**A consequence worth stating.** Because selection filters on affordability
+before §2.5 is consulted, the rule is never offered a candidate the budget
+cannot cover — so **§2.5's budget condition is unreachable through this loop**.
+Running out of money is real and is recorded, but at selection rather than as a
+failed condition on a decision: a terminal step carries each remaining candidate
+with its cost, what it offered, and which condition blocked it.
+
+That is a deliberate consequence of making a Stop terminal. Offering §2.5 a
+candidate the budget cannot cover would produce a Stop that must not end the
+run, which is the defect this loop was rebuilt to remove. Whether recording the
+budget failure at selection satisfies acceptance criterion 9 as well as a §2.5
+verdict would have is a judgement for review, and is flagged for it rather than
+assumed.
 """
 
 from __future__ import annotations
@@ -46,7 +60,12 @@ from enum import Enum
 from pathlib import Path
 
 from radhanite._immutable import refuse_rehydration
-from radhanite.escalation import Decision, EscalationDecision, decide
+from radhanite.escalation import (
+    Decision,
+    EscalationDecision,
+    FailedCondition,
+    decide,
+)
 from radhanite.evaluation import Evaluation, evaluate
 from radhanite.execution import Attempt, ScriptedSimulator
 from radhanite.money import CURRENCY, Money
@@ -54,7 +73,7 @@ from radhanite.probability import Probability
 from radhanite.strategy import Strategy, select
 from radhanite.task import Task
 
-__all__ = ["RunOutcome", "RunRecord", "Step", "run"]
+__all__ = ["RunOutcome", "RunRecord", "Step", "Unusable", "run"]
 
 #: Before anything has been attempted, the chance of success is nothing.
 _NOTHING_ATTEMPTED = Probability("0")
@@ -112,6 +131,29 @@ class _Ledger:
 
 @refuse_rehydration
 @dataclass(frozen=True, slots=True)
+class Unusable:
+    """A candidate selection could not choose, and the condition that blocked it.
+
+    §2.6 requires the record to explain why a run ended, with the quantities
+    behind it. When selection can choose nothing, the reason is not a §2.5
+    decision — no candidate was chosen, so nothing was ruled on. It is a fact
+    about each candidate, recorded here so a reader gets the numbers rather than
+    only a sentence.
+    """
+
+    strategy_name: str
+    escalating: bool
+    cost: Money
+    offers: Probability
+    blocked_by: FailedCondition
+
+    def __str__(self) -> str:
+        stage = "escalate" if self.escalating else "start"
+        return f"{self.strategy_name} ({stage}) blocked on {self.blocked_by.value}"
+
+
+@refuse_rehydration
+@dataclass(frozen=True, slots=True)
 class Step:
     """One action the loop took, and everything behind it.
 
@@ -130,6 +172,10 @@ class Step:
     decision: EscalationDecision | None = None
     attempt: Attempt | None = None
     evaluation: Evaluation | None = None
+    #: Populated only on a terminal step, where selection could choose nothing.
+    unusable: tuple[Unusable, ...] = ()
+    #: The budget remaining when selection gave up, recorded alongside it.
+    remaining_budget: Money | None = None
 
     @property
     def bought(self) -> bool:
@@ -226,6 +272,23 @@ def _step_as_dict(step: Step) -> dict:
         "decision": None,
         "attempt": None,
         "evaluation": None,
+        # Populated only on a terminal step, where selection could choose
+        # nothing and so no §2.5 decision exists to record.
+        "remaining_budget": (
+            str(step.remaining_budget.amount)
+            if step.remaining_budget is not None
+            else None
+        ),
+        "unusable": [
+            {
+                "strategy": u.strategy_name,
+                "escalating": u.escalating,
+                "cost": str(u.cost.amount),
+                "offers": str(u.offers.value),
+                "blocked_by": u.blocked_by.value,
+            }
+            for u in step.unusable
+        ],
     }
     if step.decision is not None:
         decision = step.decision
@@ -291,7 +354,7 @@ class _Candidate:
 
 def _next_action(
     available: list[_Candidate], achieved: Probability, remaining: Money
-) -> tuple[_Candidate | None, str]:
+) -> tuple[_Candidate | None, str, tuple[Unusable, ...]]:
     """Choose what to do next, by fixed rules, and say why.
 
     The first candidate in declared order that is **affordable** and **offers a
@@ -302,19 +365,32 @@ def _next_action(
     should be asked to rule on — because §2.5's Stop terminates the run, so
     offering it a candidate meant to be skipped would turn its refusal into a
     suggestion.
+
+    Returns the candidates it could not use alongside its choice, with the
+    quantities behind each, so that a terminal step can record why the run ended
+    without inventing a §2.5 decision about a candidate nobody chose.
     """
     passed_over: list[str] = []
+    unusable: list[Unusable] = []
     for candidate in available:
         if candidate.offers <= achieved:
             passed_over.append(
                 f"{candidate.strategy.name} ({candidate.stage}) offers "
                 f"{candidate.offers} against {achieved} already achieved"
             )
+            unusable.append(
+                Unusable(candidate.strategy.name, candidate.escalating,
+                         candidate.cost, candidate.offers, FailedCondition.VALUE)
+            )
             continue
         if candidate.cost > remaining:
             passed_over.append(
                 f"{candidate.strategy.name} ({candidate.stage}) costs "
                 f"{candidate.cost} and only {remaining} remains"
+            )
+            unusable.append(
+                Unusable(candidate.strategy.name, candidate.escalating,
+                         candidate.cost, candidate.offers, FailedCondition.BUDGET)
             )
             continue
         reason = (
@@ -324,28 +400,29 @@ def _next_action(
         )
         if passed_over:
             reason += " Passed over: " + "; ".join(passed_over) + "."
-        return candidate, reason
+        return candidate, reason, ()
 
     if not passed_over:
-        return None, "Nothing remains untried."
-    return None, "Nothing left is worth selecting. " + "; ".join(passed_over) + "."
-
-
-def _cheapest(available: list[_Candidate]) -> _Candidate | None:
-    return min(available, key=lambda c: c.cost.amount, default=None)
+        return None, "Nothing remains untried.", ()
+    return (
+        None,
+        "Nothing left is worth selecting. " + "; ".join(passed_over) + ".",
+        tuple(unusable),
+    )
 
 
 def run(
     task: Task,
     strategies: Sequence[Strategy],
     simulator: ScriptedSimulator,
-    record_directory: str | Path | None = "runs",
+    record_directory: str | Path = "runs",
 ) -> RunRecord:
     """Attempt a task until it succeeds or continuing is not worth the money.
 
-    Writes the record as JSON into `record_directory`, which criterion 14 and
-    §2.6 require of every run. Pass `None` to skip writing — used by tests that
-    have no business touching the filesystem.
+    Writes the record as JSON into `record_directory`. Criterion 14 and §2.6
+    require a record of every completed run and grant no exemption, so there is
+    no way to run without producing one — tests write to a temporary directory
+    like any other caller.
 
     A run that stops without succeeding is not an error: it is the system
     declining to spend more on something not worth it (PREREQ-001 §5.4).
@@ -370,11 +447,17 @@ def run(
     # verdict, and there is not one yet, so the rule is not consulted here.
     opening = select(list(strategies), ledger.remaining)
     if opening is None:
+        blocked = tuple(
+            Unusable(strategy.name, False, strategy.initial_cost,
+                     strategy.initial_success_probability, FailedCondition.BUDGET)
+            for strategy in strategies
+        )
         steps.append(
             Step(
                 1, None, False,
                 f"No strategy is affordable: {ledger.remaining} remains and the "
                 "cheapest costs more than that. Nothing was attempted.",
+                unusable=blocked, remaining_budget=ledger.remaining,
             )
         )
         return _finish(task, RunOutcome.STOPPED, steps, ledger,
@@ -395,32 +478,18 @@ def run(
     available = _advance(available, candidate)
 
     while True:
-        candidate, why = _next_action(available, achieved, ledger.remaining)
+        candidate, why, unusable = _next_action(available, achieved, ledger.remaining)
 
         if candidate is None:
-            # §2.5 must still speak when something untried remains, so that the
-            # record carries the condition that ended the run rather than only
-            # a sentence about it.
-            fallback = _cheapest(available)
-            if fallback is not None:
-                decision = decide(
-                    current_success_probability=achieved,
-                    post_escalation_success_probability=fallback.offers,
-                    task_value=task.task_value,
-                    escalation_cost=fallback.cost,
-                    remaining_budget=ledger.remaining,
-                )
-                steps.append(
-                    Step(len(steps) + 1, fallback.strategy.name,
-                         fallback.escalating, why, decision)
-                )
-                # The run's summary reason is the selection reason, which names
-                # every remaining candidate and why each was unusable. The §2.5
-                # decision is recorded on the step, but it speaks only about the
-                # cheapest leftover and so does not explain the run's ending.
-                return _finish(task, RunOutcome.STOPPED, steps, ledger, why,
-                               record_directory)
-            steps.append(Step(len(steps) + 1, None, False, why))
+            # Selection chose nothing, so §2.5 ruled on nothing. Attaching a
+            # decision to whichever leftover happened to be cheapest would put
+            # a verdict in the record about a candidate selection had already
+            # rejected — and it would not be the reason the run ended. The
+            # blocking conditions and their quantities are recorded instead.
+            steps.append(
+                Step(len(steps) + 1, None, False, why,
+                     unusable=unusable, remaining_budget=ledger.remaining)
+            )
             return _finish(task, RunOutcome.STOPPED, steps, ledger, why,
                            record_directory)
 
@@ -479,14 +548,29 @@ def _buy(
     return step, candidate.offers
 
 
-def _next_record_number(directory: Path) -> int:
-    existing = sorted(directory.glob("run-*.json")) if directory.exists() else []
-    numbers = []
-    for path in existing:
+def _claim_record_path(directory: Path) -> Path:
+    """Reserve the next free record filename, atomically.
+
+    Scanning for the next number and writing to it later is a race: two runs
+    that scan before either writes both choose the same name, and the second
+    silently overwrites the first. Eight concurrent runs were shown to leave one
+    file. Criterion 14 requires a record per completed run, so the name is
+    claimed by creating the file exclusively — if another run got there first,
+    creation fails and the next number is tried.
+    """
+    directory.mkdir(parents=True, exist_ok=True)
+    number = 1
+    for path in directory.glob("run-*.json"):
         stem = path.stem.removeprefix("run-")
         if stem.isdigit():
-            numbers.append(int(stem))
-    return max(numbers, default=0) + 1
+            number = max(number, int(stem) + 1)
+    while True:
+        candidate = directory / f"run-{number:03d}.json"
+        try:
+            candidate.touch(exist_ok=False)
+            return candidate
+        except FileExistsError:
+            number += 1
 
 
 def _finish(
@@ -495,7 +579,7 @@ def _finish(
     steps: list[Step],
     ledger: _Ledger,
     reason: str,
-    record_directory: str | Path | None,
+    record_directory: str | Path,
 ) -> RunRecord:
     record = RunRecord(
         task=task,
@@ -505,7 +589,5 @@ def _finish(
         remaining=ledger.remaining,
         reason=reason,
     )
-    if record_directory is not None:
-        directory = Path(record_directory)
-        record.write(directory / f"run-{_next_record_number(directory):03d}.json")
+    record.write(_claim_record_path(Path(record_directory)))
     return record

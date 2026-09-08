@@ -35,10 +35,25 @@ def a_task(**overrides) -> Task:
     return Task(**fields)
 
 
-def a_run(script, task=None, strategies=DECLARED_STRATEGIES) -> RunRecord:
+#: Every run writes a record — criterion 14 grants no exemption, so tests write
+#: to a temporary directory like any other caller rather than opting out.
+_RECORDS: tempfile.TemporaryDirectory | None = None
+
+
+def setUpModule() -> None:
+    global _RECORDS
+    _RECORDS = tempfile.TemporaryDirectory()
+
+
+def tearDownModule() -> None:
+    if _RECORDS is not None:
+        _RECORDS.cleanup()
+
+
+def a_run(script, task=None, strategies=DECLARED_STRATEGIES, into=None) -> RunRecord:
     return run(
         task or a_task(), strategies, ScriptedSimulator(script),
-        record_directory=None,
+        record_directory=into or _RECORDS.name,
     )
 
 
@@ -126,13 +141,19 @@ class TheBudgetCeilingTests(unittest.TestCase):
         self.assertIs(record.outcome, RunOutcome.STOPPED)
         self.assertEqual(record.spent, Money("0"))
 
-    def test_the_budget_condition_is_what_stops_an_exhausted_run(self) -> None:
+    def test_running_out_mid_run_is_recorded_with_its_quantities(self) -> None:
         # $0.09 affords the $0.02 opening but not the $0.08 escalation.
-        record = a_run([LOST], task=a_task(budget=Money("0.09")))
+        record = a_run([LOST] * 6, task=a_task(budget=Money("0.09")))
         self.assertIs(record.outcome, RunOutcome.STOPPED)
-        self.assertIn(
-            FailedCondition.BUDGET, record.steps[-1].decision.failed_conditions
-        )
+        terminal = record.steps[-1]
+        self.assertEqual(terminal.remaining_budget, Money("0.07"))
+        budget_blocked = [
+            u for u in terminal.unusable if u.blocked_by is FailedCondition.BUDGET
+        ]
+        self.assertTrue(budget_blocked)
+        for blocked in budget_blocked:
+            with self.subTest(strategy=blocked.strategy_name):
+                self.assertGreater(blocked.cost, terminal.remaining_budget)
 
     def test_stopping_with_money_left_is_a_correct_outcome(self) -> None:
         # PREREQ-001 §5.4: refusing to keep spending is the system working.
@@ -164,12 +185,15 @@ class AStopTerminatesTheRunTests(unittest.TestCase):
         )
         self.assertEqual(stopped_at, len(record.steps) - 1)
 
-    def test_a_budget_condition_stop_ends_the_run(self) -> None:
+    def test_running_out_of_budget_ends_the_run(self) -> None:
+        # Since selection filters on affordability, §2.5 is never offered a
+        # candidate the budget cannot cover — so its budget condition is
+        # unreachable through the loop, and running out is recorded at
+        # selection instead. See the note in radhanite/run.py.
         record = a_run([LOST] * 6, task=a_task(budget=Money("0.09")))
         self.assertIs(record.outcome, RunOutcome.STOPPED)
-        self.assertIn(
-            FailedCondition.BUDGET, record.steps[-1].decision.failed_conditions
-        )
+        blocked = {u.blocked_by for u in record.steps[-1].unusable}
+        self.assertIn(FailedCondition.BUDGET, blocked)
 
 
 class SelectionPassesOverWhatIsNotWorthRulingOnTests(unittest.TestCase):
@@ -306,7 +330,7 @@ class TheJsonRecordTests(unittest.TestCase):
         # tests passing: the "carries everything" test checked only the six
         # numbers, and the recomputation test only the verdict. §2.5 requires a
         # Stop to record which condition failed, so it is asserted directly.
-        record = a_run([LOST] * 6, task=a_task(budget=Money("0.09")))
+        record = a_run([LOST] + [PARTIAL] * 5, task=a_task(task_value=Money("0.30")))
         stops = [
             step for step in record.as_dict()["steps"]
             if step["decision"] and step["decision"]["verdict"] == "stop"
@@ -329,14 +353,19 @@ class TheJsonRecordTests(unittest.TestCase):
                 with self.subTest(step=step["number"]):
                     self.assertEqual(step["decision"]["failed_conditions"], [])
 
-    def test_a_value_stop_and_a_budget_stop_are_distinguishable_in_json(self) -> None:
+    def test_a_value_stop_and_running_out_are_distinguishable_in_json(self) -> None:
+        # A value refusal is a §2.5 decision on a candidate selection chose.
+        # Running out is recorded at selection, since §2.5 never sees an
+        # unaffordable candidate.
         by_value = a_run([LOST] + [PARTIAL] * 5, task=a_task(task_value=Money("0.30")))
+        last_value = by_value.as_dict()["steps"][-1]
+        self.assertIn("value", last_value["decision"]["failed_conditions"])
+
         by_budget = a_run([LOST] * 6, task=a_task(budget=Money("0.09")))
+        last_budget = by_budget.as_dict()["steps"][-1]
+        self.assertIsNone(last_budget["decision"])
         self.assertIn(
-            "value", by_value.as_dict()["steps"][-1]["decision"]["failed_conditions"]
-        )
-        self.assertIn(
-            "budget", by_budget.as_dict()["steps"][-1]["decision"]["failed_conditions"]
+            "budget", {u["blocked_by"] for u in last_budget["unusable"]}
         )
 
     def test_the_json_carries_everything_a_decision_was_made_from(self) -> None:
@@ -385,6 +414,114 @@ class TheJsonRecordTests(unittest.TestCase):
             self.assertEqual(written, destination)
             reloaded = json.loads(destination.read_text(encoding="utf-8"))
             self.assertEqual(reloaded["outcome"], "succeeded")
+
+
+class EveryRunWritesARecordTests(unittest.TestCase):
+    """Criterion 14 and §2.6 grant no exemption, including for tests.
+
+    The previous version accepted record_directory=None, and all 37 loop tests
+    used it — so the suite proved nothing about the requirement it claimed to
+    satisfy, and a completed run could produce no file at all.
+    """
+
+    def test_a_completed_run_always_leaves_a_file(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            a_run([WON], into=directory)
+            self.assertEqual(len(list(Path(directory).glob("run-*.json"))), 1)
+
+    def test_a_stopped_run_leaves_one_too(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            a_run([LOST] * 6, into=directory)
+            self.assertEqual(len(list(Path(directory).glob("run-*.json"))), 1)
+
+    def test_a_run_that_attempted_nothing_leaves_one_too(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            a_run([], task=a_task(budget=Money("0.01")), into=directory)
+            self.assertEqual(len(list(Path(directory).glob("run-*.json"))), 1)
+
+    def test_there_is_no_way_to_run_without_writing(self) -> None:
+        import inspect
+
+        default = inspect.signature(run).parameters["record_directory"].default
+        self.assertIsNotNone(default)
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(Exception):
+                run(a_task(), DECLARED_STRATEGIES, ScriptedSimulator([WON]),
+                    record_directory=None)
+
+    def test_many_runs_do_not_overwrite_each_other(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            for _ in range(8):
+                a_run([WON], into=directory)
+            self.assertEqual(len(list(Path(directory).glob("run-*.json"))), 8)
+
+    def test_a_claimed_name_is_never_handed_out_twice(self) -> None:
+        # Scanning for the next free number and writing to it later is a race:
+        # two runs that scan before either writes pick the same name. Eight
+        # concurrent runs were shown to leave one file. The name is now claimed
+        # by exclusive creation, so a second claim cannot collide.
+        from radhanite.run import _claim_record_path
+
+        with tempfile.TemporaryDirectory() as directory:
+            claimed = {_claim_record_path(Path(directory)) for _ in range(8)}
+            self.assertEqual(len(claimed), 8)
+
+    def test_claiming_never_overwrites_an_existing_record(self) -> None:
+        from radhanite.run import _claim_record_path
+
+        with tempfile.TemporaryDirectory() as directory:
+            existing = Path(directory) / "run-001.json"
+            existing.write_text("original", encoding="utf-8")
+            claimed = _claim_record_path(Path(directory))
+            self.assertNotEqual(claimed, existing)
+            self.assertEqual(existing.read_text(encoding="utf-8"), "original")
+
+
+class TerminalStepsRecordTheirReasonTests(unittest.TestCase):
+    """§2.6: the record must say why a run ended, with the quantities.
+
+    A terminal step has no §2.5 decision, because selection chose nothing and so
+    nothing was ruled on. An earlier version attached a decision to whichever
+    leftover was cheapest — a verdict about a candidate selection had already
+    rejected, and not the reason the run ended.
+    """
+
+    def test_an_unaffordable_start_records_the_blocking_condition(self) -> None:
+        step = a_run([], task=a_task(budget=Money("0.01"))).as_dict()["steps"][0]
+        self.assertIsNone(step["decision"])
+        self.assertEqual(step["remaining_budget"], "0.01")
+        self.assertTrue(step["unusable"])
+        for blocked in step["unusable"]:
+            with self.subTest(strategy=blocked["strategy"]):
+                self.assertEqual(blocked["blocked_by"], "budget")
+                self.assertTrue(blocked["cost"])
+
+    def test_an_exhausted_run_records_every_remaining_candidate(self) -> None:
+        step = a_run([LOST] * 6).as_dict()["steps"][-1]
+        self.assertIsNone(step["decision"])
+        blocked = {b["strategy"]: b["blocked_by"] for b in step["unusable"]}
+        self.assertIn("Progressive Escalation", blocked)
+        self.assertIn("Exhaustive Attempt", blocked)
+
+    def test_both_blocking_conditions_are_distinguishable(self) -> None:
+        step = a_run([LOST] * 6).as_dict()["steps"][-1]
+        reasons = {b["blocked_by"] for b in step["unusable"]}
+        self.assertEqual(reasons, {"value", "budget"})
+
+    def test_no_decision_is_recorded_for_a_candidate_selection_rejected(self) -> None:
+        # The defect this replaces: a value-condition Stop was recorded against
+        # Progressive Escalation even though selection had rejected it and the
+        # unaffordable Exhaustive escalation was what actually ended the run.
+        for step in a_run([LOST] * 6).steps:
+            if step.decision is not None:
+                with self.subTest(step=step.number):
+                    self.assertIsNotNone(step.strategy_name)
+                    self.assertTrue(step.bought or step.decision.decision is Decision.STOP)
+
+    def test_a_terminal_step_names_no_strategy(self) -> None:
+        step = a_run([LOST] * 6).steps[-1]
+        self.assertIsNone(step.strategy_name)
+        self.assertTrue(step.unusable)
 
 
 class RefusalTests(unittest.TestCase):
