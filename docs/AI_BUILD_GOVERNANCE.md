@@ -243,6 +243,33 @@ Consequently:
 - Where the explanation and the code disagree, the code is what shipped, and the
   explanation is wrong.
 
+### 4.4 Attribution
+
+> **The pull request description must name every party that contributed and the
+> role each held.**
+
+Radhanite is built by AI agents under human authorization, and `§1.4` separates
+implementation, review and merge into three distinct parties. A pull request
+that does not say which party did what leaves that separation unverifiable by
+anyone reading it.
+
+At minimum, name:
+
+- the **human product owner**, who authorized the work and holds merge authority;
+- the **implementation agent**, and what it authored;
+- the **review agent**, and — as a pointer to the review record per `§7.4`, never
+  as a restated outcome — its review status.
+
+Name the review agent **even when it has not reviewed the pull request**. An
+absent row reads as there being no reviewer at all, which is a stronger and less
+honest claim than an empty one.
+
+This is a requirement, not a courtesy. It is written down because it was carried
+by habit for six pull requests instead, and habit failed: PR #7 — a pull request
+whose own purpose was fixing a stale claim about the review agent — shipped with
+the review agent omitted from it entirely. Nothing required the attribution, so
+restructuring the description silently dropped it.
+
 ## 5. Prompt preservation
 
 > **Meaningful AI prompts that cause substantive repository changes are
