@@ -4,8 +4,8 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md`, `docs/PREREQ-001_PRODUCT_DEFINITION.md`, `docs/ARCHITECTURE.md`
 **Date issued:** 2026-09-07
-**Outcome:** **Rejected** — `CODEX-PR006-01` violated ARCHITECTURE.md §6 item 7; `-02` through `-05` departed from TASK-001 and PREREQ-001 input and economic-boundary requirements. All seven findings corrected.
-**Commit reviewed:** `d3c13d7`
+**Outcome:** **Rejected twice.** First pass at `d3c13d7`: 7 findings. Second pass at `760d861`: `-03` not fully resolved, plus 3 new findings. All ten corrected.
+**Reviews:** two passes, both recorded below verbatim.
 
 ---
 
@@ -255,6 +255,70 @@ Recorded verbatim, as returned. Not summarized, softened, or filtered.
 >
 > Rejected — `CODEX-PR006-01` violates ARCHITECTURE.md §6 item 7, and `CODEX-PR006-02` through `CODEX-PR006-05` depart from TASK-001 and PREREQ-001 input and economic-boundary requirements.
 
+## 2c. Second review findings
+
+Recorded verbatim, as returned.
+
+> Reviewed corrected PR #6 at 760d861. The suite passes 52 tests on Python 3.12.13.
+>
+> Part A — previous findings
+> - CODEX-PR006-01: Fixed. headroom_ratio and every equivalent ratio/division are gone.
+> - CODEX-PR006-02: Fixed. Infinity, negative infinity, NaN, and non-finite Decimal objects are rejected before reaching Task.
+> - CODEX-PR006-03: Not fully fixed. The original example, addition, subtraction, and multiplication are corrected, but other operations still bypass or can defeat the exact context.
+> - CODEX-PR006-04: Fixed. Zero budget and task value are accepted; negative values remain rejected. No zero division remains.
+> - CODEX-PR006-05: Fixed. Omitting constraints raises TypeError. Restoring the default made the replacement test fail.
+> - CODEX-PR006-06: Fixed. The explanation now distinguishes equal probabilities producing zero from worsening probabilities producing a negative value.
+> - CODEX-PR006-07: Fixed. The comment now accurately describes the marginal rule.
+>
+> Part B — correction risks
+>
+> The dedicated context correctly insulates addition, subtraction, and multiplication from ambient precision, and it does not leak flags or settings into the ambient context. The original rounding example now returns the exact result. An operation exceeding the 200-digit precision raises Inexact instead of rounding.
+>
+> Comparison, equality, hashing, is_positive, and is_negative are unaffected by ambient precision. For zero, both sign properties return False, as expected.
+>
+> A finite value exceeding 200 significant digits can be constructed but may raise even when multiplied by one. That is the declared exact-or-stop policy rather than silent corruption, and such values are well beyond ordinary economic quantities; I am not raising it separately.
+>
+> CODEX-PR006-03 — not fully resolved
+>
+> File and line: radhanite/money.py:43-59,118-145
+>
+> Two paths still defeat the exactness guarantee:
+> - Negation does not use EXACT. With ambient precision 3, -Money("1.23456789") silently became Money("-1.23").
+> - EXACT is a publicly exported mutable Context. Setting its precision to 3 and disabling its Inexact trap caused Money("1.111") + Money("2.222") to silently return 3.33.
+>
+> The original finding required every accepted arithmetic operation either to remain exact or raise. That remains unenforced, risking incorrect quantities at TASK-001 §2.5’s strict comparison boundary.
+>
+> CODEX-PR006-08
+>
+> File and line: radhanite/money.py:149-153; docs/pr_explanations/PR-006_TASK-001_EXPLANATION.md:89-91,145-146,227-231
+>
+> String formatting uses ambient decimal arithmetic through abs(self.amount). Consequently:
+> - Under ambient precision 3, str(Money("1234.56789")) returned $1230.00000.
+> - With Inexact trapped ambiently, the same formatting operation raised.
+> - Even under the default context, an accepted 29-significant-digit amount was silently rounded for display.
+>
+> This contradicts the claims that precision is preserved for display and that amounts are never “almost right.” Incorrect human-readable monetary output undermines the inspectability required by TASK-001 §2.6 and PREREQ-001 §8.
+>
+> CODEX-PR006-09
+>
+> File and line: docs/pr_explanations/PR-006_TASK-001_EXPLANATION.md:18-26,133-137
+>
+> The explanation has two stale or incomplete claims:
+> - Its changed-files table omits docs/reviews/README.md; the PR changes eight files, while the table lists seven.
+> - It says the code refuses “no money” and “nothing to gain,” but zero budgets and zero task values are now deliberately accepted.
+>
+> The latter contradicts the corrected behavior and TASK-001 §2.5.
+>
+> CODEX-PR006-10
+>
+> File and line: docs/reviews/PR-006_CODEX_REVIEW.md:203,210,248,254
+>
+> All first-round findings are present and substantively unsoftened, but the transcription is not verbatim. Several curly quotation marks from the original response were converted to straight quotation marks, including around “exact,” “Inspection-only convenience,” “zero or negative,” and the quoted escalation-rule comment. AI_BUILD_GOVERNANCE.md §7.3 requires literal verbatim preservation, not merely preservation of meaning.
+>
+> The test counts are otherwise accurate: 31 money tests, 18 task tests, 3 existing package tests, 52 total, and 49 new. All construction sites supply the newly required constraints input. No dependency or excluded integration was introduced, and every commit has an allowed authority mapping.
+>
+> Rejected — CODEX-PR006-03 remains unresolved, and CODEX-PR006-08 still permits incorrect monetary presentation contrary to TASK-001 §2.6 and PREREQ-001 §8.
+
 ## 3. Outcome
 
 **Rejected.** All seven findings were accepted without dispute and corrected.
@@ -288,6 +352,10 @@ review had already flagged once.
 | `CODEX-PR006-05` | `ae0610a` | `constraints` default removed, so all five inputs are required. Test replaced with one that constructs a `Task` without it and requires a `TypeError`; verified by mutation. |
 | `CODEX-PR006-06` | `0dc2d42` | Justification now preserves the equality case ("zero or negative"), with a test for zero. |
 | `CODEX-PR006-07` | `03dbc61` | Comment corrected: the rule is marginal, so totals do not constrain each other. |
+| `CODEX-PR006-03` (second pass) | `0ab4c75` | Negation moved into the exact context. The shared mutable `EXACT` constant replaced by a private factory building a fresh `Context` per operation, so the guarantee cannot be stripped from outside; no longer exported. |
+| `CODEX-PR006-08` | `0ab4c75` | Display uses `Decimal.copy_abs` (context-free) and formats under an exact context, so printing can neither round nor raise because of settings changed elsewhere. |
+| `CODEX-PR006-09` | `da584c5` | Changed-files table corrected to eight; the false "refuses no money / nothing to gain" claim replaced, since zero is now deliberately accepted. |
+| `CODEX-PR006-10` | `22c50c3` | The four curly quotation marks restored. §7.3 requires literal verbatim preservation, not preservation of meaning. |
 
 ```
 git log --grep=CODEX-PR006
@@ -311,6 +379,25 @@ The reviewer's rounding example is now exact:
 
 Non-finite values refused; ambient precision changes cannot alter a result; and
 restoring the `constraints` default makes the replacement test fail.
+
+### Second-pass verification
+
+```
+$ python -m unittest discover
+Ran 57 tests — OK
+```
+
+Each defect the second review reported, retested:
+
+```
+ambient prec=3:   -Money("1.23456789")        -> -1.23456789   (was -1.23)
+ambient prec=3:   str(Money("1234.56789"))    -> $1234.56789   (was $1230.00000)
+ambient prec=3:   Money("1.111")+Money("2.222") -> 3.333       (was 3.33 once EXACT was mutated)
+Inexact trapped:  str(Money("1234.56789"))    -> $1234.56789   (was: raised)
+29 digits:        displayed in full
+```
+
+There is no longer any shared context object to mutate.
 
 ### Carried forward
 
