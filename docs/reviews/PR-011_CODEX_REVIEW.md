@@ -230,7 +230,7 @@ Recorded verbatim, as returned. Not summarized, softened, or filtered.
 >
 > CODEX-PR011-01
 >
-> File and line: `radhanite/strategy.py:35`; `radhanite/strategy.py:95`
+> File and line: [radhanite/strategy.py:35](/Users/arkoganguli/Projects/radhanite-ethonline/radhanite/strategy.py:35); [radhanite/strategy.py:95](/Users/arkoganguli/Projects/radhanite-ethonline/radhanite/strategy.py:95)
 >
 > `DECLARED_STRATEGIES` is a tuple and ordinary field assignment is blocked, but its supposedly frozen objects remain mutable through their instance dictionaries. For example:
 >
@@ -244,7 +244,7 @@ Recorded verbatim, as returned. Not summarized, softened, or filtered.
 >
 > CODEX-PR011-02
 >
-> File and line: `radhanite/strategy.py:120`; `radhanite/strategy.py:145`
+> File and line: [radhanite/strategy.py:120](/Users/arkoganguli/Projects/radhanite-ethonline/radhanite/strategy.py:120); [radhanite/strategy.py:145](/Users/arkoganguli/Projects/radhanite-ethonline/radhanite/strategy.py:145)
 >
 > `select()` advertises an ordered `Sequence` but performs no runtime validation and silently accepts unordered collections. Passing `set(DECLARED_STRATEGIES)` with the identical budget selected all three different strategies across hash seeds 1–10.
 >
@@ -254,7 +254,7 @@ Recorded verbatim, as returned. Not summarized, softened, or filtered.
 >
 > CODEX-PR011-03
 >
-> File and line: `radhanite/money.py:151`; `radhanite/money.py:164`
+> File and line: [radhanite/money.py:151](/Users/arkoganguli/Projects/radhanite-ethonline/radhanite/money.py:151); [radhanite/money.py:164](/Users/arkoganguli/Projects/radhanite-ethonline/radhanite/money.py:164)
 >
 > Delegating every specification to string formatting permits precision specifications that silently truncate the rendered amount:
 >
@@ -269,7 +269,7 @@ Recorded verbatim, as returned. Not summarized, softened, or filtered.
 >
 > CODEX-PR011-04
 >
-> File and line: `tests/test_strategy.py:75`; `docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:63`
+> File and line: [tests/test_strategy.py:75](/Users/arkoganguli/Projects/radhanite-ethonline/tests/test_strategy.py:75); [docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:63](/Users/arkoganguli/Projects/radhanite-ethonline/docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:63)
 >
 > The test and explanation claim that calculating a fixture instead of declaring it would make the test fail. It only compares resulting values. Replacing the literal `0.35` with a runtime calculation of `Decimal("0.30") + Decimal("0.05")` left the test passing.
 >
@@ -277,7 +277,7 @@ Recorded verbatim, as returned. Not summarized, softened, or filtered.
 >
 > CODEX-PR011-05
 >
-> File and line: `tests/test_strategy.py:171`; `docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:83`
+> File and line: [tests/test_strategy.py:171](/Users/arkoganguli/Projects/radhanite-ethonline/tests/test_strategy.py:171); [docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:83](/Users/arkoganguli/Projects/radhanite-ethonline/docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:83)
 >
 > `test_the_selector_holds_no_state` only checks the function’s parameter names. Adding a module-level selection-history list and appending every budget inside `select()` did not change the signature, and all 24 strategy tests still passed.
 >
@@ -285,7 +285,7 @@ Recorded verbatim, as returned. Not summarized, softened, or filtered.
 >
 > CODEX-PR011-06
 >
-> File and line: `docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:16`; `docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:26`
+> File and line: [docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:16](/Users/arkoganguli/Projects/radhanite-ethonline/docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:16); [docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:26](/Users/arkoganguli/Projects/radhanite-ethonline/docs/pr_explanations/PR-011_TASK-001_EXPLANATION.md:26)
 >
 > The inventory again contains stale counts:
 >

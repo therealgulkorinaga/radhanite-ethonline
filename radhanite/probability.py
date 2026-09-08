@@ -17,6 +17,8 @@ history — that is `BL-05`/`BL-06` in the backlog and is unauthorized.
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+from radhanite._immutable import refuse_rehydration
 from decimal import Decimal, InvalidOperation, localcontext
 
 from radhanite._exactness import exact as _exact
@@ -27,6 +29,7 @@ _ZERO = Decimal(0)
 _ONE = Decimal(1)
 
 
+@refuse_rehydration
 @dataclass(frozen=True, order=True, slots=True)
 class Probability:
     """A probability between 0 and 1 inclusive.

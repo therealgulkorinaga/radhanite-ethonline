@@ -22,11 +22,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from radhanite._immutable import refuse_rehydration
+
 from radhanite.money import Money
 
 __all__ = ["Task"]
 
 
+@refuse_rehydration
 @dataclass(frozen=True, slots=True)
 class Task:
     """A unit of work with an economic frame around it.

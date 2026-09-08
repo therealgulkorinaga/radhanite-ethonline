@@ -33,6 +33,8 @@ item 8.
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+from radhanite._immutable import refuse_rehydration
 from decimal import Decimal, InvalidOperation, localcontext
 
 from radhanite._exactness import exact as _exact
@@ -42,6 +44,7 @@ CURRENCY = "USD"
 __all__ = ["CURRENCY", "Money"]
 
 
+@refuse_rehydration
 @dataclass(frozen=True, order=True, slots=True)
 class Money:
     """An exact amount of US dollars.

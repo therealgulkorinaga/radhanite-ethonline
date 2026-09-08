@@ -103,26 +103,30 @@ class DeclaredConstantsTests(unittest.TestCase):
                     s.escalated_success_probability, Probability(esc_chance)
                 )
 
-    def test_every_declared_figure_is_a_literal_in_the_source(self) -> None:
+    def test_declared_strategies_contains_nothing_but_literals(self) -> None:
         """Criterion 13 forbids computing these, not merely getting them right.
 
         Comparing values cannot tell a declared 0.35 from a computed
-        0.30 + 0.05 — both compare equal. So this reads the source itself and
-        requires every figure inside DECLARED_STRATEGIES to be a literal
-        constant handed straight to Money or Probability, with no arithmetic,
-        no name lookup, and no call in between.
+        0.30 + 0.05 — both come out equal. Nor is it enough to check that the
+        arguments to Money and Probability are literals: a helper call can
+        supply the real value while a decoy literal sits beside it, which is how
+        the first version of this test was defeated.
+
+        So this whitelists the entire expression instead. Every node inside
+        DECLARED_STRATEGIES must be one of: the tuples, a call to Strategy,
+        Money or Probability, a keyword argument, a string literal, or the names
+        of those three types. Anything else at all — arithmetic, a subscript, a
+        helper call, a name lookup — fails.
         """
         import ast
-        import pathlib
+        import pathlib as _pathlib
 
-        source = pathlib.Path(strategy_module.__file__).read_text(encoding="utf-8")
+        source = _pathlib.Path(strategy_module.__file__).read_text(encoding="utf-8")
         tree = ast.parse(source)
 
         declaration = None
         for node in ast.walk(tree):
-            if isinstance(node, ast.AnnAssign) and getattr(
-                node.target, "id", None
-            ) == "DECLARED_STRATEGIES":
+            if isinstance(node, ast.AnnAssign) and getattr(node.target, "id", None) == "DECLARED_STRATEGIES":
                 declaration = node.value
             elif isinstance(node, ast.Assign) and any(
                 getattr(t, "id", None) == "DECLARED_STRATEGIES" for t in node.targets
@@ -130,23 +134,43 @@ class DeclaredConstantsTests(unittest.TestCase):
                 declaration = node.value
         self.assertIsNotNone(declaration, "DECLARED_STRATEGIES not found in source")
 
-        checked = 0
-        for call in (n for n in ast.walk(declaration) if isinstance(n, ast.Call)):
-            callee = getattr(call.func, "id", None)
-            if callee not in {"Money", "Probability"}:
+        permitted_callees = {"Strategy", "Money", "Probability"}
+        literals = 0
+        for node in ast.walk(declaration):
+            if isinstance(node, (ast.Tuple, ast.Load, ast.keyword)):
                 continue
-            for argument in call.args:
+            if isinstance(node, ast.Call):
                 self.assertIsInstance(
-                    argument,
-                    ast.Constant,
-                    f"{callee}(...) in DECLARED_STRATEGIES is built from "
-                    f"{ast.dump(argument)}, not a literal constant",
+                    node.func, ast.Name, "only direct calls to the value types are allowed"
                 )
-                self.assertIsInstance(argument.value, str)
-                checked += 1
+                self.assertIn(
+                    node.func.id,
+                    permitted_callees,
+                    f"DECLARED_STRATEGIES calls {node.func.id}(...); only "
+                    f"{sorted(permitted_callees)} may appear",
+                )
+                continue
+            if isinstance(node, ast.Name):
+                self.assertIn(
+                    node.id,
+                    permitted_callees,
+                    f"DECLARED_STRATEGIES refers to the name {node.id!r}; "
+                    "figures must be written out, not looked up",
+                )
+                continue
+            if isinstance(node, ast.Constant):
+                self.assertIsInstance(
+                    node.value, str, "figures must be given as strings"
+                )
+                literals += 1
+                continue
+            self.fail(
+                f"DECLARED_STRATEGIES contains {type(node).__name__}, which is "
+                "not a literal. Figures must be declared, never computed."
+            )
 
-        # Three strategies x two costs and two probabilities.
-        self.assertEqual(checked, 12)
+        # Three strategies x (a name + two costs + two probabilities).
+        self.assertEqual(literals, 15)
 
     def test_the_figures_do_not_change_between_reads(self) -> None:
         first = tuple(DECLARED_STRATEGIES)
@@ -239,13 +263,36 @@ class DeterminismTests(unittest.TestCase):
         self.assertEqual(first, again)
 
     def test_the_selector_accumulates_no_state(self) -> None:
-        """Checking the signature proves nothing; a history list needs no argument.
+        """A history need not change the signature, so the signature proves nothing.
 
-        This snapshots every mutable value the module holds, and every attribute
-        hung on the function itself, runs a series of selections, and requires
-        the snapshot to be unchanged. A selector that remembered anything
-        between calls would show up here.
+        This looks in every place state can accumulate that a test can reach:
+        values the module holds, attributes on the function, the function's
+        closure and default arguments, whether it has been wrapped by a cache,
+        and mutable attributes on classes the module defines.
+
+        What it cannot see: state hidden inside a *different* module that this
+        one imports. That limit is real and is stated rather than papered over.
         """
+        import inspect
+
+        self.assertIsNone(
+            select.__closure__, "select closes over nothing; a closure could hold a history"
+        )
+        self.assertFalse(
+            hasattr(select, "__wrapped__"),
+            "select is not wrapped; a cache would remember previous calls",
+        )
+        self.assertFalse(
+            hasattr(select, "cache_info"), "select is not memoised"
+        )
+        for defaults in (select.__defaults__, select.__kwdefaults__):
+            for value in defaults or ():
+                self.assertNotIsInstance(
+                    value,
+                    (list, dict, set, bytearray),
+                    "a mutable default argument persists between calls",
+                )
+
         def snapshot():
             module_state = {
                 name: repr(value)
@@ -254,11 +301,17 @@ class DeterminismTests(unittest.TestCase):
                 and isinstance(value, (list, dict, set, bytearray))
             }
             function_state = {
-                name: repr(value)
-                for name, value in vars(select).items()
-                if not name.startswith("__")
+                name: repr(value) for name, value in vars(select).items()
             }
-            return module_state, function_state
+            class_state = {
+                f"{name}.{attribute}": repr(value)
+                for name, obj in vars(strategy_module).items()
+                if inspect.isclass(obj) and obj.__module__ == strategy_module.__name__
+                for attribute, value in vars(obj).items()
+                if isinstance(value, (list, dict, set, bytearray))
+                and not attribute.startswith("__")
+            }
+            return module_state, function_state, class_state
 
         before = snapshot()
         for budget in ("2.00", "0.10", "0.02", "0", "100.00", "0.50"):

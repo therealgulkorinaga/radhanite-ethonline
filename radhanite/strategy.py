@@ -26,12 +26,15 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from radhanite._immutable import refuse_rehydration
+
 from radhanite.money import Money
 from radhanite.probability import Probability
 
 __all__ = ["DECLARED_STRATEGIES", "Strategy", "select"]
 
 
+@refuse_rehydration
 @dataclass(frozen=True, slots=True)
 class Strategy:
     """One way of attempting a task, and the dearer attempt it escalates to.
