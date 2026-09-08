@@ -131,6 +131,113 @@ End with exactly ONE outcome, per §7.2:
   - Rejected  (state which specification or boundary was departed from)
 ```
 
+## 1b. Second review prompt
+
+Issued after the eight corrections were pushed, and committed before that second
+review was run, per §7.5.
+
+```text
+You are the independent review agent for the Radhanite repository, per
+docs/AI_BUILD_GOVERNANCE.md §1.3.
+
+This is a SECOND review of pull request #13:
+https://github.com/therealgulkorinaga/radhanite-ethonline/pull/13
+
+You reviewed it at commit 2b7331b and REJECTED it with eight findings,
+CODEX-PR013-01 through -08, marking six of seventeen acceptance criteria not
+met. Your review is recorded verbatim in docs/reviews/PR-013_CODEX_REVIEW.md.
+
+The loop was rebuilt in response. This is not a patched version of what you
+rejected: the order of operations changed, selection gained a new
+responsibility, and Step and the JSON schema both changed shape.
+
+Review against these authoritative documents ONLY:
+  - tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md
+  - docs/PREREQ-001_PRODUCT_DEFINITION.md
+  - docs/ARCHITECTURE.md
+
+Do NOT treat the PR explanation or docs/RUN_RECORDS.md as evidence of
+correctness (§4.3).
+
+WHAT CHANGED
+
+  -01  The opening attempt is selected and executed without consulting §2.5.
+       Its Step carries decision=None.
+  -02  A Stop terminates the run. Selection now chooses the next action first —
+       the first candidate in declared order that is affordable AND offers a
+       higher success probability than has already been achieved — and §2.5
+       rules on that single candidate.
+  -03  run() refuses non-Sequence strategies itself.
+  -04  run() writes the JSON record. record_directory defaults to "runs" and
+       accepts None for tests.
+  -05  There is always at least one Step. Where a candidate remains, §2.5 is
+       applied to the cheapest so a failing condition is recorded.
+  -06  Every Step records selection_reason, naming the rule and what was passed
+       over.
+  -07  Three tests assert failed_conditions directly.
+  -08  The omitted sentence is restored to the recorded prompt.
+
+Plus one defect found by the implementing agent, not by you: the stop summary
+named whichever leftover candidate was cheapest rather than the one whose
+unaffordability ended the run. The summary is now the selection reason.
+
+PART A — is the pipeline order now right?
+
+1. Confirm §2.5 is never consulted before a verdict exists. Is there any path
+   where it is?
+2. Confirm a Stop always terminates. Try hard to construct a run that receives
+   a Stop and continues — both conditions, and both within a strategy and
+   across strategies.
+3. Selection now skips candidates offering no improvement. Is that legitimately
+   selection under §2.2, or has the refusal §2.5 was supposed to make simply
+   been moved somewhere it cannot be seen? This is the question I most want
+   answered: the loop can now decline to buy something without any economic
+   decision being recorded for it.
+4. Does the new selection rule leave any candidate unreachable that the
+   specification requires be considered?
+
+PART B — the criteria you marked not met
+
+5. Walk criteria 2, 5, 8, 9, 11 and 14 specifically and state whether each is
+   now met. Then walk the remaining eleven to confirm none regressed.
+
+PART C — did the rebuild break anything?
+
+6. Determinism: same scenario, same run? Byte-identical JSON?
+7. The ceiling: attack it again on the new code paths.
+8. run() now writes files. Does it ever overwrite an existing record? Is the
+   numbering safe if the directory already contains records, or contains files
+   that are not records?
+9. Step.decision is now optional. Does anything assume it is present?
+10. Does the CLI still avoid double-writing now that run() writes?
+
+PART D — claims and record integrity
+
+11. Verify every count and factual claim in the explanation independently.
+12. Confirm the recorded findings are reproduced as received, and that the
+    restored prompt sentence is correct.
+13. Confirm every cited commit hash exists.
+
+FORMAT
+
+Number any NEW findings continuing the sequence, per §3.1 — identifiers are
+never reused, so start at:
+
+    CODEX-PR013-09
+
+If a previous finding is not properly fixed, say so against its ORIGINAL
+identifier rather than issuing a new one.
+
+If you find nothing new and all eight fixes hold, say so explicitly.
+
+CONCLUDE
+
+End with exactly ONE outcome, per §7.2:
+  - Approved
+  - Approved with corrections  (list the finding identifiers)
+  - Rejected  (state which specification or boundary was departed from)
+```
+
 ## 2. Findings returned
 
 Recorded as received. Not summarized, softened, or filtered. The fidelity note in
