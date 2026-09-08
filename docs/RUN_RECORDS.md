@@ -132,7 +132,11 @@ Each step has:
 - **`strategy`** — which way of attempting the job was on the table.
 - **`escalating`** — `false` for a first attempt, `true` for the dearer
   follow-up attempt.
-- **`decision`** — whether to spend, and why.
+- **`decision`** — whether to spend, and why. **The first step has none**: the
+  spending rule decides from a result, and before the first attempt there is not
+  one yet.
+- **`selection_reason`** — why *this* candidate was chosen, and what was passed
+  over to reach it.
 - **`attempt`** — what happened, **or `null` if nothing was bought**.
 - **`evaluation`** — whether it finished the job, or `null` likewise.
 
@@ -181,9 +185,11 @@ A record repays a few specific questions:
 
 - **Did it ever refuse to buy something?** Look for steps where `attempt` is
   `null`. That is Radhanite declining to spend.
-- **Why did it stop?** `failed_conditions` on the last step says which test
-  failed: `budget` means it could not afford it, `value` means it was not worth
-  it.
+- **Why did it stop?** Look at the last step. If it has a `decision`, its
+  `failed_conditions` says which test failed: `budget` means it could not afford
+  it, `value` means it was not worth it. If the run never got as far as a
+  decision — because nothing was affordable to begin with — the last step has no
+  `decision` at all, and `selection_reason` says why nothing was attempted.
 - **Was money left over?** `remaining` against `task.budget`. Money left on a
   stopped run means it decided rather than ran out.
 - **Do the numbers add up?** The costs of every step that bought something should

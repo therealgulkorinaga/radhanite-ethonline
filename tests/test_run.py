@@ -36,7 +36,10 @@ def a_task(**overrides) -> Task:
 
 
 def a_run(script, task=None, strategies=DECLARED_STRATEGIES) -> RunRecord:
-    return run(task or a_task(), strategies, ScriptedSimulator(script))
+    return run(
+        task or a_task(), strategies, ScriptedSimulator(script),
+        record_directory=None,
+    )
 
 
 class TheSuccessPathTests(unittest.TestCase):
@@ -63,28 +66,35 @@ class TheSuccessPathTests(unittest.TestCase):
         self.assertEqual(len(record.steps), 1)
 
 
-class EveryPurchaseIsWeighedTests(unittest.TestCase):
-    """Including the first. There is no free opening attempt."""
+class TheRuleRunsAfterAVerdictTests(unittest.TestCase):
+    """§2.5 decides from a verdict. Before the opening attempt there is none.
 
-    def test_the_opening_attempt_is_weighed_like_any_other(self) -> None:
+    An earlier version applied the rule to the opening attempt against a
+    synthetic probability of zero, which denied a low-value task its first
+    selected attempt under a rule authorized only for additional expenditure.
+    """
+
+    def test_the_opening_attempt_carries_no_economic_decision(self) -> None:
         record = a_run([WON])
-        opening = record.steps[0].decision
-        self.assertEqual(opening.current_success_probability, Probability("0"))
-        self.assertEqual(
-            opening.post_escalation_success_probability, Probability("0.35")
-        )
+        self.assertIsNone(record.steps[0].decision)
+        self.assertTrue(record.steps[0].bought)
 
-    def test_a_task_worth_less_than_the_cheapest_attempt_buys_nothing(self) -> None:
-        # 0.35 x $0.05 = $0.0175, which does not exceed the $0.02 it costs.
+    def test_every_later_step_does_carry_one(self) -> None:
+        for step in a_run([LOST, PARTIAL, WON]).steps[1:]:
+            with self.subTest(step=step.number):
+                self.assertIsNotNone(step.decision)
+
+    def test_a_low_value_task_still_gets_its_opening_attempt(self) -> None:
+        # The rule may refuse to spend *more*; it does not gate the first
+        # attempt, which §2's pipeline places before any decision.
         record = a_run([WON], task=a_task(task_value=Money("0.05")))
-        self.assertIs(record.outcome, RunOutcome.STOPPED)
-        self.assertEqual(record.spent, Money("0"))
-        self.assertFalse(any(step.bought for step in record.steps))
+        self.assertTrue(record.steps[0].bought)
+        self.assertEqual(record.spent, Money("0.02"))
 
-    def test_a_worthless_task_buys_nothing(self) -> None:
-        record = a_run([WON], task=a_task(task_value=Money("0")))
+    def test_a_low_value_task_is_refused_further_spending(self) -> None:
+        record = a_run([LOST] + [PARTIAL] * 5, task=a_task(task_value=Money("0.30")))
         self.assertIs(record.outcome, RunOutcome.STOPPED)
-        self.assertEqual(record.spent, Money("0"))
+        self.assertEqual(record.spent, Money("0.02"))
 
 
 class TheBudgetCeilingTests(unittest.TestCase):
@@ -131,8 +141,39 @@ class TheBudgetCeilingTests(unittest.TestCase):
         self.assertTrue(record.remaining.is_positive)
 
 
-class EveryStrategyIsConsideredTests(unittest.TestCase):
-    def test_a_refusal_ends_a_strategy_not_the_run(self) -> None:
+class AStopTerminatesTheRunTests(unittest.TestCase):
+    """§2.5: "Terminate and report the task incomplete." Not a suggestion.
+
+    An earlier version treated a Stop as "skip this candidate", which turned the
+    rule's only refusal into advice and let a run continue — and even succeed —
+    after being told to stop.
+    """
+
+    def test_a_value_condition_stop_ends_the_run(self) -> None:
+        record = a_run([LOST] + [PARTIAL] * 5, task=a_task(task_value=Money("0.30")))
+        self.assertIs(record.outcome, RunOutcome.STOPPED)
+        last = record.steps[-1]
+        self.assertIs(last.decision.decision, Decision.STOP)
+        self.assertFalse(last.bought)
+
+    def test_nothing_is_bought_after_a_stop(self) -> None:
+        record = a_run([LOST] + [PARTIAL] * 5, task=a_task(task_value=Money("0.30")))
+        stopped_at = next(
+            i for i, s in enumerate(record.steps)
+            if s.decision is not None and s.decision.decision is Decision.STOP
+        )
+        self.assertEqual(stopped_at, len(record.steps) - 1)
+
+    def test_a_budget_condition_stop_ends_the_run(self) -> None:
+        record = a_run([LOST] * 6, task=a_task(budget=Money("0.09")))
+        self.assertIs(record.outcome, RunOutcome.STOPPED)
+        self.assertIn(
+            FailedCondition.BUDGET, record.steps[-1].decision.failed_conditions
+        )
+
+
+class SelectionPassesOverWhatIsNotWorthRulingOnTests(unittest.TestCase):
+    def test_a_useless_candidate_is_passed_over_in_selection(self) -> None:
         # Progressive Escalation offers no gain over an escalated Direct Attempt
         # (both 0.55) and is refused, but Exhaustive Attempt at 0.75 is still
         # worth buying. Stopping at the first refusal would leave the task
@@ -142,28 +183,37 @@ class EveryStrategyIsConsideredTests(unittest.TestCase):
         # run stopped there it would leave the task unfinished with $1.90
         # unspent — but Exhaustive Attempt at 0.75 is still worth buying, and
         # it succeeds.
+        # Progressive Escalation offers 0.55 against 0.55 already achieved, so
+        # selection never offers it to the rule — a Stop would have ended the
+        # run. It is recorded as passed over, and Exhaustive Attempt is chosen.
         record = a_run([LOST, PARTIAL, WON])
         names = [step.strategy_name for step in record.steps]
         self.assertIn("Exhaustive Attempt", names)
+        self.assertNotIn("Progressive Escalation", names)
         self.assertTrue(record.succeeded)
-        refused = [s for s in record.steps if not s.bought]
-        self.assertTrue(refused, "the run should have refused at least one purchase")
-        self.assertNotEqual(refused[0].number, len(record.steps))
+        self.assertIn("Passed over", record.steps[-1].selection_reason)
+        self.assertIn("Progressive Escalation", record.steps[-1].selection_reason)
 
     def test_a_strategy_is_never_tried_twice(self) -> None:
         record = a_run([PARTIAL] * 8)
         seen = [(s.strategy_name, s.escalating) for s in record.steps]
         self.assertEqual(len(seen), len(set(seen)))
 
-    def test_a_run_ends_when_every_strategy_is_exhausted(self) -> None:
+    def test_a_run_ends_when_nothing_is_left_to_select(self) -> None:
         record = a_run([PARTIAL] * 8, task=a_task(budget=Money("100.00")))
         self.assertIs(record.outcome, RunOutcome.STOPPED)
-        self.assertIn("Every strategy has been tried", record.reason)
 
-    def test_no_strategies_at_all_stops_immediately(self) -> None:
+    def test_no_strategies_at_all_stops_with_a_recorded_reason(self) -> None:
+        # §2.6: the record must say why, even when nothing was attempted.
         record = a_run([], strategies=())
         self.assertIs(record.outcome, RunOutcome.STOPPED)
-        self.assertEqual(record.steps, ())
+        self.assertEqual(len(record.steps), 1)
+        self.assertIn("No strategy is affordable", record.steps[0].selection_reason)
+
+    def test_an_unaffordable_budget_records_why_nothing_happened(self) -> None:
+        record = a_run([], task=a_task(budget=Money("0.01")))
+        self.assertEqual(len(record.as_dict()["steps"]), 1)
+        self.assertIn("affordable", record.as_dict()["steps"][0]["selection_reason"])
 
 
 class DeterminismTests(unittest.TestCase):
@@ -178,15 +228,19 @@ class DeterminismTests(unittest.TestCase):
 class TheRunRecordTests(unittest.TestCase):
     """Criterion 14 and §2.6: every decision recomputable from the record."""
 
-    def test_every_step_carries_the_decision_that_produced_it(self) -> None:
+    def test_every_step_records_why_its_candidate_was_selected(self) -> None:
+        # §2.6 requires "the strategy chosen and why", not only the economics.
         for step in a_run([LOST, PARTIAL, WON]).steps:
             with self.subTest(step=step.number):
-                self.assertIsNotNone(step.decision)
-                self.assertTrue(step.decision.reason)
+                self.assertTrue(step.selection_reason)
+
+    def test_the_record_names_what_selection_passed_over(self) -> None:
+        record = a_run([LOST, PARTIAL, WON])
+        self.assertIn("Passed over", record.steps[-1].selection_reason)
 
     def test_a_step_has_an_attempt_only_if_it_bought_one(self) -> None:
-        record = a_run([LOST], task=a_task(budget=Money("0.09")))
-        for step in record.steps:
+        record = a_run([LOST] * 6, task=a_task(budget=Money("0.09")))
+        for step in (s for s in record.steps if s.decision is not None):
             with self.subTest(step=step.number):
                 if step.decision.decision is Decision.STOP:
                     self.assertIsNone(step.attempt)
@@ -196,7 +250,7 @@ class TheRunRecordTests(unittest.TestCase):
                     self.assertIsNotNone(step.evaluation)
 
     def test_every_decision_can_be_recomputed_from_the_record(self) -> None:
-        for step in a_run([LOST, PARTIAL, WON]).steps:
+        for step in (s for s in a_run([LOST, PARTIAL, WON]).steps if s.decision):
             with self.subTest(step=step.number):
                 d = step.decision
                 change = (
@@ -231,15 +285,53 @@ class TheJsonRecordTests(unittest.TestCase):
         # A JSON number would be parsed as floating point by whoever reads it,
         # and an amount that arrives slightly wrong is the failure the money
         # type exists to prevent.
-        data = a_run([WON]).as_dict()
+        data = a_run([LOST, PARTIAL, WON]).as_dict()
         self.assertIsInstance(data["spent"], str)
         self.assertIsInstance(data["task"]["budget"], str)
         self.assertIsInstance(
-            data["steps"][0]["decision"]["incremental_expected_value"], str
+            data["steps"][1]["decision"]["incremental_expected_value"], str
+        )
+
+    def test_the_json_records_which_condition_failed(self) -> None:
+        # Removing failed_conditions from the JSON left all 33 loop and CLI
+        # tests passing: the "carries everything" test checked only the six
+        # numbers, and the recomputation test only the verdict. §2.5 requires a
+        # Stop to record which condition failed, so it is asserted directly.
+        record = a_run([LOST] * 6, task=a_task(budget=Money("0.09")))
+        stops = [
+            step for step in record.as_dict()["steps"]
+            if step["decision"] and step["decision"]["verdict"] == "stop"
+        ]
+        self.assertTrue(stops, "this scenario should end in a stop")
+        for step in stops:
+            with self.subTest(step=step["number"]):
+                self.assertIn("failed_conditions", step["decision"])
+                self.assertTrue(
+                    step["decision"]["failed_conditions"],
+                    "a stop must say which condition failed",
+                )
+                for condition in step["decision"]["failed_conditions"]:
+                    self.assertIn(condition, {"budget", "value"})
+
+    def test_an_escalate_records_no_failed_conditions(self) -> None:
+        record = a_run([LOST, PARTIAL, WON])
+        for step in record.as_dict()["steps"]:
+            if step["decision"] and step["decision"]["verdict"] == "escalate":
+                with self.subTest(step=step["number"]):
+                    self.assertEqual(step["decision"]["failed_conditions"], [])
+
+    def test_a_value_stop_and_a_budget_stop_are_distinguishable_in_json(self) -> None:
+        by_value = a_run([LOST] + [PARTIAL] * 5, task=a_task(task_value=Money("0.30")))
+        by_budget = a_run([LOST] * 6, task=a_task(budget=Money("0.09")))
+        self.assertIn(
+            "value", by_value.as_dict()["steps"][-1]["decision"]["failed_conditions"]
+        )
+        self.assertIn(
+            "budget", by_budget.as_dict()["steps"][-1]["decision"]["failed_conditions"]
         )
 
     def test_the_json_carries_everything_a_decision_was_made_from(self) -> None:
-        decision = a_run([WON]).as_dict()["steps"][0]["decision"]
+        decision = a_run([LOST, PARTIAL, WON]).as_dict()["steps"][1]["decision"]
         for quantity in (
             "current_success_probability",
             "post_escalation_success_probability",
@@ -253,6 +345,8 @@ class TheJsonRecordTests(unittest.TestCase):
 
     def test_a_decision_can_be_recomputed_from_the_json_alone(self) -> None:
         for step in a_run([LOST, PARTIAL, WON]).as_dict()["steps"]:
+            if step["decision"] is None:
+                continue
             with self.subTest(step=step["number"]):
                 d = step["decision"]
                 change = Decimal(d["post_escalation_success_probability"]) - Decimal(

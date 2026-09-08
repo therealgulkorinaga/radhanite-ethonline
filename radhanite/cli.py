@@ -58,12 +58,16 @@ SCENARIOS: tuple[tuple[str, str, list[Observation]], ...] = (
 def main(argv: list[str] | None = None) -> int:
     """Run every scenario, print what happened, and write the records."""
     destination = Path(argv[0]) if argv else Path("runs")
-    for number, (name, blurb, script) in enumerate(SCENARIOS, start=1):
-        record = run(TASK, DECLARED_STRATEGIES, ScriptedSimulator(script))
-        path = record.write(destination / f"run-{number:03d}.json")
+    for name, blurb, script in SCENARIOS:
+        # run() writes the record itself — §2.6 and criterion 14 require every
+        # run to produce one, not only the runs whose caller remembers to ask.
+        record = run(
+            TASK, DECLARED_STRATEGIES, ScriptedSimulator(script),
+            record_directory=destination,
+        )
         print(f"\n{'=' * 72}\n{name} — {blurb}\n{'=' * 72}")
         print(record)
-        print(f"  written to {path}")
+    print(f"\nRecords written to {destination}/")
     return 0
 
 

@@ -2,32 +2,39 @@
 
 TASK-001 §5 deliverable 1, §2.6, and acceptance criteria 1, 12 and 14.
 
-The loop is deliberately thin. Every part of it was built and reviewed
-separately, and this only arranges them:
+The loop follows §2's pipeline in the order §2 gives it:
 
-    select a strategy the budget can afford        (§2.2)
-    ask whether buying it is economically justified (§2.5)
-    execute it                                      (§2.3)
-    judge the result against the success condition  (§2.4)
-    repeat, or stop
+    task
+      → deterministic strategy selection   (§2.2)
+      → simulated execution                (§2.3)
+      → outcome evaluation                 (§2.4)
+      → economic escalation/stop decision  (§2.5)
+      → run record                         (§2.6)
 
-**Every purchase is weighed before it is made**, including the first. There is
-no free opening attempt: buying the first attempt raises the chance of success
-from nothing to whatever that strategy declares, which is exactly the question
-§2.5's rule answers. A task worth a penny does not get a two-penny attempt
-merely because it is the first one.
+Three things about that order are load-bearing, and an earlier version of this
+module got all three wrong.
 
-**Moving to a dearer strategy is weighed by the same rule.** When a strategy is
-exhausted, the question "is the next, dearer strategy worth buying?" is the same
-economic question as "is escalating worth it?" — how much would this purchase
-improve the chance of success, and is that worth more than it costs. The rule
-authorized in §2.5 is applied unchanged rather than a second rule being invented
-for the purpose.
+**The escalation rule runs after a verdict, never before one.** §2.5 makes its
+decision "from the verdict, the spend so far, and the remaining budget". Before
+the opening attempt there is no verdict, so there is nothing for it to decide.
+The opening attempt is selected and executed; the rule first speaks when the
+first attempt has been judged.
 
-**The budget is spent through a ledger that refuses to go below zero.** The
-money type deliberately permits negative amounts, so it cannot catch an
-overspend; the review of PR-006 noted that a running balance would have to
-enforce this itself, and this is where that happens.
+**A Stop decision stops the run.** §2.5 says "terminate and report the task
+incomplete", and PREREQ-001 §5.4 says the same. A Stop cannot be reinterpreted
+as "skip this one and try another" — that would turn the rule's only refusal
+into a suggestion.
+
+**Selection chooses the next action; the rule then judges that one action.**
+Because a Stop terminates, the loop must not offer the rule a candidate it means
+to skip. Selection therefore picks the best next purchase available — the first,
+in declared order, that is affordable and offers a better chance of success than
+has already been achieved — and §2.5 rules on that single candidate.
+
+The budget is spent through a ledger that refuses to go below zero. `Money`
+permits negative amounts by design, so it cannot catch an overspend; the review
+of PR-006 noted that a running balance would have to enforce this itself, and
+this is where that happens.
 """
 
 from __future__ import annotations
@@ -106,17 +113,21 @@ class _Ledger:
 @refuse_rehydration
 @dataclass(frozen=True, slots=True)
 class Step:
-    """One purchase considered, and what came of it.
+    """One action the loop took, and everything behind it.
 
-    A step always has a decision. It has an attempt and an evaluation only if
-    that decision was to spend — which is what makes the record show *why* every
-    purchase happened, and why the run stopped when it did.
+    `selection_reason` records **why this candidate** — §2.6 requires "the
+    strategy chosen and why", and a record that showed only the economic verdict
+    would leave a reader unable to audit how the candidate was arrived at.
+
+    `decision` is `None` for the opening attempt only. §2.5 decides from a
+    verdict, and before the first attempt there is none.
     """
 
     number: int
-    strategy_name: str
+    strategy_name: str | None
     escalating: bool
-    decision: EscalationDecision
+    selection_reason: str
+    decision: EscalationDecision | None = None
     attempt: Attempt | None = None
     evaluation: Evaluation | None = None
 
@@ -125,14 +136,15 @@ class Step:
         return self.attempt is not None
 
     def __str__(self) -> str:
+        if self.strategy_name is None:
+            return f"{self.number}. {self.selection_reason}"
         stage = "escalate" if self.escalating else "start"
+        head = f"{self.number}. {self.strategy_name} ({stage}) — {self.selection_reason}"
+        if self.decision is not None:
+            head += f" — {self.decision.reason}"
         if not self.bought:
-            return f"{self.number}. {self.strategy_name} ({stage}) — {self.decision.reason}"
-        return (
-            f"{self.number}. {self.strategy_name} ({stage}) — "
-            f"{self.decision.reason} → {self.attempt.observation.note} → "
-            f"{self.evaluation.reason}"
-        )
+            return head
+        return f"{head} → {self.attempt.observation.note} → {self.evaluation.reason}"
 
 
 @refuse_rehydration
@@ -203,12 +215,21 @@ class RunRecord:
 
 
 def _step_as_dict(step: Step) -> dict:
-    decision = step.decision
-    record = {
+    record: dict = {
         "number": step.number,
         "strategy": step.strategy_name,
         "escalating": step.escalating,
-        "decision": {
+        # §2.6 requires the strategy chosen *and why*. Without this a reader can
+        # recheck the economics but cannot audit how the candidate was arrived
+        # at, or what was passed over to reach it.
+        "selection_reason": step.selection_reason,
+        "decision": None,
+        "attempt": None,
+        "evaluation": None,
+    }
+    if step.decision is not None:
+        decision = step.decision
+        record["decision"] = {
             "verdict": decision.decision.value,
             "reason": decision.reason,
             "failed_conditions": [c.value for c in decision.failed_conditions],
@@ -223,10 +244,7 @@ def _step_as_dict(step: Step) -> dict:
             "incremental_expected_value": str(
                 decision.incremental_expected_value.amount
             ),
-        },
-        "attempt": None,
-        "evaluation": None,
-    }
+        }
     if step.attempt is not None:
         record["attempt"] = {
             "cost": str(step.attempt.cost.amount),
@@ -243,100 +261,228 @@ def _step_as_dict(step: Step) -> dict:
     return record
 
 
+@dataclass(frozen=True, slots=True)
+class _Candidate:
+    """One purchase that could be made next."""
+
+    strategy: Strategy
+    escalating: bool
+
+    @property
+    def cost(self) -> Money:
+        return (
+            self.strategy.escalation_cost
+            if self.escalating
+            else self.strategy.initial_cost
+        )
+
+    @property
+    def offers(self) -> Probability:
+        return (
+            self.strategy.escalated_success_probability
+            if self.escalating
+            else self.strategy.initial_success_probability
+        )
+
+    @property
+    def stage(self) -> str:
+        return "escalate" if self.escalating else "start"
+
+
+def _next_action(
+    available: list[_Candidate], achieved: Probability, remaining: Money
+) -> tuple[_Candidate | None, str]:
+    """Choose what to do next, by fixed rules, and say why.
+
+    The first candidate in declared order that is **affordable** and **offers a
+    better chance than has already been achieved**.
+
+    Both conditions belong to selection rather than to §2.5. A candidate that
+    cannot be afforded, or that offers nothing new, is not a purchase the rule
+    should be asked to rule on — because §2.5's Stop terminates the run, so
+    offering it a candidate meant to be skipped would turn its refusal into a
+    suggestion.
+    """
+    passed_over: list[str] = []
+    for candidate in available:
+        if candidate.offers <= achieved:
+            passed_over.append(
+                f"{candidate.strategy.name} ({candidate.stage}) offers "
+                f"{candidate.offers} against {achieved} already achieved"
+            )
+            continue
+        if candidate.cost > remaining:
+            passed_over.append(
+                f"{candidate.strategy.name} ({candidate.stage}) costs "
+                f"{candidate.cost} and only {remaining} remains"
+            )
+            continue
+        reason = (
+            f"First in declared order that is affordable and improves on what "
+            f"has been achieved: costs {candidate.cost} of {remaining} "
+            f"remaining, and offers {candidate.offers} against {achieved}."
+        )
+        if passed_over:
+            reason += " Passed over: " + "; ".join(passed_over) + "."
+        return candidate, reason
+
+    if not passed_over:
+        return None, "Nothing remains untried."
+    return None, "Nothing left is worth selecting. " + "; ".join(passed_over) + "."
+
+
+def _cheapest(available: list[_Candidate]) -> _Candidate | None:
+    return min(available, key=lambda c: c.cost.amount, default=None)
+
+
 def run(
     task: Task,
     strategies: Sequence[Strategy],
     simulator: ScriptedSimulator,
+    record_directory: str | Path | None = "runs",
 ) -> RunRecord:
-    """Attempt a task until it succeeds or is not worth continuing.
+    """Attempt a task until it succeeds or continuing is not worth the money.
 
-    Returns a record of every decision, whether or not the task was completed.
+    Writes the record as JSON into `record_directory`, which criterion 14 and
+    §2.6 require of every run. Pass `None` to skip writing — used by tests that
+    have no business touching the filesystem.
+
     A run that stops without succeeding is not an error: it is the system
-    declining to spend more on something not worth it.
+    declining to spend more on something not worth it (PREREQ-001 §5.4).
     """
     if not isinstance(task, Task):
         raise TypeError(f"task must be a Task, got {type(task).__name__}.")
+    if isinstance(strategies, (str, bytes)) or not isinstance(strategies, Sequence):
+        # select() refuses unordered collections, but run() used to convert to a
+        # list before calling it, which slipped straight past that guard: a set
+        # of strategies gave a different first choice on different hash seeds.
+        raise TypeError(
+            "strategies must be an ordered sequence, not "
+            f"{type(strategies).__name__}. Selection depends on declared order, "
+            "so an unordered collection cannot produce a deterministic run."
+        )
 
     ledger = _Ledger(task.budget)
-    achieved = _NOTHING_ATTEMPTED
-    untried = list(strategies)
     steps: list[Step] = []
+    available = [_Candidate(strategy, False) for strategy in strategies]
 
-    while untried:
-        strategy = select(untried, ledger.remaining)
-        if strategy is None:
-            return _finish(
-                task, RunOutcome.STOPPED, steps, ledger,
-                f"Nothing affordable remains: {ledger.remaining} left, and no "
-                "untried strategy costs that little.",
+    # §2's pipeline opens with selection and execution. §2.5 decides from a
+    # verdict, and there is not one yet, so the rule is not consulted here.
+    opening = select(list(strategies), ledger.remaining)
+    if opening is None:
+        steps.append(
+            Step(
+                1, None, False,
+                f"No strategy is affordable: {ledger.remaining} remains and the "
+                "cheapest costs more than that. Nothing was attempted.",
             )
-        untried.remove(strategy)
-
-        # The opening attempt, weighed like any other purchase.
-        step, achieved, succeeded = _consider(
-            task, strategy, escalating=False, achieved=achieved,
-            ledger=ledger, simulator=simulator, number=len(steps) + 1,
         )
-        steps.append(step)
-        if succeeded:
-            return _finish(task, RunOutcome.SUCCEEDED, steps, ledger, step.evaluation.reason)
+        return _finish(task, RunOutcome.STOPPED, steps, ledger,
+                       steps[-1].selection_reason, record_directory)
 
-        if step.bought:
-            # Escalating within the same strategy.
-            step, achieved, succeeded = _consider(
-                task, strategy, escalating=True, achieved=achieved,
-                ledger=ledger, simulator=simulator, number=len(steps) + 1,
+    candidate = _Candidate(opening, False)
+    step, achieved = _buy(task, candidate, ledger, simulator, len(steps) + 1,
+                          selection_reason=(
+                              f"Opening attempt: first strategy in declared order "
+                              f"affordable within {ledger.remaining}. §2.5 is not "
+                              "consulted before an attempt has been judged."
+                          ),
+                          decision=None)
+    steps.append(step)
+    if step.evaluation.succeeded:
+        return _finish(task, RunOutcome.SUCCEEDED, steps, ledger,
+                       step.evaluation.reason, record_directory)
+    available = _advance(available, candidate)
+
+    while True:
+        candidate, why = _next_action(available, achieved, ledger.remaining)
+
+        if candidate is None:
+            # §2.5 must still speak when something untried remains, so that the
+            # record carries the condition that ended the run rather than only
+            # a sentence about it.
+            fallback = _cheapest(available)
+            if fallback is not None:
+                decision = decide(
+                    current_success_probability=achieved,
+                    post_escalation_success_probability=fallback.offers,
+                    task_value=task.task_value,
+                    escalation_cost=fallback.cost,
+                    remaining_budget=ledger.remaining,
+                )
+                steps.append(
+                    Step(len(steps) + 1, fallback.strategy.name,
+                         fallback.escalating, why, decision)
+                )
+                return _finish(task, RunOutcome.STOPPED, steps, ledger,
+                               decision.reason, record_directory)
+            steps.append(Step(len(steps) + 1, None, False, why))
+            return _finish(task, RunOutcome.STOPPED, steps, ledger, why,
+                           record_directory)
+
+        decision = decide(
+            current_success_probability=achieved,
+            post_escalation_success_probability=candidate.offers,
+            task_value=task.task_value,
+            escalation_cost=candidate.cost,
+            remaining_budget=ledger.remaining,
+        )
+        if decision.decision is Decision.STOP:
+            # §2.5: "Terminate and report the task incomplete." A Stop is not a
+            # suggestion to try something else.
+            steps.append(
+                Step(len(steps) + 1, candidate.strategy.name,
+                     candidate.escalating, why, decision)
             )
-            steps.append(step)
-            if succeeded:
-                return _finish(task, RunOutcome.SUCCEEDED, steps, ledger, step.evaluation.reason)
+            return _finish(task, RunOutcome.STOPPED, steps, ledger,
+                           decision.reason, record_directory)
 
-        # A refusal ends this strategy, not the run. A dearer strategy may still
-        # be worth buying: the rule weighs each purchase on its own merits, and
-        # the cheapest option being a bad buy says nothing about the others.
-        # Stopping here would leave money unspent on a task still worth
-        # finishing, which is the opposite of the mistake §2.5 guards against.
-
-    return _finish(
-        task, RunOutcome.STOPPED, steps, ledger,
-        "Every strategy has been tried or refused; none of what remains is "
-        f"worth buying, and {ledger.remaining} of the budget is unspent.",
-    )
+        step, achieved = _buy(task, candidate, ledger, simulator,
+                              len(steps) + 1, why, decision)
+        steps.append(step)
+        if step.evaluation.succeeded:
+            return _finish(task, RunOutcome.SUCCEEDED, steps, ledger,
+                           step.evaluation.reason, record_directory)
+        available = _advance(available, candidate)
 
 
-def _consider(
+def _advance(available: list[_Candidate], bought: _Candidate) -> list[_Candidate]:
+    """Retire a candidate, and open its escalation if it had one."""
+    position = available.index(bought)
+    remaining = available[:position] + available[position + 1:]
+    if not bought.escalating:
+        remaining.insert(position, _Candidate(bought.strategy, True))
+    return remaining
+
+
+def _buy(
     task: Task,
-    strategy: Strategy,
-    *,
-    escalating: bool,
-    achieved: Probability,
+    candidate: _Candidate,
     ledger: _Ledger,
     simulator: ScriptedSimulator,
     number: int,
-) -> tuple[Step, Probability, bool]:
-    """Weigh one purchase, and make it if the rule says so."""
-    cost = strategy.escalation_cost if escalating else strategy.initial_cost
-    offered = (
-        strategy.escalated_success_probability
-        if escalating
-        else strategy.initial_success_probability
-    )
-
-    decision = decide(
-        current_success_probability=achieved,
-        post_escalation_success_probability=offered,
-        task_value=task.task_value,
-        escalation_cost=cost,
-        remaining_budget=ledger.remaining,
-    )
-    if decision.decision is Decision.STOP:
-        return Step(number, strategy.name, escalating, decision), achieved, False
-
-    ledger.spend(cost)
-    attempt = simulator.execute(strategy, escalated=escalating)
+    selection_reason: str,
+    decision: EscalationDecision | None,
+) -> tuple[Step, Probability]:
+    """Make the purchase, execute it, and judge the result."""
+    ledger.spend(candidate.cost)
+    attempt = simulator.execute(candidate.strategy, escalated=candidate.escalating)
     evaluation = evaluate(attempt, task.success_condition)
-    step = Step(number, strategy.name, escalating, decision, attempt, evaluation)
-    return step, offered, evaluation.succeeded
+    step = Step(
+        number, candidate.strategy.name, candidate.escalating,
+        selection_reason, decision, attempt, evaluation,
+    )
+    return step, candidate.offers
+
+
+def _next_record_number(directory: Path) -> int:
+    existing = sorted(directory.glob("run-*.json")) if directory.exists() else []
+    numbers = []
+    for path in existing:
+        stem = path.stem.removeprefix("run-")
+        if stem.isdigit():
+            numbers.append(int(stem))
+    return max(numbers, default=0) + 1
 
 
 def _finish(
@@ -345,8 +491,9 @@ def _finish(
     steps: list[Step],
     ledger: _Ledger,
     reason: str,
+    record_directory: str | Path | None,
 ) -> RunRecord:
-    return RunRecord(
+    record = RunRecord(
         task=task,
         outcome=outcome,
         steps=tuple(steps),
@@ -354,3 +501,7 @@ def _finish(
         remaining=ledger.remaining,
         reason=reason,
     )
+    if record_directory is not None:
+        directory = Path(record_directory)
+        record.write(directory / f"run-{_next_record_number(directory):03d}.json")
+    return record
