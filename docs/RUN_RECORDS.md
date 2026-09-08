@@ -49,17 +49,8 @@ Three scenarios are printed and written to `runs/` as `run-001.json` and so on.
       "number": 1,
       "strategy": "Direct Attempt",
       "escalating": false,
-      "decision": {
-        "verdict": "escalate",
-        "reason": "Escalate: spending $0.02 buys more than it costs \u2014 raising the chance of success from 0 to 0.35 on a $20.00 outcome is worth $7.00, against a cost of $0.02, with $2.00 of budget remaining.",
-        "failed_conditions": [],
-        "current_success_probability": "0",
-        "post_escalation_success_probability": "0.35",
-        "task_value": "20.00",
-        "escalation_cost": "0.02",
-        "remaining_budget": "2.00",
-        "incremental_expected_value": "7.0000"
-      },
+      "selection_reason": "Opening attempt: first strategy in declared order affordable within $2.00. \u00a72.5 is not consulted before an attempt has been judged.",
+      "decision": null,
       "attempt": {
         "cost": "0.02",
         "success_probability": "0.35",
@@ -70,12 +61,15 @@ Three scenarios are printed and written to `runs/` as `run-001.json` and so on.
         "verdict": "not_met",
         "success_condition": "tests pass",
         "reason": "Not met: the attempt achieved nothing, so \"tests pass\" was not met."
-      }
+      },
+      "remaining_budget": null,
+      "unusable": []
     },
     {
       "number": 2,
       "strategy": "Direct Attempt",
       "escalating": true,
+      "selection_reason": "First in declared order that is affordable and improves on what has been achieved: costs $0.08 of $1.98 remaining, and offers 0.55 against 0.35.",
       "decision": {
         "verdict": "escalate",
         "reason": "Escalate: spending $0.08 buys more than it costs \u2014 raising the chance of success from 0.35 to 0.55 on a $20.00 outcome is worth $4.00, against a cost of $0.08, with $1.98 of budget remaining.",
@@ -99,7 +93,9 @@ Three scenarios are printed and written to `runs/` as `run-001.json` and so on.
         "verdict": "not_met",
         "success_condition": "tests pass",
         "reason": "Not met: \"tests pass\" is not among what the attempt achieved (code compiles)."
-      }
+      },
+      "remaining_budget": null,
+      "unusable": []
     }
   ]
 }
@@ -132,9 +128,13 @@ Each step has:
 - **`strategy`** — which way of attempting the job was on the table.
 - **`escalating`** — `false` for a first attempt, `true` for the dearer
   follow-up attempt.
-- **`decision`** — whether to spend, and why. **The first step has none**: the
-  spending rule decides from a result, and before the first attempt there is not
-  one yet.
+- **`decision`** — whether to spend, and why. **A step has none exactly when
+  nothing has been judged yet**: the spending rule decides from a result. That is
+  the first attempt, and the case where nothing was ever affordable so no attempt
+  happened at all.
+- **`remaining_budget`** and **`unusable`** — filled in on the final step when
+  nothing was left worth choosing, listing each remaining option with its price,
+  what it offered, and which test it failed.
 - **`selection_reason`** — why *this* candidate was chosen, and what was passed
   over to reach it.
 - **`attempt`** — what happened, **or `null` if nothing was bought**.

@@ -498,8 +498,8 @@ could not detect the removal of a required field.
 | `CODEX-PR013-01` | The opening attempt is selected and executed without consulting §2.5, and its step carries no decision. A $0.05 task now gets its $0.02 opening attempt and is refused further spending. |
 | `CODEX-PR013-02` | A Stop terminates the run. Selection picks the next action — first in declared order that is affordable and improves on what has been achieved — and §2.5 rules on that one candidate. |
 | `CODEX-PR013-03` | `run()` refuses non-sequences itself rather than converting and slipping past `select()`'s guard. |
-| `CODEX-PR013-04` | `run()` writes the JSON record. The destination is configurable; `None` is for tests that should not touch the filesystem. The CLI no longer writes separately. |
-| `CODEX-PR013-05` | There is always a step. Where a candidate remains, §2.5 is applied to the cheapest so the failing condition is recorded; where none remains, the step records why nothing was attempted. The guide's unqualified claim is corrected. |
+| `CODEX-PR013-04` | `run()` writes the JSON record. The CLI no longer writes separately. *(The `None` option described here was later removed entirely — see the second-pass corrections.)* |
+| `CODEX-PR013-05` | There is always a step. *(The "cheapest candidate" rule described here was later replaced — see the second- and third-pass corrections.)* |
 | `CODEX-PR013-06` | Every step records the selection rule that chose it and names what was passed over. |
 | `CODEX-PR013-07` | Three tests assert `failed_conditions` directly. Verified by mutation: removing the field now fails four tests. |
 | `CODEX-PR013-08` | The sentence issued after the prompt block is restored to the record. |

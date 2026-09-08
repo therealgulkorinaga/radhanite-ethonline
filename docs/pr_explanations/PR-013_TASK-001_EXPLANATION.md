@@ -19,7 +19,7 @@ happen. **This completes the first authorized piece of work.**
 | `radhanite/run.py` | The loop, and the record of what it did |
 | `radhanite/cli.py` | A way to run it and see the result |
 | `radhanite/__main__.py` | Lets `python -m radhanite` work |
-| `tests/test_run.py` | 37 checks on the loop and the record |
+| `tests/test_run.py` | 52 checks on the loop and the record |
 | `tests/test_cli.py` | 6 checks on the entry point |
 | `docs/RUN_RECORDS.md` | A guide to reading a record, for a non-technical reader |
 | `radhanite/__init__.py` | Updated to say the task is complete |
@@ -28,13 +28,13 @@ happen. **This completes the first authorized piece of work.**
 | `docs/reviews/PR-013_CODEX_REVIEW.md` | The review prompt, committed before the review |
 | `docs/reviews/README.md` | Its row added to the index of reviews |
 
-Eleven files. The test count went from 183 to 226 — 43 new.
+Eleven files. The test count went from 183 to 241 — 58 new.
 
-This pull request was **rejected on review** and the loop was rebuilt. Eight
-problems were found. Two of them were mistakes of exactly the kind this document
-had flagged in advance as possible — decisions the specification did not force,
-which turned out to be wrong. The record is in
-`docs/reviews/PR-013_CODEX_REVIEW.md`.
+This pull request was **rejected three times** and the loop was rebuilt twice.
+Thirteen problems in total. Several were mistakes of exactly the kind this
+document flagged in advance as possible — decisions the specification did not
+force, which turned out to be wrong — and one was a fix that overcorrected into a
+different mistake. The record is in `docs/reviews/PR-013_CODEX_REVIEW.md`.
 
 ## 3. Why the change was needed
 
@@ -60,31 +60,38 @@ Three scenarios run against the same task — fix an issue, $2.00 to spend, wort
 $20.00 if finished, done when the tests pass. Here is the one that matters most:
 
 ```
-1. Direct Attempt (start) — Escalate: spending $0.02 buys more than it costs —
-   raising the chance of success from 0 to 0.35 on a $20.00 outcome is worth
-   $7.00, against a cost of $0.02, with $2.00 of budget remaining.
+1. Direct Attempt (start) — no economic decision: nothing has been judged yet,
+   so there is nothing for the spending rule to weigh.
    → nothing worked → Not met.
 
-2. Direct Attempt (escalate) — Escalate: spending $0.08 ... is worth $4.00,
-   against a cost of $0.08 → it builds, tests still red → Not met.
+2. Direct Attempt (escalate) — Escalate: raising the chance from 0.35 to 0.55 on
+   a $20.00 outcome is worth $4.00, against a cost of $0.08.
+   → nothing worked → Not met.
 
-3. Progressive Escalation (start) — Stop: it would not improve the chance of
-   success at all (still 0.55), so it is worth nothing against a cost of $0.10.
+3. Exhaustive Attempt (start) — Escalate: 0.55 to 0.75 is worth $4.00, against a
+   cost of $0.50. Passed over: Progressive Escalation offers 0.55 against 0.55
+   already achieved.
+   → nothing worked → Not met.
 
-4. Exhaustive Attempt (start) — Escalate: ... 0.55 to 0.75 ... is worth $4.00,
-   against a cost of $0.50 → nothing worked → Not met.
+4. Progressive Escalation (start) — Stop: it would not improve the chance of
+   success at all (still 0.75), so it is worth nothing against a cost of $0.10.
+   Also unusable: Exhaustive Attempt (escalate) costs $1.50 and only $1.40
+   remains.
 
-5. Exhaustive Attempt (escalate) — Stop: only $1.40 remains, which cannot cover
-   the $1.50 this would cost.
-
-STOPPED: none of what remains is worth buying, and $1.40 is unspent.
-spent $0.60 of $2.00
+STOPPED. spent $0.60 of $2.00, $1.40 unspent
 ```
 
 Read that again, because it is the whole product. It bought two cheap attempts.
-It **refused** a third that would not have improved anything. It bought a dearer
-one that would. Then it **stopped, with 70% of the money still there**, because
-what was left could not be afforded.
+It **passed over** one that would not have improved anything, while a better
+option remained. It bought that better one. Then, with nothing left worth
+choosing, it asked the spending rule about what remained and was **refused** —
+stopping with 70% of the money still there.
+
+Two steps are worth noticing. Step 1 has **no economic decision at all**, on
+purpose: the rule decides from a result, and before the first attempt there is
+not one. Step 4 is the opposite — nothing was left worth choosing, so the rule
+was asked about the first remaining option and refused it. That refusal is what
+ended the run, and it is the product working.
 
 Nobody told it to stop. It worked out that stopping was the right answer.
 
@@ -203,18 +210,24 @@ $ python --version
 Python 3.12.13
 
 $ python -m unittest discover
-Ran 226 tests in 0.055s
+Ran 241 tests in 0.101s
 OK
 ```
 
-43 tests are new: 37 on the loop and record, 6 on the entry point. The ones that
+58 tests are new: 52 on the loop and record, 6 on the entry point. The ones that
 matter most:
 
 - The first attempt carries no money decision, and every later one does.
 - A low-value job still gets its first attempt, and is then refused further
   spending — the corrected behaviour, where the original refused it outright.
 - A refusal ends the run. Nothing is bought after one, checked for both reasons
-  a refusal can happen.
+  a refusal can happen — and both reasons are produced by the spending rule
+  itself rather than by the step that chooses what to consider.
+- A decision is absent **exactly when nothing has been judged yet**, checked
+  across six scenarios and verified by deliberately issuing one too early.
+- A list of options that changes while being read cannot desynchronise a run.
+- Eight runs into one directory leave eight records; a claimed name is never
+  handed out twice.
 - An option offering no improvement is passed over while *choosing*, and the
   record names it as passed over.
 - Spending never exceeds the budget, across 32 combinations of scenario and
