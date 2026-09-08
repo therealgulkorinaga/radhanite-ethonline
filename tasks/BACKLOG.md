@@ -33,7 +33,7 @@ otherwise, exactly as `BACKLOG.md`'s rules require.
 | ID | Concept | Specified in | Status |
 |---|---|---|---|
 | BL-01 | Real inference execution via OpenRouter | [TASK-002](TASK-002_REAL_INFERENCE_VIA_OPENROUTER.md) | **UNAUTHORIZED** |
-| BL-02 | Wallet and permission model via Privy | [TASK-003](TASK-003_AGENT_WALLET_AND_PERMISSIONS_VIA_PRIVY.md) | **UNAUTHORIZED** |
+| BL-02 | Programmable authority over the agent, via Privy | [TASK-003](TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md) | **UNAUTHORIZED** |
 | BL-03 | Agent budget denominated in a real token | [TASK-004](TASK-004_AGENTIC_PAYMENTS_VIA_HEDERA_AND_X402.md) | **UNAUTHORIZED** |
 | BL-04 | The agent paying for its own purchases, over x402 on Hedera | [TASK-004](TASK-004_AGENTIC_PAYMENTS_VIA_HEDERA_AND_X402.md) | **UNAUTHORIZED** |
 | BL-04b | Radhanite consumed as a paid machine service — the inbound direction | *(none)* | **UNAUTHORIZED** |
