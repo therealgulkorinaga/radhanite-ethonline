@@ -200,14 +200,14 @@ Recorded verbatim, as returned. Not summarized, softened, or filtered.
 > 5. Direct float, bool, `numpy.float64`, `numpy.int64`, and `Fraction` inputs were rejected. Ordinary decimal drift examples pass, but non-finite and high-precision cases expose defects below. `Money(Decimal(0.1))` is accepted because the float has already been converted before reaching `Money`.
 > 6. Signed `Money` is defensible: worsening probabilities require a negative intermediate expected value. Negative initial budgets and task values are rejected. No remaining-balance type exists yet, so future run-state code must enforce non-negative balances at that boundary.
 > 7. Most tests are real: mutations to float/bool rejection, addition, budget validation, and budget/value separation caused relevant failures. One test does not test what its name claims.
-> 8. The package docstring correctly distinguishes implemented from intended behavior, subject to the false "exact" claim below. Other inaccurate comments remain.
+> 8. The package docstring correctly distinguishes implemented from intended behavior, subject to the false “exact” claim below. Other inaccurate comments remain.
 > 9. All four commits explicitly map to TASK-001.
 >
 > `CODEX-PR006-01`
 >
 > File and line: `radhanite/task.py:25-34,75-83`; `tests/test_task.py:49-62`
 >
-> `headroom_ratio` is a public, tested derived metric with no consumer and no role in TASK-001. The authorized escalation rule deliberately uses budget and task value separately and marginally; it never uses their total-value ratio. "Inspection-only convenience" is not a specified need, and PREREQ-001 §8 requires inspection of actual economic decisions, not unrelated derived metrics. This violates ARCHITECTURE.md §6 item 7.
+> `headroom_ratio` is a public, tested derived metric with no consumer and no role in TASK-001. The authorized escalation rule deliberately uses budget and task value separately and marginally; it never uses their total-value ratio. “Inspection-only convenience” is not a specified need, and PREREQ-001 §8 requires inspection of actual economic decisions, not unrelated derived metrics. This violates ARCHITECTURE.md §6 item 7.
 >
 > `CODEX-PR006-02`
 >
@@ -245,13 +245,13 @@ Recorded verbatim, as returned. Not summarized, softened, or filtered.
 >
 > File and line: `radhanite/money.py:44-47`; `tests/test_money.py:68-72`; `docs/pr_explanations/PR-006_TASK-001_EXPLANATION.md:63-68`
 >
-> The negative-money justification says no improvement always produces a negative expected value. Equal current and post-escalation probabilities produce zero. TASK-001 §2.5 explicitly says "zero or negative." Signed intermediate amounts remain justified for a worsening probability, but the claim must preserve the equality case.
+> The negative-money justification says no improvement always produces a negative expected value. Equal current and post-escalation probabilities produce zero. TASK-001 §2.5 explicitly says “zero or negative.” Signed intermediate amounts remain justified for a worsening probability, but the claim must preserve the equality case.
 >
 > `CODEX-PR006-07`
 >
 > File and line: `tests/test_task.py:54-56`
 >
-> The comment claims that when task value is below budget, "the escalation rule will simply refuse to spend." That is false. The rule compares incremental expected value with incremental cost; total task value being below total budget does not prevent an inexpensive, high-improvement escalation. This contradicts TASK-001 §2.5's marginal rule and its requirement that budget and value serve separate conditions.
+> The comment claims that when task value is below budget, “the escalation rule will simply refuse to spend.” That is false. The rule compares incremental expected value with incremental cost; total task value being below total budget does not prevent an inexpensive, high-improvement escalation. This contradicts TASK-001 §2.5's marginal rule and its requirement that budget and value serve separate conditions.
 >
 > Rejected — `CODEX-PR006-01` violates ARCHITECTURE.md §6 item 7, and `CODEX-PR006-02` through `CODEX-PR006-05` depart from TASK-001 and PREREQ-001 input and economic-boundary requirements.
 
