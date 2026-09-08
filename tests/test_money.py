@@ -199,6 +199,16 @@ class PresentationTests(unittest.TestCase):
     def test_shows_two_places_by_default(self) -> None:
         self.assertEqual(str(Money("2")), "$2.00")
 
+    def test_drops_trailing_zeros(self) -> None:
+        # $20.00 x 0.30 produces $6.0000. The extra zeros are an artefact of how
+        # the amount was reached, not information about it, and TASK-001 §2.5
+        # states the worked example's figure as $6.00.
+        self.assertEqual(str(Money("20.00") * Decimal("0.30")), "$6.00")
+        self.assertEqual(str(Money("6.0000")), "$6.00")
+
+    def test_dropping_zeros_does_not_drop_real_precision(self) -> None:
+        self.assertEqual(str(Money("0.0000150")), "$0.000015")
+
     def test_keeps_sub_cent_precision(self) -> None:
         # Inference is priced well below a cent; rounding it away for display
         # would hide what was actually spent.
