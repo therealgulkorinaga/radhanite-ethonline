@@ -414,8 +414,12 @@ def run(
                     Step(len(steps) + 1, fallback.strategy.name,
                          fallback.escalating, why, decision)
                 )
-                return _finish(task, RunOutcome.STOPPED, steps, ledger,
-                               decision.reason, record_directory)
+                # The run's summary reason is the selection reason, which names
+                # every remaining candidate and why each was unusable. The §2.5
+                # decision is recorded on the step, but it speaks only about the
+                # cheapest leftover and so does not explain the run's ending.
+                return _finish(task, RunOutcome.STOPPED, steps, ledger, why,
+                               record_directory)
             steps.append(Step(len(steps) + 1, None, False, why))
             return _finish(task, RunOutcome.STOPPED, steps, ledger, why,
                            record_directory)

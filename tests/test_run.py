@@ -199,6 +199,15 @@ class SelectionPassesOverWhatIsNotWorthRulingOnTests(unittest.TestCase):
         seen = [(s.strategy_name, s.escalating) for s in record.steps]
         self.assertEqual(len(seen), len(set(seen)))
 
+    def test_the_summary_reason_explains_the_ending_not_the_cheapest_leftover(self) -> None:
+        # The recorded §2.5 decision speaks about whichever candidate was
+        # cheapest, which need not be the one whose unaffordability ended the
+        # run. The summary must name every remaining candidate and why.
+        record = a_run([LOST] * 6)
+        self.assertIn("Nothing left is worth selecting", record.reason)
+        self.assertIn("Exhaustive Attempt", record.reason)
+        self.assertIn("only", record.reason)
+
     def test_a_run_ends_when_nothing_is_left_to_select(self) -> None:
         record = a_run([PARTIAL] * 8, task=a_task(budget=Money("100.00")))
         self.assertIs(record.outcome, RunOutcome.STOPPED)
