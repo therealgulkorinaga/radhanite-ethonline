@@ -1,7 +1,7 @@
 # TASK-002 — Real inference via OpenRouter
 
-**Status:** Specified — **NOT AUTHORIZED**
-**Authorization:** None. This document does not permit implementation.
+**Status:** Specified, all decisions resolved — **NOT AUTHORIZED for implementation**
+**Authorization:** None. Its decisions are settled; the work itself still requires explicit authorization from the human product owner.
 **Traces to:** [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §5.1–5.2
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §3.1
 **Replaces backlog entry:** `BL-01`
@@ -86,6 +86,10 @@ checked, is `BL-07` and `BL-08`.
 7. Runs remain reproducible for testing: the real path is exercised against
    OpenRouter, and a recorded or stubbed path keeps the existing suite
    deterministic without network access.
+7a. Nothing claims the work was done. No output, record or document states or
+    implies that code was fixed or tests passed — §6.5 and `ARCHITECTURE.md §6`
+    item 9.
+7b. Only the dependencies §6.6 allows appear, and each is disclosed.
 8. Every decision remains recomputable from the run record.
 9. Nothing in §4 appears.
 10. Repository tests pass.
@@ -94,22 +98,64 @@ Criterion 7 matters more than it looks. TASK-001's entire value rests on runs
 being deterministic. A test suite that needs the network is a test suite that
 fails for reasons unrelated to the code.
 
-## 6. Open decisions — product owner input required
+## 6. Decisions
 
-1. **The overrun rule.** What happens when actual cost exceeds estimated and
-   the ceiling would break. Options include: pass a hard spend ceiling to the
-   provider so it cannot happen; permit the overrun and record a breach; or
-   treat the estimate as the charge and absorb the difference. This is a
-   product decision about what a budget *means*, not an implementation detail.
-2. **Where estimates come from.** Provider pricing multiplied by an expected
-   token count is the obvious answer, and the expected token count is another
-   declared constant unless something measures it — which would be `BL-06`.
-3. **Which models map to which strategies.** The three declared strategies
-   become real model choices with real prices. Those prices are facts, not
-   fixtures, and will move.
-4. **Whether declared probabilities survive contact with reality.** Once real
-   outcomes are observable, the declared figures will visibly disagree with
-   what happens. TASK-001 forbids updating them. Confirm that still holds.
+**All resolved by the human product owner.** The implementing agent does not
+reinterpret them.
+
+### 6.1 The overrun rule ✅
+
+**Reserve against a configured maximum cost before the call, and refuse the call
+if the provider cannot bound the charge within the remaining budget.**
+
+The ceiling is not relaxed and no overrun is absorbed. Where a bounded maximum
+cannot be established, the purchase does not happen — which is a refusal, not a
+failure, and is recorded as one.
+
+### 6.2 Where estimates come from ✅
+
+**Published provider pricing, multiplied by declared token assumptions.** The
+token assumption is a declared constant attached to a strategy, under the same
+rule as its probabilities.
+
+**Never learned from history.** Observing that calls have tended to cost more
+than assumed does not change the assumption; that is `BL-06`.
+
+### 6.3 Model mapping ✅
+
+**Fixed, explicit model identifiers**, one for each existing initial and
+escalated tier. No dynamic routing, and OpenRouter's own automatic routing is
+not the decision engine — Radhanite chooses the tier, and the identifier for
+that tier is declared.
+
+### 6.4 Declared probabilities ✅
+
+**They remain fixtures.** Real outcomes are recorded, and the declared figures
+are not updated from them. That the two will visibly disagree is expected and is
+not a defect: `BL-06` is where that gap is closed, and it is unauthorized.
+
+### 6.5 What may be claimed about success ✅
+
+**A model's output is evidence within a declared scenario, and nothing more.**
+
+This task makes the *spend* real. It does not make the *work* real: no
+repository is modified and no test runner executes (`BL-07`). Nothing in the
+code, the run record, the demonstration or the explanation may state or imply
+that Radhanite fixed code or that tests passed.
+
+The honest form is: **Radhanite executed real inference and then evaluated a
+declared scenario.** `ARCHITECTURE.md §6` item 9 makes departing from this a
+boundary violation.
+
+### 6.6 Dependencies ✅
+
+This task may introduce **only** what is required to call OpenRouter — in
+practice an HTTP client, or the official SDK if one exists and is verified.
+Nothing else, and each is disclosed in the pull request explanation, per
+`AI_BUILD_GOVERNANCE.md §2.2`.
+
+TASK-001's zero-dependency constraint binds TASK-001. It does not bind this
+task, and this task's allowance does not extend to any other.
 
 ## 7. Review notes
 
@@ -121,3 +167,9 @@ fails for reasons unrelated to the code.
   access.
 - Confirm probabilities are still declared and nothing infers them from
   observed outcomes.
+- Confirm nothing anywhere claims the work was done. Read the demonstration
+  output and the explanation with this specifically in mind: real inference
+  producing a plausible answer is not the work having been done.
+- Confirm no dependency beyond what §6.6 allows, and that each is disclosed.
+- Confirm the two-tier strategy model is unchanged, and that no one-shot or
+  parallel workflow has been approximated within it (`ARCHITECTURE.md §2.2`).

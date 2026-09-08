@@ -62,12 +62,31 @@ recorded separately rather than letting the two blur.
 | BL-10 | Human-facing UI for submitting tasks and reviewing run records | **UNAUTHORIZED** |
 | BL-11 | Verticals beyond software engineering | **UNAUTHORIZED** |
 | BL-12 | Several Radhanite agents under shared, externally granted authority | **UNAUTHORIZED** |
+| BL-13 | A strategy as an ordered plan of stages, rather than one attempt and one escalation | **UNAUTHORIZED** |
+| BL-14 | Radhanite hosting a paid x402 endpoint as hackathon test infrastructure | **UNAUTHORIZED** |
 
 ## Notes
 
 BL-05 and BL-06 are the natural successors to TASK-001's deterministic rules and
 are the most likely to be built by accident. They are explicitly excluded from
 TASK-001 in that task's §3, and remain unauthorized here.
+
+`BL-13` is what the intended three-strategy demonstration actually requires. A
+single premium attempt has no escalation, and parallel candidates followed by
+adjudication is several cheap calls and then a strong one — neither is
+expressible as one attempt plus one escalation. Approximating them in the
+two-tier model would make the recorded costs and probabilities describe
+something other than what happened, so the model has to change first, and
+changing it changes what escalation means and therefore the economic policy.
+That is why it is a task of its own rather than something an integration does on
+the way past.
+
+`BL-14` is distinct from `BL-04b`. `BL-04b` is Radhanite sold as a paid service —
+a product direction. `BL-14` is a seller endpoint stood up only so that the
+outbound purchase in TASK-004 has something real to buy from. If a bounty
+requires one, it is **hackathon test infrastructure and must be represented as
+such**, not allowed to become part of the product architecture by having been
+built.
 
 BL-12 is distinct from `BL-09`, and the difference is worth stating. `BL-09` is
 Radhanite dividing a budget across several tasks — one agent, many jobs. `BL-12`
