@@ -71,10 +71,14 @@ its policy controls actually work, is the first thing to establish — §7.1.
 
 ### 3.2 Where the money lives
 
-The wallet holds **USDC on Arc**, so that the agent's authority, its balance, and
-what it pays are all denominated in the same unit as its budget. This is where
-TASK-003 and the Circle integration meet: Privy supplies the wallet and the
-authority over it; Arc is the chain it operates on.
+The wallet is created **on Arc**, because that is where the budget will be
+denominated once [TASK-005](TASK-005_BUDGET_IN_REAL_USDC_ON_ARC.md) makes it
+real USDC.
+
+The division is deliberate. **This task establishes the account and who may
+spend from it**; TASK-005 makes the money in it real. Authority over an empty
+account is still authority, and it is testable on its own — a spend refused by
+policy is refused whether or not the balance was ever USDC.
 
 ## 4. What this makes possible that nothing else does
 

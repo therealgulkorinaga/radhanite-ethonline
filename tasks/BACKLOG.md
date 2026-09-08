@@ -34,9 +34,15 @@ otherwise, exactly as `BACKLOG.md`'s rules require.
 |---|---|---|---|
 | BL-01 | Real inference execution via OpenRouter | [TASK-002](TASK-002_REAL_INFERENCE_VIA_OPENROUTER.md) | **UNAUTHORIZED** |
 | BL-02 | Programmable authority over the agent, via Privy | [TASK-003](TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md) | **UNAUTHORIZED** |
-| BL-03 | Agent budget denominated in a real token | [TASK-004](TASK-004_AGENTIC_PAYMENTS_VIA_HEDERA_AND_X402.md) | **UNAUTHORIZED** |
+| BL-03 | Agent budget denominated in real USDC on Arc | [TASK-005](TASK-005_BUDGET_IN_REAL_USDC_ON_ARC.md) | **UNAUTHORIZED** |
 | BL-04 | The agent paying for its own purchases, over x402 on Hedera | [TASK-004](TASK-004_AGENTIC_PAYMENTS_VIA_HEDERA_AND_X402.md) | **UNAUTHORIZED** |
 | BL-04b | Radhanite consumed as a paid machine service — the inbound direction | *(none)* | **UNAUTHORIZED** |
+
+`BL-03` previously pointed at TASK-004, which does not mention Arc at all: the
+Circle work had been folded into a paragraph of TASK-003 as an aside, so a track
+being targeted had no task file, no acceptance criteria, and nothing a reader
+could point at. TASK-005 owns it now. TASK-003 establishes the wallet and the
+authority over it; TASK-005 makes the budget in that wallet real money.
 
 `BL-04` previously described only the inbound direction — other machines paying
 Radhanite. The outbound direction, Radhanite's agent paying for what it buys, is
