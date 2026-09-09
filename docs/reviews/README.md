@@ -38,6 +38,13 @@ One file per pull request reviewed, named for the pull request it concerns — n
 for the pull request that commits it. A review record for PR-003 is
 `PR-003_CODEX_REVIEW.md` even if it is committed later.
 
+**A merged pull request with no record still gets a row**, marked *(none)* and
+**Merged without review**. Without one, an unreviewed merge is invisible in this
+table and reads as a pull request that never existed — which is a stronger and
+less honest claim than an empty row. This is the same reasoning as
+`AI_BUILD_GOVERNANCE.md` §4.4's requirement to name the review agent even when
+it has not reviewed.
+
 If a reviewer other than Codex is ever used, substitute its name.
 
 ## Required structure
@@ -96,3 +103,7 @@ If a reviewer other than Codex is ever used, substitute its name.
 | [#15](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/15) | [PR-015](PR-015_CODEX_REVIEW.md) | **Rejected** → 3 P0 findings; `-01` corrected, `-02`/`-03` unresolved product decisions |
 | [#16](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/16) | [PR-016](PR-016_CODEX_REVIEW.md) | **Merged without review** — prompt committed, review never run |
 | [#17](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/17) | [PR-017](PR-017_CODEX_REVIEW.md) | **Approved with corrections** → 2 High, 1 Medium. Prompt and findings recorded verbatim, but **retrospectively** — the prompt was not committed before the review (§7.3 deviation, disclosed in the record). All 3 corrected |
+| [#18](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/18) | *(none)* | **Merged without review** — governance record correction |
+| [#19](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/19) | *(none)* | **Merged without review** — TASK-006 specification |
+| [#20](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/20) | *(none)* | **Merged without review** — TASK-006 authorization |
+| [#21](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/21) | [PR-021](PR-021_CODEX_REVIEW.md) | **Approved** → no findings. Prompt recorded **retrospectively** (§7.3 deviation) and the verbatim response was not supplied — both disclosed in the record |
