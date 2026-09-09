@@ -18,11 +18,14 @@ Implemented so far:
   must pass before a decision is made over it (TASK-006 §2.2)
 - ``radhanite.eligibility`` — whether one candidate may be bought, and what
   buying it would be worth (TASK-006 §2.3)
+- ``radhanite.selection`` — choosing one capability from an offer, or stopping
+  (TASK-006 §2.4, §2.5)
 
 TASK-001 is complete. TASK-006 — choosing among candidate capabilities rather
 than escalating through two fixed tiers — is authorized and partially built: the
-candidate model and the per-candidate eligibility rule exist; the ranking and
-the run-level termination safeguards do not yet. Nothing beyond those is authorized: no real inference, no
+the candidate model, the per-candidate eligibility rule and the ranking exist.
+The run loop that maintains the step count and the consumed identifiers does
+not. Nothing beyond those is authorized: no real inference, no
 wallet, no tokens, no interface, and no learning.
 
 Intended behaviour, once complete: Radhanite is given a task, a budget, a task
@@ -42,6 +45,7 @@ from radhanite.execution import Attempt, Observation, ScriptedSimulator
 from radhanite.money import CURRENCY, Money
 from radhanite.probability import Probability
 from radhanite.run import RunOutcome, RunRecord, Step, run
+from radhanite.selection import Selection, SelectionOutcome, select_capability
 from radhanite.strategy import DECLARED_STRATEGIES, Strategy, select
 from radhanite.task import Task
 
@@ -63,6 +67,8 @@ __all__ = [
     "Probability",
     "RunOutcome",
     "RunRecord",
+    "Selection",
+    "SelectionOutcome",
     "ScriptedSimulator",
     "Step",
     "Strategy",
@@ -74,5 +80,6 @@ __all__ = [
     "evaluate",
     "run",
     "select",
+    "select_capability",
     "validate_candidates",
 ]
