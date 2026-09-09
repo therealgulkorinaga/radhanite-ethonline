@@ -40,9 +40,11 @@ economic model.
 requires the run record to show why an alternative was *not* bought, and a
 record carrying figures only for the winner cannot answer that.
 
-**The last two conditions are not economic.** A consumed candidate and an
-exhausted step budget are the termination safeguards of §2.5, and a run record
-must not present them as judgements about value — see `Ineligibility`.
+**Three of the six conditions are not economic.** A free candidate, a consumed
+one, and an exhausted step budget are the termination safeguards of §2.5 A, B
+and C. A run record must not present them as judgements about value — see
+`Ineligibility`. A price of zero is not a cheap price: it is excluded so the
+loop is guaranteed to terminate, and the refusal says nothing about worth.
 """
 
 from __future__ import annotations
@@ -66,11 +68,19 @@ class Ineligibility(Enum):
     Several can fail at once, so an assessment carries a tuple of these rather
     than a single cause.
 
-    The first four are economic. `CONSUMED` and `STEP_CEILING` are the
-    termination safeguards of §2.5, and §8 requires a run record to keep that
-    distinction: a candidate refused because the run has bought enough already
-    was never assessed on its merits, and reporting it as though the economics
-    rejected it would claim a judgement that was never made.
+    Three are economic — `BUDGET`, `UPLIFT` and `VALUE` — and three are the
+    termination safeguards of §2.5: `COST_NOT_POSITIVE` (A),
+    `CONSUMED` (B) and `STEP_CEILING` (C).
+
+    §8 requires a run record to keep that distinction. A candidate refused
+    because the run has bought enough already, or because it is free, was never
+    assessed on its merits, and reporting it as though the economics rejected it
+    would claim a judgement that was never made.
+
+    `COST_NOT_POSITIVE` is the one that reads as economic and is not. A price of
+    zero is not a cheap price — §2.5 A excludes free candidates so that the loop
+    is guaranteed to terminate, and the refusal carries no view about whether
+    the candidate was worth having.
     """
 
     COST_NOT_POSITIVE = "cost_not_positive"
@@ -82,8 +92,12 @@ class Ineligibility(Enum):
 
     @property
     def is_economic(self) -> bool:
-        """False for the §2.5 termination safeguards."""
-        return self not in (Ineligibility.CONSUMED, Ineligibility.STEP_CEILING)
+        """False for the three §2.5 termination safeguards."""
+        return self not in (
+            Ineligibility.COST_NOT_POSITIVE,
+            Ineligibility.CONSUMED,
+            Ineligibility.STEP_CEILING,
+        )
 
 
 @refuse_rehydration
@@ -94,6 +108,13 @@ class Assessment:
     TASK-006 §8 requires every decision to be explicable after the fact. An
     assessment that cannot be recomputed from what it recorded does not satisfy
     that, so every input is carried here alongside the conclusion.
+
+    `consumed_candidate_ids` is the **normalized** set the answer was computed
+    against — sorted, de-duplicated, and frozen as a tuple. Sorted rather than
+    left as a set because a record whose contents reorder between identical runs
+    is not reproducible, which is the same reason `validate_candidates` refuses
+    an unordered offer. It holds identifiers and nothing else: consumption is by
+    stable candidate ID, and no notion of capability type exists here — §2.5a.
     """
 
     candidate: Candidate
@@ -103,6 +124,7 @@ class Assessment:
     current_success_probability: Probability
     task_value: Money
     remaining_budget: Money
+    consumed_candidate_ids: tuple[str, ...]
     capability_step_count: int
     max_capability_steps: int
     failed_conditions: tuple[Ineligibility, ...]
@@ -228,13 +250,26 @@ def assess(
         current_success_probability=current_success_probability,
         task_value=task_value,
         remaining_budget=remaining_budget,
+        consumed_candidate_ids=consumed,
         capability_step_count=step_count,
         max_capability_steps=step_limit,
         failed_conditions=tuple(failed),
     )
 
 
-def _checked_consumed(consumed_candidate_ids: Collection[str]) -> frozenset[str]:
+def _checked_consumed(consumed_candidate_ids: Collection[str]) -> tuple[str, ...]:
+    """Normalize the consumed identifiers: sorted, de-duplicated, frozen.
+
+    Returns a tuple rather than a set so the value recorded on an `Assessment`
+    is reproducible — a set's iteration order depends on the process hash seed,
+    and a record that reorders between identical runs cannot be compared against
+    itself. De-duplicated because membership is set semantics: an identifier
+    listed twice is consumed exactly as much as one listed once.
+
+    Copying also decouples the answer from the caller: a collection mutated
+    after the assessment was made cannot change what the assessment says it was
+    computed against.
+    """
     if isinstance(consumed_candidate_ids, (str, bytes)):
         # `"a" in "abc"` is a substring test, so a bare string would quietly
         # consume candidates whose identifiers merely appear inside it.
@@ -254,7 +289,7 @@ def _checked_consumed(consumed_candidate_ids: Collection[str]) -> frozenset[str]
                 "consumed_candidate_ids must contain identifiers, found "
                 f"{type(consumed_id).__name__}."
             )
-    return frozenset(consumed_candidate_ids)
+    return tuple(sorted(set(consumed_candidate_ids)))
 
 
 def _checked_step(label: str, value: int) -> int:

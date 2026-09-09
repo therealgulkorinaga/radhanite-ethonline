@@ -63,6 +63,7 @@ class EligibleTests(unittest.TestCase):
         self.assertEqual(a.remaining_budget, Money("2.00"))
         self.assertEqual(a.capability_step_count, 0)
         self.assertEqual(a.max_capability_steps, 4)
+        self.assertEqual(a.consumed_candidate_ids, ())
 
 
 class CostNotPositiveTests(unittest.TestCase):
@@ -215,6 +216,82 @@ class ConsumedConditionTests(unittest.TestCase):
             self.assertTrue(an_assessment(consumed_candidate_ids=collection).eligible)
 
 
+class ConsumedIdsAreRecordedTests(unittest.TestCase):
+    """CODEX-PR022-01 — §8: the answer must be recomputable from the record."""
+
+    def test_the_normalized_consumed_set_is_recorded(self) -> None:
+        a = an_assessment(consumed_candidate_ids=["b", "a"])
+        self.assertEqual(a.consumed_candidate_ids, ("a", "b"))
+
+    def test_two_assessments_differing_only_in_consumed_ids_are_distinguishable(
+        self,
+    ) -> None:
+        # Without this field the two records would be byte-identical while
+        # having been computed against different inputs.
+        one = an_assessment(consumed_candidate_ids=["other-001"])
+        two = an_assessment(consumed_candidate_ids=["other-002"])
+        self.assertTrue(one.eligible)
+        self.assertTrue(two.eligible)
+        self.assertNotEqual(one.consumed_candidate_ids, two.consumed_candidate_ids)
+        self.assertNotEqual(one, two)
+
+    def test_the_consumed_condition_can_be_recomputed_from_the_record(self) -> None:
+        for consumed, expected in (
+            (["second-opinion-001"], True),
+            (["second-opinion-002"], False),
+            ([], False),
+        ):
+            a = an_assessment(consumed_candidate_ids=consumed)
+            recomputed = a.candidate.candidate_id in a.consumed_candidate_ids
+            self.assertEqual(recomputed, expected)
+            self.assertEqual(
+                Ineligibility.CONSUMED in a.failed_conditions, recomputed
+            )
+
+    def test_caller_mutation_afterwards_cannot_change_the_record(self) -> None:
+        consumed = ["other-001"]
+        a = an_assessment(consumed_candidate_ids=consumed)
+        consumed.append("second-opinion-001")
+        self.assertEqual(a.consumed_candidate_ids, ("other-001",))
+        self.assertTrue(a.eligible)
+
+    def test_normalization_is_deterministic_whatever_the_input_order(self) -> None:
+        expected = ("a", "b", "c")
+        for order in (["a", "b", "c"], ["c", "b", "a"], ("b", "c", "a")):
+            self.assertEqual(
+                an_assessment(consumed_candidate_ids=order).consumed_candidate_ids,
+                expected,
+            )
+
+    def test_a_set_normalizes_to_the_same_deterministic_tuple(self) -> None:
+        # A set's iteration order depends on the process hash seed; the record
+        # must not.
+        self.assertEqual(
+            an_assessment(consumed_candidate_ids={"c", "a", "b"}).consumed_candidate_ids,
+            ("a", "b", "c"),
+        )
+
+    def test_duplicates_normalize_away(self) -> None:
+        # Membership is set semantics: listed twice is consumed exactly as much
+        # as listed once.
+        self.assertEqual(
+            an_assessment(consumed_candidate_ids=["a", "a", "b"]).consumed_candidate_ids,
+            ("a", "b"),
+        )
+
+    def test_the_record_holds_identifiers_and_nothing_else(self) -> None:
+        # §2.5a: consumption is by stable candidate ID. No notion of capability
+        # type may arrive through this field.
+        a = an_assessment(consumed_candidate_ids=["second-opinion-001"])
+        for recorded in a.consumed_candidate_ids:
+            self.assertIsInstance(recorded, str)
+
+    def test_the_recorded_set_cannot_be_mutated(self) -> None:
+        a = an_assessment(consumed_candidate_ids=["a"])
+        with self.assertRaises(AttributeError):
+            a.consumed_candidate_ids.append("b")
+
+
 class StepCeilingTests(unittest.TestCase):
     """§2.5 C — deterministic, and independent of the budget."""
 
@@ -333,18 +410,52 @@ class EconomicFiguresForIneligibleTests(unittest.TestCase):
 class SafeguardsAreNotEconomicJudgementsTests(unittest.TestCase):
     """§2.5, §8 — a safety refusal must not read as a verdict on value."""
 
-    def test_the_safeguards_are_marked_as_not_economic(self) -> None:
-        self.assertFalse(Ineligibility.CONSUMED.is_economic)
-        self.assertFalse(Ineligibility.STEP_CEILING.is_economic)
-
-    def test_the_four_economic_conditions_are_marked_economic(self) -> None:
-        for condition in (
+    def test_the_three_safeguards_are_marked_as_not_economic(self) -> None:
+        # CODEX-PR022-02. A price of zero is not a cheap price: §2.5 A excludes
+        # free candidates so the loop terminates, and the refusal carries no
+        # view about whether the candidate was worth having.
+        for safeguard in (
             Ineligibility.COST_NOT_POSITIVE,
+            Ineligibility.CONSUMED,
+            Ineligibility.STEP_CEILING,
+        ):
+            self.assertFalse(safeguard.is_economic)
+
+    def test_the_three_economic_conditions_are_marked_economic(self) -> None:
+        for condition in (
             Ineligibility.BUDGET,
             Ineligibility.UPLIFT,
             Ineligibility.VALUE,
         ):
             self.assertTrue(condition.is_economic)
+
+    def test_every_condition_is_classified_one_way_or_the_other(self) -> None:
+        # A condition added later without a classification would silently
+        # default to economic and misdescribe itself in a run record.
+        economic = {c for c in Ineligibility if c.is_economic}
+        safeguards = {c for c in Ineligibility if not c.is_economic}
+        self.assertEqual(economic | safeguards, set(Ineligibility))
+        self.assertEqual(len(economic), 3)
+        self.assertEqual(len(safeguards), 3)
+
+    def test_a_free_candidate_is_refused_without_economic_judgement(self) -> None:
+        candidate = a_candidate()
+        object.__setattr__(candidate, "cost", Money("0.00"))
+        a = an_assessment(candidate=candidate, task_value=Money("20.00"))
+        self.assertEqual(a.failed_conditions, (Ineligibility.COST_NOT_POSITIVE,))
+        self.assertTrue(a.refused_without_economic_judgement)
+
+    def test_a_safeguard_and_an_economic_failure_together_is_economic(self) -> None:
+        # Mixed failures carry a real economic verdict, so the assessment must
+        # not claim none was reached.
+        a = an_assessment(
+            remaining_budget=Money("0.10"),
+            capability_step_count=4,
+            max_capability_steps=4,
+        )
+        self.assertIn(Ineligibility.BUDGET, a.failed_conditions)
+        self.assertIn(Ineligibility.STEP_CEILING, a.failed_conditions)
+        self.assertFalse(a.refused_without_economic_judgement)
 
     def test_a_step_ceiling_refusal_carries_no_economic_judgement(self) -> None:
         a = an_assessment(capability_step_count=4, max_capability_steps=4)

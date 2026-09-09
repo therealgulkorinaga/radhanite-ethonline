@@ -21,7 +21,7 @@ question about one candidate.
 | File | What it is |
 |---|---|
 | `radhanite/eligibility.py` | **New.** The six-condition test, and the figures behind it |
-| `tests/test_eligibility.py` | **New.** 56 tests |
+| `tests/test_eligibility.py` | **New.** 68 tests |
 | `radhanite/__init__.py` | Exports the new pieces; its status note updated |
 | `docs/reviews/PR-022_CODEX_REVIEW.md` | The review prompt, **committed before the review runs** |
 | `docs/reviews/README.md` | Its row in the review index |
@@ -84,11 +84,17 @@ choice, and there is a test that fails if anyone does it.
 conditions at once, and a run record that showed only one would misdescribe why
 it was rejected.
 
-### The last two conditions are not economic, and the code says so
+### Three of the six conditions are not economic, and the code says so
 
-Conditions 5 and 6 are the **termination safeguards**. A candidate refused
-because the run has already bought its allowance was never assessed on its
-merits at all — the economics did not reject it, the safety limit did.
+Conditions 1, 5 and 6 are the **termination safeguards**. A candidate refused
+because the run has already bought its allowance, or because it is free, was
+never assessed on its merits at all — the economics did not reject it, a safety
+rule did.
+
+**A price of zero is not a cheap price.** Free candidates are excluded so that
+the loop is guaranteed to end, and that refusal says nothing about whether the
+candidate was worth having. *(This originally classed condition 1 as economic.
+See §14a.)*
 
 The distinction is carried in the code, not just in prose: each reason knows
 whether it is economic, and an assessment can say *"this was refused without any
@@ -129,8 +135,14 @@ the parameter does not exist.
 ## 8. What comes out
 
 An assessment carrying the verdict, a sentence explaining it, both money
-figures, and every input that produced it — so the answer can be recomputed
-later rather than taken on trust.
+figures, and every input that produced it — **including the list of
+already-bought identifiers it was measured against** — so the answer can be
+recomputed later rather than taken on trust.
+
+That list is stored sorted, with duplicates removed, and copied. Sorted because
+a record whose contents reorder between identical runs cannot be compared
+against itself; copied because a caller changing their own list afterwards must
+not be able to change what the record says it was computed against.
 
 **The money is calculated for rejected candidates too.** A record that showed
 figures only for the winner could never answer why the alternatives lost.
@@ -154,14 +166,17 @@ in Python — it would have silently marked candidates as bought that never were
 
 ```
 $ python3.12 -m unittest discover -q
-Ran 334 tests in 0.12s
+Ran 346 tests in 0.08s
 OK
 ```
 
-**334 passing — 278 existing, unchanged, plus 56 new.**
+**346 passing — 278 existing, unchanged, plus 68 new** (56 with the original
+work, 12 more with the corrections in §14a).
 
-Eight deliberate faults were then introduced one at a time to check the tests
-detect what they claim. Every one was caught:
+Twelve deliberate faults were introduced one at a time to check the tests detect
+what they claim. Every one was caught.
+
+Eight for the rule itself:
 
 | Fault introduced | Result |
 |---|---|
@@ -174,7 +189,16 @@ detect what they claim. Every one was caught:
 | Use the budget where the task's value belongs | **12 failures** |
 | Forget to subtract the price | **5 failures** |
 
-The file was restored and the suite re-run green afterwards.
+And four for the corrections:
+
+| Fault introduced | Result |
+|---|---|
+| Class a free candidate as an economic refusal again | **3 failures** |
+| Record the already-bought list unsorted and undeduplicated | **4 failures** |
+| Stop recording the already-bought list at all | **7 failures** |
+| Sort the list but keep duplicates | **1 failure** |
+
+The file was restored and the suite re-run green after each.
 
 ## 11. Assumptions made
 
@@ -209,6 +233,37 @@ evaluation, execution, and every integration. No provider, no payment, no wallet
 The ranking and its three tie-breaks; the run loop that maintains the purchase
 count and the consumed list; and a demonstration that the existing two-tier
 scenarios still decide identically.
+
+## 14a. Corrections after the Codex review
+
+The review returned **two findings**, both about auditability rather than about
+the rule. The original text above is left standing where it was wrong, with
+pointers here, so what changed stays legible.
+
+**`CODEX-PR022-01` — the record could not be recomputed.** An assessment claimed
+to carry every input behind its answer, and did not carry the list of
+already-bought identifiers. Two assessments computed against different lists
+would have been indistinguishable, and nobody could have checked the
+already-bought condition from the record alone.
+
+The normalized list is now part of the assessment: **sorted, de-duplicated,
+copied**. Sorted because a set's order varies between runs and a record that
+reorders cannot be compared with itself. Copied because a caller must not be
+able to change what an assessment says it was measured against, after the fact.
+It holds identifiers and nothing else — consumption is by identifier, and no
+notion of capability type arrives through it.
+
+**`CODEX-PR022-02` — a safeguard was labelled as economics.** The refusal of a
+free candidate was classified as an economic judgement. It is not one:
+TASK-006 §2.5 A excludes free candidates so the loop terminates, and the refusal
+carries no view about whether the candidate was worth buying. A run record built
+on the old classification would have reported that the economics rejected
+something the economics never assessed.
+
+Three conditions are now safeguards — free, already bought, allowance spent —
+and three are economic. **The check itself is unchanged**; only its label was
+wrong. A new test asserts every condition is classified one way or the other, so
+a condition added later cannot default silently into the wrong group.
 
 ## 15. How to explain this to a judge
 

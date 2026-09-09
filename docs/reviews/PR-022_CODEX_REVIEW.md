@@ -4,7 +4,7 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md`, `docs/PREREQ-001_PRODUCT_DEFINITION.md`, `docs/ARCHITECTURE.md`, `docs/AI_BUILD_GOVERNANCE.md`
 **Date issued:** 2026-09-09
-**Outcome:** _pending — review not yet run_
+**Outcome:** **Approved with corrections** — `CODEX-PR022-01`, `-02`, both corrected
 
 ---
 
@@ -153,12 +153,68 @@ End with exactly ONE outcome, per §7.2:
 
 ## 2. Findings returned
 
-_Pending. Codex has not yet reviewed this pull request._
+**The reviewer's verbatim response was not supplied** to the agent writing this
+record. What follows is the two findings **as relayed by the human product
+owner** in the correction authorization. Nothing has been invented to fill the
+gap, and §0's point about ordering is unaffected — the prompt in §1 was
+committed before the review, as it should be.
+
+### `CODEX-PR022-01` — the record cannot be recomputed without the consumed set
+
+**File:** `radhanite/eligibility.py` — `Assessment`
+**Departs from:** TASK-006 §8
+
+`Assessment` claims to carry enough to recompute eligibility independently, and
+omitted the normalized `consumed_candidate_ids` it was measured against. Two
+assessments computed against different consumed sets were indistinguishable, and
+the consumed condition could not be checked from the record alone.
+
+**Required correction:** add the normalized consumed collection to `Assessment`,
+with deterministic ordering consistent with repository conventions; do not store
+the caller's mutable collection by reference; preserve the exact normalized input
+used; add no provider or capability-type semantics; keep consumption based on
+stable candidate ID alone.
+
+### `CODEX-PR022-02` — a termination safeguard classified as economics
+
+**File:** `radhanite/eligibility.py` — `Ineligibility.is_economic`
+**Departs from:** TASK-006 §2.5 A, §8
+
+`COST_NOT_POSITIVE` was classified as economic, while TASK-006 defines positive
+cost as a **termination safeguard**. A run record built on that classification
+would report that the economics rejected a candidate the economics never
+assessed.
+
+**Required correction:** group `COST_NOT_POSITIVE` with the non-economic
+safeguards alongside the step ceiling and the consumed candidate. **Preserve the
+`candidate_cost > 0` check itself** — the classification was wrong, not the rule.
 
 ## 3. Outcome
 
-_Pending._
+**Approved with corrections** — `CODEX-PR022-01` and `CODEX-PR022-02`.
+
+Both findings concern **auditability rather than the rule**. The six conditions,
+their comparison operators and the arithmetic were not faulted, and neither
+finding required the eligibility test itself to change.
+
+The prompt's Part D and Part E asked for explicit judgements on two calls the
+implementing agent had flagged — whether the unreachable positive-cost check is
+defence in depth or dead code, and whether the redundant uplift condition earns
+its place. **Neither is recorded here**, because the verbatim response was not
+supplied. `-02` touches the first of them, but only its label; the check
+survived, which does not by itself settle the question that was asked.
 
 ## 4. Corrections
 
-_None yet._
+| Finding | Correction |
+|---|---|
+| `CODEX-PR022-01` | `Assessment.consumed_candidate_ids` added, carrying the normalized set: sorted, de-duplicated, copied. Sorted because a set's iteration order varies between runs and a record that reorders cannot be compared with itself; copied so a caller mutating their own collection afterwards cannot change what the assessment says it was computed against. Identifiers only — no capability-type semantics |
+| `CODEX-PR022-02` | `Ineligibility.is_economic` now returns False for `COST_NOT_POSITIVE`, alongside `CONSUMED` and `STEP_CEILING`. The `candidate_cost > 0` check is unchanged. A new test asserts every condition is classified one way or the other, so one added later cannot default silently into the wrong group |
+
+Committed as *"Fix TASK-006 eligibility auditability"* on `task-006-eligibility`.
+
+Twelve new tests, and four further mutations run against the corrections — each
+caught. 346 tests pass on Python 3.12.
+
+**Corrections are themselves subject to review** (`AI_BUILD_GOVERNANCE.md`
+§7.5). This corrective commit has not been reviewed.
