@@ -89,3 +89,4 @@ If a reviewer other than Codex is ever used, substitute its name.
 | [#13](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/13) | [PR-013](PR-013_CODEX_REVIEW.md) | Rejected twice plus one corrupted pass → 13 findings, all corrected; loop rebuilt twice. Final corrections merged **unreviewed** |
 | [#14](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/14) | [PR-014](PR-014_CODEX_REVIEW.md) | pending |
 | [#15](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/15) | [PR-015](PR-015_CODEX_REVIEW.md) | **Rejected** → 3 P0 findings; `-01` corrected, `-02`/`-03` unresolved product decisions |
+| [#16](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/16) | [PR-016](PR-016_CODEX_REVIEW.md) | pending |

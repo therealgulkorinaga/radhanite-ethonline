@@ -97,6 +97,35 @@ untrue?" Only the second justifies the edit.
 
 If there is any doubt, **stop and ask the human product owner.**
 
+### 2.2 External dependencies
+
+> **A task may introduce an external dependency only where its own
+> specification says so.**
+
+TASK-001 §1 requires the implementation to have **no external dependencies**,
+and that requirement was enforced strictly — PR #3 was rejected for adding a
+test runner and a build backend. That constraint belongs to TASK-001 and does
+not bind the project permanently.
+
+The integrations that follow cannot be built without dependencies. A task may
+introduce them, subject to all four of:
+
+1. the dependency is **necessary** for the integration that task authorizes;
+2. it is **named or justified in that task's specification**, not decided during
+   implementation;
+3. the **minimum practical set** is used;
+4. it is **disclosed in the pull request explanation**.
+
+**This is not general authorization to add dependencies.** A dependency that
+seems useful, or that would make something more convenient, is not covered. If
+one is needed and the task specification does not name it, the specification is
+wrong and the product owner amends it — the implementing agent does not decide
+the question by installing something.
+
+Each integration task enumerates its own. TASK-002 authorizes what OpenRouter
+requires and nothing else; TASK-003 what Privy requires; TASK-005 what Arc
+requires; TASK-004 what the verified x402 tooling requires.
+
 ## 3. Change-authorization rule
 
 > **Every committed change must map to an authorized task, a prerequisite, a

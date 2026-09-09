@@ -31,6 +31,20 @@ priced.
 Choosing how a unit of work is attempted — approach and capability tier — with a
 declared expected cost.
 
+**The two-tier model merged in TASK-001 is authoritative.** A strategy is an
+opening attempt and one optional escalation, each with a declared cost and a
+declared success probability. §2.5's rule is defined against that shape.
+
+A richer model — an ordered plan of stages, which would express a single premium
+attempt, or parallel candidates followed by adjudication — is a change to what
+escalation *means*, and therefore to the economic policy itself. It requires its
+own authorized task (`BL-13`) and must not arrive inside an integration.
+
+Until then, strategies that the two-tier model cannot represent honestly are
+**not to be approximated by it**. Forcing a one-shot or a parallel workflow into
+an initial-plus-escalation shape would make the recorded costs and probabilities
+describe something other than what happened.
+
 ### 2.3 Budget allocation
 Deciding how the authorized budget is distributed across attempts. Enforcing the
 budget ceiling absolutely.
@@ -154,6 +168,24 @@ make it real, in an order set by what each depends on:
 it. §4 above is unchanged: an integration becomes authorized only when the human
 product owner says so.
 
+### Why this order, and an alternative that was rejected
+
+The order follows dependency. Inference comes first because until it is real,
+every figure a chain integration settles is one somebody typed. The account
+exists before the money in it is real, and the agent pays for its own purchases
+only once it has both.
+
+An alternative was considered and **rejected**: beginning with a payment
+primitive — a headless process sending real USDC through a Privy-controlled
+wallet — before any economic policy or inference. It would have produced
+verifiable on-chain evidence sooner.
+
+It was rejected for two reasons. It crosses the boundary between TASK-003 and
+TASK-005, collapsing *who may spend* and *what the money is* into one
+undifferentiated piece of infrastructure; and it contradicts the dependency
+order above. Recorded here because a rejected alternative with its reasoning is
+worth more to a later reader than an order presented as inevitable.
+
 ### Five assumptions the loop makes that reality breaks
 
 Each is named in the task that has to answer it, and each is a genuine design
@@ -221,6 +253,15 @@ The following are architecture violations and must fail review:
 7. Any abstraction whose only justification is a future unauthorized task.
 8. Describing simulated USD values as USDC, or otherwise presenting a simulated
    quantity as a real economic one.
+9. Claiming that Radhanite fixed code, changed a repository, or passed tests,
+   where no repository was modified and no test runner executed. Until real
+   repository execution is separately authorized (`BL-07`), a model's output is
+   **evidence within a declared scenario** and nothing more. This binds every
+   document, run record, demonstration and pull request explanation, not only
+   the code.
 
-Item 7 matters: speculative abstraction is how unauthorized scope enters a
-repository without anyone deciding to add it.
+Items 7, 8 and 9 are the ones that let unauthorized scope or an untrue claim
+into a repository without anyone deciding to add it. Item 9 is the same rule as
+item 8 applied to outcomes rather than to money: real inference producing a
+plausible answer is not the same as the work having been done, and the
+difference must never be blurred by a form of words.
