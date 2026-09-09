@@ -16,11 +16,13 @@ Implemented so far:
 - ``radhanite.cli`` — a developer entry point: ``python -m radhanite``
 - ``radhanite.capability`` — a priced candidate action, and the checks an offer
   must pass before a decision is made over it (TASK-006 §2.2)
+- ``radhanite.eligibility`` — whether one candidate may be bought, and what
+  buying it would be worth (TASK-006 §2.3)
 
 TASK-001 is complete. TASK-006 — choosing among candidate capabilities rather
 than escalating through two fixed tiers — is authorized and partially built: the
-candidate model exists; the eligibility rule, the ranking and the termination
-safeguards do not yet. Nothing beyond those is authorized: no real inference, no
+candidate model and the per-candidate eligibility rule exist; the ranking and
+the run-level termination safeguards do not yet. Nothing beyond those is authorized: no real inference, no
 wallet, no tokens, no interface, and no learning.
 
 Intended behaviour, once complete: Radhanite is given a task, a budget, a task
@@ -33,6 +35,7 @@ See docs/PREREQ-001_PRODUCT_DEFINITION.md for the product definition.
 """
 
 from radhanite.capability import Candidate, validate_candidates
+from radhanite.eligibility import Assessment, Ineligibility, assess
 from radhanite.escalation import Decision, EscalationDecision, FailedCondition, decide
 from radhanite.evaluation import Evaluation, Verdict, evaluate
 from radhanite.execution import Attempt, Observation, ScriptedSimulator
@@ -47,12 +50,14 @@ __version__ = "0.1.0"
 __all__ = [
     "CURRENCY",
     "DECLARED_STRATEGIES",
+    "Assessment",
     "Attempt",
     "Candidate",
     "Decision",
     "EscalationDecision",
     "Evaluation",
     "FailedCondition",
+    "Ineligibility",
     "Observation",
     "Money",
     "Probability",
@@ -64,6 +69,7 @@ __all__ = [
     "Task",
     "Verdict",
     "__version__",
+    "assess",
     "decide",
     "evaluate",
     "run",
