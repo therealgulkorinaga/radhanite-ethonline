@@ -399,13 +399,17 @@ completeness afterwards makes that ordering correct.
 Recording a process failure honestly is worth more than a tidy record that
 claims a compliance which did not occur.
 
-**One correction is outstanding.** The verbatim finding shows that
-`CODEX-PR017-02` asked for two things, and only one was done. §2.1 of the
-product definition still opens *"In V1 — autonomous software engineering:"*
-without marking that as the historical TASK-001 framing rather than the current
-demonstration. §6.6 explains the relationship and §2.1 links to it, but the
-heading itself is unlabelled. This is recorded in §4 of the review record and
-needs its own authorization to fix.
+**A second half of `CODEX-PR017-02` was found late, and is now closed.** The
+verbatim finding asked for two things, and the first corrective commit did only
+one. §2.1 of the product definition still opened *"In V1 — autonomous software
+engineering:"* without marking it as the historical TASK-001 framing rather than
+the current demonstration. It now reads **"Historical/current TASK-001 V1
+framing — autonomous software engineering:"**, and the substance beneath it is
+unchanged.
+
+That gap was visible only once the reviewer's exact wording was recorded — which
+is a small argument for the verbatim rule that §7.3 already makes. All three
+findings are now corrected.
 
 ## 15. How to explain this to a judge
 

@@ -53,7 +53,7 @@ task and an unsolvable task can cost the same, and neither cost was chosen.
 
 ### 2.1 Who this is for
 
-**In V1 — autonomous software engineering:**
+**Historical/current TASK-001 V1 framing — autonomous software engineering:**
 
 | | Who |
 |---|---|
