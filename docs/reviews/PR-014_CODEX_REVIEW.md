@@ -4,7 +4,7 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `docs/PREREQ-001_PRODUCT_DEFINITION.md`, `docs/ARCHITECTURE.md`, `docs/AI_BUILD_GOVERNANCE.md`
 **Date issued:** 2026-09-08
-**Outcome:** _pending — review not yet run_
+**Outcome:** **Merged without review** — merged 2026-09-08 by the human product owner, who holds sole merge authority (§1.1). No review was run.
 
 ---
 
@@ -120,12 +120,30 @@ The delivering message also carried this closing note:
 
 ## 2. Findings returned
 
-_Pending. Codex has not yet reviewed this pull request._
+**None. No review was run.**
+
+Codex did not review pull request #14. This section is empty because there was nothing to record, not because recording was deferred.
 
 ## 3. Outcome
 
-_Pending._
+**Merged without review**, on 2026-09-08, by the human product owner.
+
+This is not one of the three substantive outcomes in
+[`AI_BUILD_GOVERNANCE.md`](../AI_BUILD_GOVERNANCE.md) §7.2 — it is the absence
+of a review, and it is recorded as such rather than dressed as an approval.
+
+The prompt in §1 was committed **before** the review would have run, as §7.3
+requires. That part of the process held; the review simply did not follow. The
+merge was the product owner's decision to make, and §1.1 gives them sole
+authority to make it.
+
+**Why this record was corrected.** Until this correction, §0 of this file said
+*"pending — review not yet run"* on a pull request that had already been merged.
+On an open pull request that is true and useful. On a merged one it implies a
+review is still coming when none ever will, which is precisely the defect
+§7.4 exists to prevent — a repository that contradicts itself about its own
+review status, where a reader cannot tell which statement to believe.
 
 ## 4. Corrections
 
-_None yet._
+**None.** No findings were raised, so there was nothing to correct.
