@@ -1,7 +1,7 @@
 # TASK-006 — Generalized capability selection
 
-**Status:** Specified — **NOT AUTHORIZED**
-**Authorization:** None. This document specifies the work; it does not permit implementation.
+**Status:** Specified, all decisions resolved — **AUTHORIZED for implementation**
+**Authorization:** Authorized by the human product owner, 2026-09-09
 **Traces to:** [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §4a, §5.1
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.2.2, §2.2.3
 **Replaces backlog entry:** `BL-13`
