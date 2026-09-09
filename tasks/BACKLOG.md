@@ -116,13 +116,24 @@ such**, not allowed to become part of the product architecture by having been
 built.
 
 `BL-11` needs a note after the product pivot. `PREREQ-001` §6 now names
-**supplier onboarding and due diligence** as the primary ETHOnline
-demonstration, which is a vertical beyond software engineering. That settles the
-*product direction* only. `BL-11` covers **implementing** another vertical, and
-it remains UNAUTHORIZED: no execution against a real diligence workflow, no
-supplier data, no live success signal. `BL-07` and `BL-08` are likewise
-untouched. The software-engineering framing TASK-001 was built against is
-preserved in `PREREQ-001` §6.4 rather than deleted.
+**supplier onboarding and due diligence** as the frozen primary ETHOnline
+demonstration direction, which is a vertical beyond software engineering.
+
+**That settles direction only.** `BL-11` covers *implementing* another vertical,
+and it is:
+
+- **not retired** — the entry stands, unchanged, above;
+- **not completed** — nothing has been built against it;
+- **still UNAUTHORIZED** — no execution against a real diligence workflow, no
+  supplier data, no live success signal.
+
+A product definition states what Radhanite *is*. It is never permission to build
+it, and a demonstration direction appearing in `PREREQ-001` authorizes nothing —
+`PREREQ-001` §6.6 and §9. `BL-07` and `BL-08` are likewise untouched.
+
+The software-engineering framing that TASK-001 was built under is preserved in
+`PREREQ-001` §6.4, and the status of both framings is tabulated in §6.6.
+TASK-001 remains implemented and historically authoritative for itself.
 
 BL-12 is distinct from `BL-09`, and the difference is worth stating. `BL-09` is
 Radhanite dividing a budget across several tasks — one agent, many jobs. `BL-12`

@@ -87,8 +87,9 @@ The buyer widens accordingly: CTO, CIO, Head of AI, AI-platform leadership,
 FinOps and AI FinOps, and business-unit owners accountable for the economics of
 autonomous work.
 
-This records intended direction, not authorization. Only the V1 use case in §6
-is being built.
+This records intended direction, not authorization. **Nothing in this section
+is authorized**, and neither is the demonstration direction in §6 — see §6.6 for
+what is implemented, what is merely frozen direction, and what is authorized.
 
 ### 2.2 Why this matters now: agents that pay
 
@@ -328,10 +329,16 @@ Task:              Assess prospective supplier for onboarding
 Task value:        the declared economic value of a correct decision
 Max autonomous spend: the ceiling the agent may not exceed
 Constraints:       what it may and may not do
-Success condition: a defensible APPROVE / ESCALATE / REJECT
+Success condition: the completion contract in §6.5
 ```
 
-**Target result: `APPROVE` / `ESCALATE` / `REJECT`.**
+**Target output: `APPROVE` / `ESCALATE` / `REJECT`.**
+
+**The recommendation is the output. It is not the success condition.** Whether
+a supplier *should* be approved is a judgement, and §4.5 requires a success
+condition evaluable without human judgment. What is machine-checkable is whether
+the run produced a **complete, evidence-linked, in-budget** decision — the
+deterministic completion contract in **§6.5**.
 
 This vertical is chosen because the economic question is unavoidable in it.
 Diligence evidence is genuinely purchasable, genuinely priced, and genuinely
@@ -407,6 +414,75 @@ condition that needs a human to interpret it is still not a Radhanite task.
 
 Real repository execution and a live test-suite signal remain unauthorized
 (`BL-07`, `BL-08`), exactly as before.
+
+### 6.5 The machine-checkable success condition
+
+§4.5 requires a success condition evaluable **without human judgment**. "A
+defensible recommendation" is not one: defensibility is exactly the judgement
+§4.5 excludes. The demonstration's success condition is therefore a
+**deterministic completion contract**, checked by field and state validation
+rather than by reading the recommendation.
+
+**A run is complete when all six hold:**
+
+1. **Exactly one** allowed recommendation has been produced, from the closed
+   set `APPROVE` | `ESCALATE` | `REJECT`. Zero is incomplete; two is invalid.
+2. **Every required evidence category** defined by the demonstration fixture
+   carries exactly one status from the closed set `resolved` | `unresolved` |
+   `not_found`. A category with no status is incomplete.
+3. **Every material claim** in the recommendation is linked to at least one
+   evidence record, **or** is explicitly marked `unresolved`. An unlinked,
+   unmarked claim fails the contract.
+4. **No required material evidence gap is silently omitted.** A gap must appear
+   as a record with a status, per clause 2 — absence is not a way of passing.
+5. **Either** the run's declared confidence threshold is met, **or** the
+   recommendation is `ESCALATE` *because* a material unresolved evidence gap
+   remains. Escalating to a human on an unresolved gap is a pass, not a failure.
+6. **Total autonomous spend ≤ the task budget.** The §4.2 ceiling, unchanged.
+
+Every clause is a check on **fields and states**, not on the quality of a
+judgement. Two runs reaching opposite recommendations on the same evidence can
+both satisfy the contract, and that is correct: Radhanite is not being evaluated
+on whether the supplier was in fact creditworthy. It is being evaluated on
+whether it bought the right evidence, linked what it claimed, and stopped inside
+its budget.
+
+**Confidence is a declared fixture.** The threshold in clause 5, and any
+confidence figure compared against it, are declared benchmark values — numbers
+someone typed so the contract can be exercised. They are **not** measurements,
+and nothing here asserts that a confident recommendation is a correct one.
+Describing them otherwise is a boundary violation under
+[`ARCHITECTURE.md`](ARCHITECTURE.md) §6 item 12.
+
+### 6.6 Two framings, and the status of each
+
+This document contains two use cases, and they are at different stages. Neither
+supersedes the other by being mentioned later.
+
+| | Implemented V1 | ETHOnline demonstration |
+|---|---|---|
+| **Vertical** | Autonomous software engineering | Supplier onboarding / due diligence |
+| **Where** | §6.4, [`TASK-001`](../tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md) | §6, §6.5 |
+| **Success condition** | The repository's tests pass | The completion contract, §6.5 |
+| **Status** | **Implemented and merged.** The delivered two-tier deterministic kernel | **Frozen direction. Not implemented** |
+| **Authorization** | Authorized; delivered | **Not authorized** |
+
+Three statements, and all three are true at once:
+
+1. **TASK-001 was built under the software-engineering framing**, remains
+   implemented, and remains historically authoritative for TASK-001. It is what
+   runs today.
+2. **Supplier onboarding is the frozen primary ETHOnline demonstration
+   direction.** It is not implemented, and appearing in this document does not
+   authorize it. A product definition states what Radhanite *is*; it is never
+   permission to build — §9.
+3. **It remains subject to implementation authorization**, including the
+   `BL-11` vertical boundary where that applies. `BL-11` is neither retired nor
+   completed by this document.
+
+**Radhanite is not a supplier-compliance product.** Supplier diligence is a
+vertical chosen to demonstrate the economic layer, in the same way software
+engineering was. The product is §1, and §7 still governs what Radhanite is not.
 
 ## 7. What Radhanite is not
 

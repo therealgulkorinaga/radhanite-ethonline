@@ -28,8 +28,11 @@ became authorized.** Every file in it is documentation.
 | `tasks/TASK-002` … `TASK-005` | One note each: written before the pivot, preserved, not automatically still next |
 | `README.md` | Corrections — it was saying things that are no longer true |
 | `docs/pr_explanations/PR-017_...md` | This document |
+| `docs/reviews/PR-017_CODEX_REVIEW.md` | *(correction)* The review record, and the disclosure that it was written after the fact |
+| `docs/reviews/README.md` | *(correction)* Its row in the review index |
 
-Nine files. No `.py` file. The test count is unchanged at 242.
+Eleven files — nine in the original commit, two added by the corrections in
+§14a. No `.py` file. The test count is unchanged at 242.
 
 ## 3. Why the change was needed
 
@@ -171,6 +174,10 @@ No change to any output, run record, or file format — no code ran differently.
 The demonstration's intended output is now recorded: **`APPROVE` / `ESCALATE` /
 `REJECT`** for a supplier onboarding decision.
 
+> **Corrected after review.** As first written, this PR also used that
+> recommendation *as the success condition*. It is the output, not the success
+> condition — see §14a and `PREREQ-001` §6.5.
+
 ### The ETHOnline demonstration
 
 **Supplier onboarding and due diligence.** Should this supplier be approved,
@@ -296,6 +303,97 @@ That deliberately did not happen here. A product direction being agreed is not
 permission to build what it implies, and the same rule that stopped the
 generalization arriving inside a sponsor integration also stops it arriving
 inside the PR that made it necessary.
+
+## 14a. Corrections made after the Codex review
+
+This section exists because the pull request was wrong in three ways when it was
+opened. The original text above is left standing rather than quietly rewritten,
+so that what was corrected stays legible.
+
+The review returned **Approved with corrections** — three findings, none
+disputed. The full record, including a governance disclosure that matters, is in
+[`docs/reviews/PR-017_CODEX_REVIEW.md`](../reviews/PR-017_CODEX_REVIEW.md).
+
+### The demonstration's success condition was not machine-checkable
+
+**`CODEX-PR017-01`.** The demonstration said its success condition was *"a
+defensible `APPROVE` / `ESCALATE` / `REJECT`."*
+
+**Defensible is a human judgement**, and this same document requires a success
+condition that can be checked *without* one. Radhanite's whole claim is that it
+can tell whether it succeeded; a condition somebody has to read and agree with
+takes that away. The pull request contradicted its own rule.
+
+The fix separates two things that had been treated as one:
+
+- **The output** is the recommendation — approve, escalate to a human, or
+  reject.
+- **The success condition** is whether the run produced a *complete,
+  evidence-linked, in-budget* decision.
+
+`PREREQ-001` §6.5 now sets that out as six checks, and every one of them is a
+check on **fields and states**, not on the quality of an opinion: exactly one
+recommendation from the allowed set; every required evidence category carrying a
+status; every claim linked to evidence or explicitly marked unresolved; no gap
+silently omitted; either the confidence threshold met or an escalation *because*
+a gap remains; and total spend within budget.
+
+Two runs can reach opposite recommendations on the same evidence and both pass.
+That is the point. Radhanite is not being judged on whether the supplier was in
+fact creditworthy — it is being judged on whether it bought the right evidence,
+linked what it claimed, and stopped inside its budget.
+
+**Confidence is still a declared fixture.** The threshold in the fifth check is
+a number someone typed, not a measurement, and nothing here says a confident
+recommendation is a correct one.
+
+### Two V1 use cases, with no stated status for either
+
+**`CODEX-PR017-02`.** The document ended up describing two different use cases —
+the software-engineering one `TASK-001` was built under, and the new supplier
+demonstration — without saying which was implemented and which was not.
+
+Worse, a sentence left over from before the pivot read *"Only the V1 use case in
+§6 is being built"* — and §6 was now the supplier demonstration. Read literally,
+the document claimed supplier diligence **was being built**. It is not, and
+saying so would also have implied that `BL-11` had been authorized when it had
+not.
+
+`PREREQ-001` §6.6 now states all three facts plainly, in one table:
+
+- **Autonomous software engineering** — implemented, merged, still historically
+  authoritative for `TASK-001`, and what runs today.
+- **Supplier onboarding** — the frozen ETHOnline demonstration direction. **Not
+  implemented**, and not authorized by appearing in a product definition.
+- **`BL-11` is neither retired nor completed**, and still governs implementing
+  any vertical beyond software engineering.
+
+Radhanite has not become a supplier-compliance product. Supplier diligence is a
+vertical chosen to show the economic layer working, exactly as software
+engineering was.
+
+### The review itself was never recorded
+
+**`CODEX-PR017-03`.** The pull request was opened with no review record at all.
+
+The reason given at the time was that committing a review prompt for a review
+that might never run would repeat a problem then outstanding on PR-016 — a
+record left saying "pending" forever. That reasoning does not survive a review
+actually having happened.
+
+The record now exists, and it carries two disclosures rather than hiding either:
+
+1. **The prompt was written down after the review ran, not before.** The rule
+   requiring the opposite exists so a prompt cannot be quietly reshaped to fit
+   the answer it got. That protection was not in place here, and the record says
+   so instead of implying otherwise.
+2. **The reviewer's exact words were not available** to the agent writing the
+   record. The findings are as relayed by the product owner. Nothing was
+   invented to fill the gap, and the record marks precisely where the verbatim
+   text is missing.
+
+Recording a process failure honestly is worth more than a tidy record that
+claims a compliance which did not occur.
 
 ## 15. How to explain this to a judge
 

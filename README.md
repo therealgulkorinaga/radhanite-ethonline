@@ -59,16 +59,18 @@ what evidence is economically worth buying to answer that.
 |---|---|
 | **Input** | The task, its value, a maximum autonomous spend, and constraints |
 | **Output** | `APPROVE` / `ESCALATE` / `REJECT`, or termination when further spend is not justified |
-| **Success condition** | Objective and machine-checkable, per `PREREQ-001` §4.5 |
+| **Success condition** | The deterministic completion contract in `PREREQ-001` §6.5 — *not* the recommendation itself |
 
 Buying diligence evidence is always possible and is not always worth it, which
 is exactly the decision Radhanite exists to make. A run that stops without
 buying anything is a correct run.
 
-**None of the external integrations this demonstration names is authorized.**
-See [`docs/PREREQ-001_PRODUCT_DEFINITION.md`](docs/PREREQ-001_PRODUCT_DEFINITION.md)
-§6. The earlier software-engineering framing that TASK-001 was built against is
-preserved in §6.4 of that document rather than deleted.
+**This demonstration is frozen direction, not implemented, and not authorized.**
+The implemented V1 is still autonomous software engineering — TASK-001, merged.
+Both framings and the status of each are tabulated in
+[`docs/PREREQ-001_PRODUCT_DEFINITION.md`](docs/PREREQ-001_PRODUCT_DEFINITION.md)
+§6.6; the earlier framing is preserved in §6.4 rather than deleted. None of the
+external integrations named here is authorized either.
 
 ## Repository status
 
