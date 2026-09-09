@@ -67,6 +67,18 @@ which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION
 > exists.** It records an agreed direction so that work can be specified against
 > it, and for no other purpose.
 
+That specification now exists:
+[TASK-006](../tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) defines the
+model — current task state, zero or more candidate capabilities, deterministic
+economic selection, execute or STOP — together with the ranking rule, the
+provider-neutrality constraint, and how TASK-001's two tiers remain
+representable under it. **It is specified and not authorized.** Its open product
+decisions have since been resolved — the baseline success probability is an
+input from the task-state layer, candidate offers are single-use while
+capability types may recur, and termination is guaranteed by a positive-cost
+invariant, single-use IDs, and a hard capability-step ceiling independent of
+budget. Authorization is a separate act and has not been given.
+
 #### 2.2.3 The generalization requires its own authorized task
 
 This rule is unchanged and is not relaxed by the product pivot.
@@ -81,8 +93,12 @@ one-shot, a parallel workflow, or an N-candidate choice into an
 initial-plus-escalation shape would make the recorded costs and probabilities
 describe something other than what happened.
 
-The next technical step in this repository is specifying and authorizing
-`BL-13`. It is not authorized by the pivot that made it necessary.
+`BL-13` is now specified, as
+[TASK-006](../tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md). It is **not
+authorized**, and specifying it does not authorize it — a task file states what
+work would be, and only the human product owner permits it (§4). The next
+technical step is therefore resolving TASK-006's three open product decisions
+and authorizing the work, not beginning it.
 
 ### 2.3 Budget allocation
 Deciding how the authorized budget is distributed across attempts. Enforcing the
