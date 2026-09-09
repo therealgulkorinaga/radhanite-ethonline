@@ -40,7 +40,7 @@ Or, when none passes, **stop**.
 | File | What it is |
 |---|---|
 | `radhanite/selection.py` | **New.** The ranking, its tie-breaks, and the stop |
-| `tests/test_selection.py` | **New.** 54 tests |
+| `tests/test_selection.py` | **New.** 77 tests |
 | `radhanite/__init__.py` | Exports the new pieces; its status note updated |
 | `docs/reviews/PR-023_CODEX_REVIEW.md` | The review prompt, **committed before the review runs** |
 | `docs/reviews/README.md` | Its row in the review index |
@@ -143,19 +143,25 @@ answer why the alternatives were not.
 
 Ordinary outcomes: a winner, or a stop.
 
-Genuine faults raise — an offer containing two candidates with the same
-identifier, an unordered offer, or something that is not a candidate. These come
-from the checks written in PR #21, **which now have their first caller**.
+Genuine faults raise — two assessments for the same identifier, an unordered
+collection, something that is not an assessment, or assessments computed against
+a task state other than the one supplied.
+
+*(As first written, these checks were performed on candidates by the function
+delivered in PR #21. After the correction in §14a they are performed on
+assessments by a sibling function, and PR #21's `validate_candidates` no longer
+has a caller — see §14a.)*
 
 ## 10. Tests run and their results
 
 ```
 $ python3.12 -m unittest discover -q
-Ran 400 tests in 0.13s
+Ran 423 tests in 0.15s
 OK
 ```
 
-**400 passing — 346 existing, unchanged, plus 54 new.**
+**423 passing — 346 existing, unchanged, plus 77 new** (54 with the original
+work, 23 more with the corrections in §14a).
 
 ## 10a. What the tests do when the ranking is not there
 
@@ -242,6 +248,90 @@ test that reads the source file.
 
 The run loop, and the demonstration that the delivered two-tier scenarios still
 decide identically.
+
+## 14a. Corrections after the Codex review
+
+The review **rejected** this pull request. Three findings, none about the
+ranking rule itself — that was validated as correct and is preserved unchanged.
+All three were about the **boundary** the ranking sits behind, and about what
+the record says.
+
+**These corrections were written test-first, properly.** Unlike the original
+work (§0), the regression tests were written and run *before* any correction
+existed. They failed: **90 failures across 70 test methods**, every one rooted in
+
+```
+TypeError: select_capability() got an unexpected keyword argument 'assessments'
+```
+
+— the boundary simply did not exist yet. Then the corrections were implemented,
+and the same tests re-run green.
+
+### `CODEX-PR023-01` — the ranking was computing its own eligibility
+
+It accepted raw candidates and ran the eligibility rule itself. That is one
+layer owning two decisions, and it could reach a different answer from the
+record its caller already held.
+
+It now takes **assessments the caller has already computed**. It never calls the
+eligibility rule — a test replaces that rule with something that explodes on
+contact and requires selection to work anyway. It checks that identifiers are
+unique by reading the assessments, not by re-deciding anything. And it changes
+nothing it is given: tests compare every field of every assessment, and the
+candidates behind them, before and after.
+
+**One check was added that nobody asked for**, because the refactor would
+otherwise have opened a hole it did not previously have. When ranking computed
+its own assessments, they could not disagree with the task state it was told
+about. Now they are supplied separately, so a caller could hand over assessments
+computed against a $2 budget while claiming a $10 one. Selection refuses that
+rather than producing a record that quietly contradicts itself.
+
+### `CODEX-PR023-02` — the run forgot what it had already bought
+
+The list of already-purchased identifiers was read off the first assessment. If
+no candidates were offered there was nothing to read, so a stop on an empty
+offer reported *nothing bought* even for a run that had bought three things.
+
+Already-bought identifiers belong to **the run**, not to whatever happens to be
+on offer at one moment. They are now normalized from the argument directly and
+survive an empty offer.
+
+### `CODEX-PR023-03` — a safety stop was being reported as an economic one
+
+When the purchase allowance was spent **and** the candidates would also have
+failed on price, the stop was described as *"nothing was worth buying"*.
+
+That is not what happened. The run was already forbidden from buying anything
+before a single candidate was weighed. **The ceiling now takes precedence**: if
+the allowance is spent, the stop is a safety stop and says so, whatever else was
+true of the offer. The candidates' economic failures are still recorded against
+them individually — both facts survive — but they no longer supply the reason
+the run ended.
+
+### Deliberate faults, all caught
+
+Eight, one at a time, with bytecode writing disabled so stale compiled files
+could not repeat the problem described in §10b:
+
+| Fault introduced | Result |
+|---|---|
+| Make the eligibility rule reachable from selection again | **1 failure** |
+| Have selection recompute assessments itself | **2 failures** |
+| Reset already-bought identifiers on an empty offer | **3 failures** |
+| Ceiling loses precedence — the classification | **3 failures** |
+| Ceiling loses precedence — the explanation | **2 failures** |
+| Let an ineligible assessment win | **14 failures** |
+| Reverse the cost tie-break | **9 failures** |
+| Reverse the identifier tie-break | **1 failure** |
+
+### One consequence worth naming
+
+`validate_candidates`, delivered in PR #21, **no longer has a caller**. Ranking
+used to call it; it now checks assessments instead, through a sibling function.
+That was the exact concern flagged on PR #21, briefly resolved by this pull
+request, and reopened by this correction. It is stated here rather than left for
+someone to notice.
 
 ## 15. How to explain this to a judge
 

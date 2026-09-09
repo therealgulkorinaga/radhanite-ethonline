@@ -8,9 +8,10 @@ import doctest
 import itertools
 import unittest
 
+from radhanite import eligibility as eligibility_module
 from radhanite import selection as selection_module
 from radhanite.capability import Candidate
-from radhanite.eligibility import Ineligibility
+from radhanite.eligibility import Assessment, Ineligibility, assess
 from radhanite.money import Money
 from radhanite.probability import Probability
 from radhanite.selection import Selection, SelectionOutcome, select_capability
@@ -26,16 +27,33 @@ MIDDLE = Candidate("b-middle", Money("1.00"), Probability("0.65"))
 DEAR = Candidate("c-dear", Money("4.00"), Probability("0.75"))
 
 
-def a_selection(**overrides) -> Selection:
-    arguments = {
-        "candidates": [CHEAP, MIDDLE, DEAR],
-        "current_success_probability": Probability("0.50"),
-        "task_value": Money("20.00"),
-        "remaining_budget": Money("10.00"),
-        "max_capability_steps": 4,
-    }
-    arguments.update(overrides)
-    return select_capability(**arguments)
+STATE = {
+    "current_success_probability": Probability("0.50"),
+    "task_value": Money("20.00"),
+    "remaining_budget": Money("10.00"),
+    "consumed_candidate_ids": (),
+    "capability_step_count": 0,
+    "max_capability_steps": 4,
+}
+
+
+def assessed(candidates, **state_overrides) -> tuple[Assessment, ...]:
+    """Run eligibility, as a caller would, BEFORE ranking is asked anything."""
+    state = {**STATE, **state_overrides}
+    return tuple(assess(candidate=c, **state) for c in candidates)
+
+
+def a_selection(candidates=None, assessments=None, **overrides) -> Selection:
+    state = {k: v for k, v in overrides.items() if k in STATE}
+    unknown = set(overrides) - set(STATE)
+    assert not unknown, f"unexpected override(s): {unknown}"
+
+    if assessments is None:
+        if candidates is None:
+            candidates = [CHEAP, MIDDLE, DEAR]
+        assessments = assessed(candidates, **state)
+
+    return select_capability(assessments=assessments, **{**STATE, **state})
 
 
 class RankingTests(unittest.TestCase):
@@ -425,25 +443,25 @@ class RecordTests(unittest.TestCase):
 
 
 class OfferValidationTests(unittest.TestCase):
-    """§2.2's boundary checks, now with a caller."""
+    """§2.2's boundary checks, applied to the supplied assessments."""
 
     def test_duplicate_identifiers_are_refused(self) -> None:
         twin = Candidate("a-cheap", Money("2.00"), Probability("0.90"))
         with self.assertRaises(ValueError):
-            a_selection(candidates=[CHEAP, twin])
+            a_selection(assessments=assessed([CHEAP, twin]))
 
-    def test_an_unordered_offer_is_refused(self) -> None:
+    def test_an_unordered_collection_of_assessments_is_refused(self) -> None:
         with self.assertRaises(TypeError):
-            a_selection(candidates={CHEAP, MIDDLE})
+            a_selection(assessments=set(assessed([CHEAP, MIDDLE])))
 
-    def test_the_offer_must_hold_candidates(self) -> None:
+    def test_the_collection_must_hold_assessments(self) -> None:
         with self.assertRaises(TypeError):
-            a_selection(candidates=[CHEAP, "b-middle"])
+            a_selection(assessments=[assessed([CHEAP])[0], CHEAP])
 
     def test_caller_mutation_afterwards_cannot_change_the_record(self) -> None:
-        offer = [CHEAP, MIDDLE]
-        s = a_selection(candidates=offer)
-        offer.append(DEAR)
+        supplied = list(assessed([CHEAP, MIDDLE]))
+        s = a_selection(assessments=supplied)
+        supplied.append(assessed([DEAR])[0])
         self.assertEqual(len(s.assessments), 2)
 
 
@@ -493,6 +511,229 @@ class ScopeTests(unittest.TestCase):
             "usdc",
         ):
             self.assertNotIn(forbidden, text)
+
+
+class PrecomputedAssessmentsTests(unittest.TestCase):
+    """CODEX-PR023-01 — ranking consumes assessments; it does not produce them."""
+
+    def test_the_caller_supplies_precomputed_assessments(self) -> None:
+        supplied = assessed([CHEAP, MIDDLE, DEAR])
+        s = select_capability(assessments=supplied, **STATE)
+        self.assertEqual(s.assessments, supplied)
+        self.assertEqual(s.selected.candidate.candidate_id, "b-middle")
+
+    def test_selection_never_calls_assess(self) -> None:
+        # If ranking reaches for the eligibility rule, this explodes.
+        supplied = assessed([CHEAP, MIDDLE, DEAR])
+
+        def explode(*args, **kwargs):
+            raise AssertionError("selection must not call assess()")
+
+        original = eligibility_module.assess
+        patched = [
+            m for m in (selection_module, eligibility_module)
+            if getattr(m, "assess", None) is original
+        ]
+        for module in patched:
+            module.assess = explode
+        try:
+            s = select_capability(assessments=supplied, **STATE)
+        finally:
+            for module in patched:
+                module.assess = original
+
+        self.assertEqual(s.selected.candidate.candidate_id, "b-middle")
+
+    def test_the_eligibility_rule_is_not_reachable_from_selection(self) -> None:
+        self.assertNotIn("assess", set(vars(selection_module)))
+
+    def test_supplied_assessments_are_unchanged_value_for_value(self) -> None:
+        supplied = assessed([CHEAP, MIDDLE, DEAR])
+        before = [
+            (
+                a.candidate.candidate_id,
+                a.candidate.cost,
+                a.candidate.success_probability,
+                a.incremental_expected_value,
+                a.net_expected_value,
+                a.failed_conditions,
+                a.consumed_candidate_ids,
+                a.capability_step_count,
+                a.max_capability_steps,
+                a.reason,
+            )
+            for a in supplied
+        ]
+        select_capability(assessments=supplied, **STATE)
+        after = [
+            (
+                a.candidate.candidate_id,
+                a.candidate.cost,
+                a.candidate.success_probability,
+                a.incremental_expected_value,
+                a.net_expected_value,
+                a.failed_conditions,
+                a.consumed_candidate_ids,
+                a.capability_step_count,
+                a.max_capability_steps,
+                a.reason,
+            )
+            for a in supplied
+        ]
+        self.assertEqual(before, after)
+
+    def test_the_same_assessment_objects_come_back(self) -> None:
+        supplied = assessed([CHEAP, MIDDLE])
+        s = select_capability(assessments=supplied, **STATE)
+        for original, recorded in zip(supplied, s.assessments):
+            self.assertIs(original, recorded)
+
+    def test_supplied_candidates_are_unchanged(self) -> None:
+        before = [
+            (c.candidate_id, c.cost, c.success_probability)
+            for c in (CHEAP, MIDDLE, DEAR)
+        ]
+        select_capability(assessments=assessed([CHEAP, MIDDLE, DEAR]), **STATE)
+        self.assertEqual(
+            [(c.candidate_id, c.cost, c.success_probability)
+             for c in (CHEAP, MIDDLE, DEAR)],
+            before,
+        )
+
+    def test_duplicate_ids_are_rejected_without_recomputing_eligibility(self) -> None:
+        twin = Candidate("a-cheap", Money("2.00"), Probability("0.90"))
+        supplied = assessed([CHEAP, twin])
+
+        def explode(*args, **kwargs):
+            raise AssertionError("selection must not call assess()")
+
+        original = eligibility_module.assess
+        eligibility_module.assess = explode
+        try:
+            with self.assertRaises(ValueError):
+                select_capability(assessments=supplied, **STATE)
+        finally:
+            eligibility_module.assess = original
+
+    def test_an_ineligible_supplied_assessment_cannot_win(self) -> None:
+        best = Candidate("a-consumed", Money("0.50"), Probability("0.95"))
+        supplied = assessed(
+            [best, MIDDLE], consumed_candidate_ids={"a-consumed"}
+        )
+        s = select_capability(
+            assessments=supplied,
+            **{**STATE, "consumed_candidate_ids": {"a-consumed"}},
+        )
+        self.assertEqual(s.selected.candidate.candidate_id, "b-middle")
+        self.assertGreater(
+            supplied[0].net_expected_value, s.selected.net_expected_value
+        )
+
+    def test_order_independence_survives_the_refactor(self) -> None:
+        for order in itertools.permutations([CHEAP, MIDDLE, DEAR]):
+            with self.subTest(order=[c.candidate_id for c in order]):
+                s = select_capability(assessments=assessed(order), **STATE)
+                self.assertEqual(s.selected.candidate.candidate_id, "b-middle")
+
+
+class ConsumedIdsSurviveAnEmptyOfferTests(unittest.TestCase):
+    """CODEX-PR023-02 — consumed identifiers are run state, not offer state."""
+
+    def test_an_empty_offer_preserves_non_empty_consumed_ids(self) -> None:
+        s = a_selection(assessments=[], consumed_candidate_ids=["z-late", "a-early"])
+        self.assertTrue(s.stopped)
+        self.assertEqual(s.consumed_candidate_ids, ("a-early", "z-late"))
+
+    def test_an_empty_offer_with_nothing_consumed_stays_empty(self) -> None:
+        s = a_selection(assessments=[], consumed_candidate_ids=[])
+        self.assertEqual(s.consumed_candidate_ids, ())
+
+    def test_consumed_ids_are_not_inferred_from_the_offer(self) -> None:
+        # Nothing on offer was consumed, but something else in the run was.
+        s = a_selection(consumed_candidate_ids=["x-elsewhere"])
+        self.assertEqual(s.consumed_candidate_ids, ("x-elsewhere",))
+        self.assertNotIn(
+            s.selected.candidate.candidate_id, s.consumed_candidate_ids
+        )
+
+    def test_caller_mutation_after_the_call_cannot_change_the_record(self) -> None:
+        consumed = ["x-elsewhere"]
+        s = a_selection(assessments=[], consumed_candidate_ids=consumed)
+        consumed.append("a-cheap")
+        self.assertEqual(s.consumed_candidate_ids, ("x-elsewhere",))
+
+    def test_normalization_is_deterministic_on_an_empty_offer(self) -> None:
+        for order in (["b", "a", "c"], {"c", "b", "a"}, ("a", "c", "b", "a")):
+            s = a_selection(assessments=[], consumed_candidate_ids=order)
+            self.assertEqual(s.consumed_candidate_ids, ("a", "b", "c"))
+
+
+class StepCeilingPrecedenceTests(unittest.TestCase):
+    """CODEX-PR023-03 — the run-level ceiling outranks any economic verdict."""
+
+    AT_CEILING = {"capability_step_count": 4, "max_capability_steps": 4}
+
+    def test_an_attractive_candidate_at_the_ceiling_is_a_safety_stop(self) -> None:
+        s = a_selection(candidates=[MIDDLE], **self.AT_CEILING)
+        self.assertTrue(s.stopped)
+        self.assertTrue(s.stopped_without_economic_judgement)
+        self.assertNotIn("worth buying", s.reason)
+
+    def test_a_poor_candidate_at_the_ceiling_is_still_a_safety_stop(self) -> None:
+        # Worth exactly its cost — it would fail on economics below the ceiling.
+        breakeven = Candidate("d-breakeven", Money("1.00"), Probability("0.55"))
+        s = a_selection(candidates=[breakeven], **self.AT_CEILING)
+        self.assertTrue(s.stopped_without_economic_judgement)
+        self.assertNotIn("worth buying", s.reason)
+
+    def test_unaffordable_and_zero_uplift_at_the_ceiling_is_a_safety_stop(self) -> None:
+        flat = Candidate("e-flat", Money("99.00"), Probability("0.50"))
+        s = a_selection(
+            candidates=[flat], remaining_budget=Money("1.00"), **self.AT_CEILING
+        )
+        assessment = s.assessments[0]
+        self.assertIn(Ineligibility.BUDGET, assessment.failed_conditions)
+        self.assertIn(Ineligibility.UPLIFT, assessment.failed_conditions)
+        self.assertTrue(s.stopped_without_economic_judgement)
+
+    def test_an_empty_offer_at_the_ceiling_is_a_safety_stop(self) -> None:
+        s = a_selection(assessments=[], **self.AT_CEILING)
+        self.assertTrue(s.stopped)
+        self.assertTrue(s.stopped_without_economic_judgement)
+
+    def test_the_reason_names_the_ceiling_not_the_economics(self) -> None:
+        s = a_selection(**self.AT_CEILING)
+        self.assertIn("capability step", s.reason)
+        self.assertNotIn("worth buying", s.reason)
+
+    def test_economic_failures_are_still_recorded_as_assessment_facts(self) -> None:
+        # The ceiling overrides the run-level REASON, not the per-candidate
+        # record. Both facts must survive.
+        flat = Candidate("e-flat", Money("99.00"), Probability("0.50"))
+        s = a_selection(
+            candidates=[flat], remaining_budget=Money("1.00"), **self.AT_CEILING
+        )
+        conditions = s.assessments[0].failed_conditions
+        self.assertIn(Ineligibility.BUDGET, conditions)
+        self.assertIn(Ineligibility.STEP_CEILING, conditions)
+
+    def test_below_the_ceiling_an_unaffordable_offer_is_an_economic_stop(self) -> None:
+        s = a_selection(remaining_budget=Money("0.05"), capability_step_count=3)
+        self.assertTrue(s.stopped)
+        self.assertFalse(s.stopped_without_economic_judgement)
+        self.assertIn("worth buying", s.reason)
+
+    def test_safety_and_economic_stops_stay_distinguishable(self) -> None:
+        safety = a_selection(**self.AT_CEILING)
+        economic = a_selection(remaining_budget=Money("0.05"))
+        self.assertTrue(safety.stopped_without_economic_judgement)
+        self.assertFalse(economic.stopped_without_economic_judgement)
+        self.assertNotEqual(safety.reason, economic.reason)
+
+    def test_the_ceiling_is_visible_on_the_record(self) -> None:
+        s = a_selection(**self.AT_CEILING)
+        self.assertTrue(s.ceiling_reached)
+        self.assertFalse(a_selection().ceiling_reached)
 
 
 class ImmutabilityTests(unittest.TestCase):

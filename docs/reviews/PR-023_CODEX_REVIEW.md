@@ -4,7 +4,7 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md`, `docs/PREREQ-001_PRODUCT_DEFINITION.md`, `docs/ARCHITECTURE.md`, `docs/AI_BUILD_GOVERNANCE.md`
 **Date issued:** 2026-09-09
-**Outcome:** _pending — review not yet run_
+**Outcome:** **Rejected** — `CODEX-PR023-01`, `-02`, `-03`; all three corrected
 
 ---
 
@@ -134,12 +134,91 @@ End with exactly ONE outcome, per §7.2:
 
 ## 2. Findings returned
 
-_Pending. Codex has not yet reviewed this pull request._
+**The reviewer's verbatim response was not supplied** to the agent writing this
+record. What follows is the three findings **as relayed by the human product
+owner** in the correction authorization. Nothing has been invented to fill the
+gap. §0 is unaffected: the prompt in §1 was committed before the review ran.
+
+The prompt's Part A asked whether the ranking comparison itself was correct. The
+product owner relayed that it was validated as correct and must be preserved
+unchanged — so all three findings concern the **boundary and the record**, not
+the rule.
+
+### `CODEX-PR023-01` — the ranking layer computed its own eligibility
+
+**File:** `radhanite/selection.py` — `select_capability`
+**Departs from:** the PR-C boundary; TASK-006 §2.4, §2.7
+
+`select_capability` accepted raw `Candidate` objects and called
+`eligibility.assess` internally. Ranking is meant to consume assessments the
+eligibility rule has already produced; owning both decisions lets the ranking
+layer disagree with the record its caller already holds.
+
+**Required correction:** consume an ordered collection of already-computed
+`Assessment` objects; never call `assess`; never recompute eligibility; only
+eligible assessments may compete; ineligible ones remain available for STOP and
+audit reasoning but may never win; validate candidate-ID uniqueness from the
+supplied assessments without re-running eligibility; mutate neither the supplied
+assessments nor their candidates; stay free of provider, network, payment and
+sponsor concepts.
+
+### `CODEX-PR023-02` — consumed identifiers were lost on an empty offer
+
+**File:** `radhanite/selection.py` — `select_capability`
+**Departs from:** TASK-006 §2.7, §8
+
+The consumed set was read off the first assessment. With no assessments there
+was nothing to read, so a STOP on an empty offer reported `()` even when the run
+had already bought several capabilities. Consumed identifiers are **run state**,
+not a property of the current offer.
+
+**Required correction:** normalize them independently of the assessment
+collection; preserve them when zero assessments are supplied; never infer them
+from the offer; never clear them because the offer is empty; keep the
+representation deterministic; detach the stored value from caller mutation.
+
+### `CODEX-PR023-03` — the step ceiling lost precedence to economics
+
+**File:** `radhanite/selection.py` — `Selection.stopped_without_economic_judgement`, `_explain`
+**Departs from:** TASK-006 §2.5 C, §8
+
+When the ceiling had been reached **and** candidates also failed economic
+conditions, the STOP was classified and described as economic. The run was
+already forbidden from taking another capability step before any candidate was
+weighed, so no economic verdict ended it.
+
+**Required correction:** a ceiling STOP is non-economic;
+`stopped_without_economic_judgement` must say so; the reason must not claim
+nothing was worth buying; per-candidate economic failures remain recorded as
+assessment facts but must not override the run-level ceiling reason; the
+per-candidate eligibility rule itself is unchanged.
 
 ## 3. Outcome
 
-_Pending._
+**Rejected** — `CODEX-PR023-01`, `-02`, `-03`.
+
+`-01` is a boundary crossing, which under §7.2 is a rejection rather than a
+correction: *"the work departs from the specification or crosses an architecture
+boundary. It is fixed or removed; it is not merged with a note."*
+
+The ranking comparison in §2.4 was **not** faulted and is preserved byte-for-byte.
 
 ## 4. Corrections
 
-_None yet._
+| Finding | Correction |
+|---|---|
+| `CODEX-PR023-01` | `select_capability` now takes `assessments`, never `candidates`. `assess` is neither imported nor called — a test patches it to raise and requires selection to work regardless. `_checked_assessments` reads uniqueness off the supplied assessments. A new integrity check refuses assessments computed against a different task state, which the refactor would otherwise have allowed to pass silently |
+| `CODEX-PR023-02` | Consumed identifiers are normalized from the argument, independently of the offer, and survive an empty one |
+| `CODEX-PR023-03` | `Selection.ceiling_reached` added; `stopped_without_economic_judgement` returns True whenever the ceiling is reached; `_explain` checks the ceiling **before** anything about the candidates, and says so |
+
+Committed as *"Correct the PR-23 ranking boundary and stop classification"* on
+`task-006-selection`.
+
+**Test-first, genuinely this time.** The regression tests were written and run
+before any correction existed: **90 failures across 70 test methods**, all
+rooted in `select_capability() got an unexpected keyword argument
+'assessments'`. Then implemented, then re-run green. Eight mutations, all
+caught, with bytecode writing disabled.
+
+**Corrections are themselves subject to review** (`AI_BUILD_GOVERNANCE.md`
+§7.5). This corrective commit has not been reviewed.
