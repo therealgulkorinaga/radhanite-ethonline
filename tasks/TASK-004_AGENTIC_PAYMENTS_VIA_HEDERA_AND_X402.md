@@ -7,6 +7,13 @@
 **Replaces backlog entry:** `BL-04`. (`BL-03` belongs to [TASK-005](TASK-005_BUDGET_IN_REAL_USDC_ON_ARC.md).)
 **Depends on:** TASK-003 complete and merged
 
+**Predates the product pivot.** Written under the previous product definition
+(inference-expenditure allocation). Preserved as a **proposed specification and
+historical record** under [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md)
+§2.3; its technical decisions are unaltered. **Its place in the dependency chain
+is not automatically authorized** under the new direction — see
+[`BACKLOG.md`](BACKLOG.md) and [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §4a.
+
 ---
 
 ## 1. Purpose

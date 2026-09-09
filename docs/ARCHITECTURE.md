@@ -27,23 +27,62 @@ system.
 Turning a business task into units of work that can be attempted, measured, and
 priced.
 
-### 2.2 Execution-strategy selection
-Choosing how a unit of work is attempted — approach and capability tier — with a
+### 2.2 Capability selection
+Choosing how a unit of work is attempted — which capability to acquire, at what
 declared expected cost.
 
-**The two-tier model merged in TASK-001 is authoritative.** A strategy is an
-opening attempt and one optional escalation, each with a declared cost and a
-declared success probability. §2.5's rule is defined against that shape.
+Two things are described below and they must never be confused. One is running
+code. The other is a direction that has been agreed and not built.
 
-A richer model — an ordered plan of stages, which would express a single premium
-attempt, or parallel candidates followed by adjudication — is a change to what
-escalation *means*, and therefore to the economic policy itself. It requires its
-own authorized task (`BL-13`) and must not arrive inside an integration.
+#### 2.2.1 Current implemented architecture — TASK-001
 
-Until then, strategies that the two-tier model cannot represent honestly are
-**not to be approximated by it**. Forcing a one-shot or a parallel workflow into
-an initial-plus-escalation shape would make the recorded costs and probabilities
+**What runs today is the two-tier model merged in TASK-001, and it remains
+authoritative for the implementation.**
+
+- **Deterministic** — identical inputs produce an identical choice.
+- **Exactly two tiers** — an opening attempt and one optional escalation.
+- Shaped as `initial_cost` / `initial_success_probability` →
+  `escalation_cost` / `escalated_success_probability`.
+- §2.5's escalation rule is defined against precisely that shape.
+
+Every acceptance criterion in TASK-001, every field in the run record documented
+in [`RUN_RECORDS.md`](RUN_RECORDS.md), and all 242 tests are written against
+this model. It is the delivered product.
+
+#### 2.2.2 Authorized migration direction — not implemented
+
+The product definition has moved from allocating inference spend to deciding
+which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION.md)
+§2.3 and §4a. The architecture that direction implies is:
+
+- **provider-neutral candidate capabilities**, rather than tiers of one kind of
+  thing;
+- **potentially N candidate actions** at a decision point, rather than exactly
+  one escalation;
+- **task-state-driven selection** — what is worth buying next depends on what
+  the previous purchase revealed;
+- **dynamic skill acquisition** across independent environments.
+
+> **None of this is implemented. Nothing in this section describes code that
+> exists.** It records an agreed direction so that work can be specified against
+> it, and for no other purpose.
+
+#### 2.2.3 The generalization requires its own authorized task
+
+This rule is unchanged and is not relaxed by the product pivot.
+
+Moving from §2.2.1 to §2.2.2 changes what escalation *means*, and therefore
+changes the economic policy itself. **It requires its own authorized task —
+`BL-13` — and must not arrive inside a provider or sponsor integration.**
+
+Until that task exists and is authorized, capabilities that the two-tier model
+cannot represent honestly are **not to be approximated by it**. Forcing a
+one-shot, a parallel workflow, or an N-candidate choice into an
+initial-plus-escalation shape would make the recorded costs and probabilities
 describe something other than what happened.
+
+The next technical step in this repository is specifying and authorizing
+`BL-13`. It is not authorized by the pivot that made it necessary.
 
 ### 2.3 Budget allocation
 Deciding how the authorized budget is distributed across attempts. Enforcing the
@@ -68,6 +107,20 @@ the only thing Radhanite is uniquely qualified to own.
 | Programmable authority over the agent, and its wallet | Privy | **Not authorized yet** |
 | Agent economic budget | Arc / USDC | **Not authorized yet** |
 | Agent payments, outbound and inbound | Hedera / x402 | **Not authorized yet** |
+| Capability discovery and marketplace settlement | Circle Agent Marketplace | **Not authorized yet** |
+
+**Every system in this table sits beneath Radhanite, not beside it.** Radhanite
+decides *whether* and *what* to buy; these supply it, or settle it.
+
+> **No provider, sponsor, or payment integration may redefine Radhanite's core
+> economic domain model.**
+
+An integration adapts a provider to Radhanite's model of a priced capability. If
+an integration appears to require the domain model to change shape, that is a
+product decision belonging to
+[`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION.md) §4a.1 and to the human product
+owner — never something the integration settles on its way past. Making that
+change inside an integration is a §6 item 7 violation.
 
 ### 3.1 OpenRouter — inference execution infrastructure
 Intended later as the way Radhanite actually executes inference across model
@@ -168,6 +221,14 @@ make it real, in an order set by what each depends on:
 it. §4 above is unchanged: an integration becomes authorized only when the human
 product owner says so.
 
+**This table predates the product pivot in
+[`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION.md) §2.3, and its dependency chain
+is not automatically authorized to proceed under the new direction.** The four
+task files remain in `tasks/` as proposed specifications and historical record.
+Which of them is still the right next integration — and in what order — is an
+open product decision, not something inherited by default. See
+[`BACKLOG.md`](../tasks/BACKLOG.md).
+
 ### Why this order, and an alternative that was rejected
 
 The order follows dependency. Inference comes first because until it is real,
@@ -224,6 +285,31 @@ number that is only a fact about the world once it is money. The fifth is the
 most interesting: it is not a limitation of the code but of who the code answers
 to, and it cannot be fixed from inside.
 
+## 4b. Settlement environments are independent
+
+The demonstration in [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION.md) §6 buys
+from more than one environment. The following are fixed, and none of them may be
+blurred in a document, a run record, a demonstration, or a pull request.
+
+1. **Hedera and Arc/Circle are independent execution and payment environments.**
+   They do not share state, accounts, or balances.
+2. **No bridge between them is required**, and none is built. Radhanite moves no
+   value between chains — `PREREQ-001` §7.
+3. **Radhanite maintains one economic task budget above the underlying execution
+   accounts.** The ceiling is a property of the task, not of any account, and it
+   holds across every environment the task buys from — `PREREQ-001` §4a.2, §5.5.
+4. **Arc Testnet USDC is not production-value USDC** and must never be described
+   as though it were. A testnet token is a test fixture that happens to be
+   on-chain.
+5. **A marketplace purchase is a purchase from the marketplace.** A
+   Circle Marketplace request backed by Tavily must not be described as Radhanite
+   paying Tavily directly, unless that is factually the seller relationship in
+   the live integration. Who was actually paid is a fact to be checked, not
+   inferred from whose technology answered.
+
+Points 4 and 5 are the same rule as §6 item 8 applied to a different confusion:
+value that is not real, and a payee that is not the one named.
+
 ## 5. Boundary posture for TASK-001
 
 Because no integration is authorized, TASK-001 is built so that the economic
@@ -259,9 +345,24 @@ The following are architecture violations and must fail review:
    **evidence within a declared scenario** and nothing more. This binds every
    document, run record, demonstration and pull request explanation, not only
    the code.
+10. Presenting **testnet value as production value**. Arc Testnet USDC — or any
+    testnet token — is a test fixture that happens to be on-chain, and must
+    never be described, totalled, or demonstrated as production-value USDC.
+11. **Misdescribing who was paid.** Naming an upstream technology provider as
+    the payee when the actual seller was a marketplace or intermediary, or
+    otherwise stating a settlement relationship that was not the one that
+    occurred. See §4b item 5.
+12. Describing declared success probabilities, costs, or uplifts as **learned,
+    measured, inferred from historical performance, or dynamically estimated at
+    runtime**, when they are declared benchmark fixtures. They remain fixtures
+    unless and until a learning system is separately authorized (`BL-05`,
+    `BL-06`) and actually exists. This binds documents and demonstrations as
+    much as code.
 
-Items 7, 8 and 9 are the ones that let unauthorized scope or an untrue claim
-into a repository without anyone deciding to add it. Item 9 is the same rule as
-item 8 applied to outcomes rather than to money: real inference producing a
+Items 7 through 12 are the ones that let unauthorized scope or an untrue claim
+into a repository without anyone deciding to add it. Items 9 to 12 are all the
+same rule as item 8, applied to a different confusion each time — outcomes
+rather than money, value that is not real, a payee that is not the one named,
+and a number that was typed rather than learned. Real inference producing a
 plausible answer is not the same as the work having been done, and the
 difference must never be blurred by a form of words.

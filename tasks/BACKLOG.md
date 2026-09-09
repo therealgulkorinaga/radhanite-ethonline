@@ -30,6 +30,22 @@ These four now have task files. **A task file is a specification, not an
 authorization** — each remains unauthorized until the human product owner says
 otherwise, exactly as `BACKLOG.md`'s rules require.
 
+**All four predate the product pivot** recorded in
+[`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §2.3, which moved the
+product from allocating inference spend to deciding which capability is worth
+acquiring. They are preserved as **proposed specifications and historical
+record**; their substantive technical decisions are untouched.
+
+> **Their dependency chain is not automatically authorized to proceed under the
+> new product direction.**
+
+TASK-003 depending on TASK-002, and TASK-004 on TASK-003, described an order
+that assumed real inference was the first thing to make real. Under the new
+direction that assumption is no longer self-evident. Which integration comes
+first — and whether TASK-002 is still it — is an open product decision belonging
+to the human product owner, not an order inherited by default. See
+[`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §4a.
+
 | ID | Concept | Specified in | Status |
 |---|---|---|---|
 | BL-01 | Real inference execution via OpenRouter | [TASK-002](TASK-002_REAL_INFERENCE_VIA_OPENROUTER.md) | **UNAUTHORIZED** |
@@ -81,12 +97,32 @@ changing it changes what escalation means and therefore the economic policy.
 That is why it is a task of its own rather than something an integration does on
 the way past.
 
+**`BL-13` is now also what the product pivot requires.** `PREREQ-001` §5.1 and
+§4a describe selecting among candidate *capabilities* — provider-neutral, N of
+them, chosen against the current state of the task. The delivered two-tier model
+cannot express that. `ARCHITECTURE.md` §2.2.2 records the direction; §2.2.3
+requires it to arrive as its own authorized task.
+
+**It is the next technical step in this repository, and it is still
+UNAUTHORIZED.** A product direction being agreed is not permission to implement
+what it implies — that is exactly rule 1 at the top of this file. `BL-13`
+becomes buildable when the human product owner creates a task file for it.
+
 `BL-14` is distinct from `BL-04b`. `BL-04b` is Radhanite sold as a paid service —
 a product direction. `BL-14` is a seller endpoint stood up only so that the
 outbound purchase in TASK-004 has something real to buy from. If a bounty
 requires one, it is **hackathon test infrastructure and must be represented as
 such**, not allowed to become part of the product architecture by having been
 built.
+
+`BL-11` needs a note after the product pivot. `PREREQ-001` §6 now names
+**supplier onboarding and due diligence** as the primary ETHOnline
+demonstration, which is a vertical beyond software engineering. That settles the
+*product direction* only. `BL-11` covers **implementing** another vertical, and
+it remains UNAUTHORIZED: no execution against a real diligence workflow, no
+supplier data, no live success signal. `BL-07` and `BL-08` are likewise
+untouched. The software-engineering framing TASK-001 was built against is
+preserved in `PREREQ-001` §6.4 rather than deleted.
 
 BL-12 is distinct from `BL-09`, and the difference is worth stating. `BL-09` is
 Radhanite dividing a budget across several tasks — one agent, many jobs. `BL-12`
