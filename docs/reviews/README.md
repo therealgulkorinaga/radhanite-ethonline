@@ -49,7 +49,7 @@ If a reviewer other than Codex is ever used, substitute its name.
 **Reviewer:** Codex (independent review agent, §1.3)
 **Reviewed against:** <the authoritative documents>
 **Date issued:** YYYY-MM-DD
-**Outcome:** Approved | Approved with corrections | Rejected | pending
+**Outcome:** Approved | Approved with corrections | Rejected | Merged without review | pending
 
 ## 1. Prompt issued
 ## 2. Findings returned
@@ -68,6 +68,11 @@ If a reviewer other than Codex is ever used, substitute its name.
    that fix them can reference them.
 4. **Section 4 lists the correction commits** that resolve each finding, so the
    trail runs from complaint to fix without leaving the repository.
+5. **A merged pull request is never left "pending."** `pending` means a review
+   is still expected. Once a pull request is merged, either a review outcome is
+   recorded or the record says **Merged without review** — which is not one of
+   §7.2's three substantive outcomes, but the honest absence of them. Leaving
+   `pending` on a merged pull request implies a review that will never arrive.
 5. **A review record is a transcript, not a source of truth.** The product
    definition, architecture document, task specification, code and tests remain
    authoritative. A reviewer can be wrong, and the record preserves what it said
@@ -87,6 +92,6 @@ If a reviewer other than Codex is ever used, substitute its name.
 | [#11](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/11) | [PR-011](PR-011_CODEX_REVIEW.md) | Rejected → Rejected again → 11 findings, all corrected |
 | [#12](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/12) | [PR-012](PR-012_CODEX_REVIEW.md) | Rejected → **Approved with corrections** → 5 findings, all corrected; evaluation rebuilt |
 | [#13](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/13) | [PR-013](PR-013_CODEX_REVIEW.md) | Rejected twice plus one corrupted pass → 13 findings, all corrected; loop rebuilt twice. Final corrections merged **unreviewed** |
-| [#14](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/14) | [PR-014](PR-014_CODEX_REVIEW.md) | pending |
+| [#14](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/14) | [PR-014](PR-014_CODEX_REVIEW.md) | **Merged without review** — prompt committed, review never run |
 | [#15](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/15) | [PR-015](PR-015_CODEX_REVIEW.md) | **Rejected** → 3 P0 findings; `-01` corrected, `-02`/`-03` unresolved product decisions |
-| [#16](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/16) | [PR-016](PR-016_CODEX_REVIEW.md) | pending |
+| [#16](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/16) | [PR-016](PR-016_CODEX_REVIEW.md) | **Merged without review** — prompt committed, review never run |
