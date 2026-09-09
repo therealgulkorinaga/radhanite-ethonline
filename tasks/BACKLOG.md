@@ -115,10 +115,12 @@ the economics actually need is a **set of candidates ranked by net expected
 value** — an order over options at one decision point, not a plan laid out in
 advance. The row is updated to say so.
 
-TASK-006 also carries **three unresolved product decisions** — the starting
-success probability, whether a capability may be bought twice, and what
-guarantees the loop terminates. Implementation cannot begin until the human
-product owner settles them; see TASK-006 §6.6–§6.8.
+TASK-006 carried three unresolved product decisions when first specified — the
+starting success probability, whether a capability may be bought twice, and what
+guarantees the loop terminates. **All three are now resolved** by the human
+product owner and frozen in TASK-006 §6.6–§6.8. Resolving them did not authorize
+the work: the task remains **SPECIFIED — UNAUTHORIZED**, and authorization is a
+separate act.
 
 `BL-14` is distinct from `BL-04b`. `BL-04b` is Radhanite sold as a paid service —
 a product direction. `BL-14` is a seller endpoint stood up only so that the

@@ -107,13 +107,53 @@ ambiguous, and carries no economic meaning at all.
 **If nothing qualifies, the answer is STOP** — and so it is if the task is
 already done. Stopping remains a correct outcome, not a failure.
 
+### Three rules that exist to make the loop stop
+
+Added when the open questions below were settled, and all three are required.
+
+**Nothing free is for sale.** Every candidate must cost something. Free or local
+actions are simply not purchasable capabilities, so every purchase leaves less
+budget than before.
+
+**Each offer can be taken once.** Once a specific candidate has been bought, that
+exact offer is off the table for the rest of the run. But the *kind* of thing it
+was can be offered again once the situation has changed — a run can buy a second
+opinion, learn something from it, and then buy another. The rule enforces this
+purely by identifier; it has no idea that two candidates are "the same sort of
+thing", and deliberately must not acquire one.
+
+**There is a hard limit on how many things a run may buy.** Every run carries a
+maximum number of purchases, and on reaching it the answer is STOP — whatever
+the budget says, however good the offers look. The demonstration sets this to
+**four**. That is a setting, not a law of the product, and the specification
+forbids writing the number into the rule.
+
+The third one matters most because it is the only safeguard that does not depend
+on the other two being implemented correctly.
+
+### Where the starting number comes from
+
+Every comparison is measured against the current chance of success. That number
+is **not** something the user types, and **not** a free "do nothing" option
+competing with the rest. It is a fact about where the task has got to, handed to
+the decision:
+
+```
+the user's task → a first attempt, and an assessment of it → the current state
+  → this decision
+```
+
+Producing that state is somebody else's job — a separate layer, specified
+separately, authorized separately. This task receives the number.
+
 ## 6. What goes into the system
 
 Unchanged: a task, what success is worth, the maximum spend, constraints, and a
 success condition.
 
-New at each decision: **the set of candidates on offer**, and **the current
-chance of success** to measure them against.
+New at each decision: **the set of candidates on offer**, **the current chance
+of success** to measure them against, **how much budget is left**, and **how
+many purchases this run has already made** against its limit.
 
 Where that candidate set comes from is deliberately not this task's problem.
 Finding out what is for sale is a separate concern from deciding what is worth
@@ -143,8 +183,10 @@ inspectable after the fact.
 
 ## 9. How it can fail
 
-The specification names three ways this could go wrong, and does not pretend any
-of them is settled. They are in §12.
+The three open questions this specification originally named have since been
+answered by the product owner and frozen into it. §12 records what they were and
+what was decided — kept rather than deleted, because the answers only make sense
+against the problems.
 
 The failure mode the document guards hardest against is subtler: **a rule that
 quietly stops being about economics.** If a provider's name ever enters the
@@ -184,29 +226,41 @@ proof that shuffling the candidate list changes nothing.
 
 ## 12. Known limitations
 
-**Three product decisions are unresolved, and implementation cannot start
-without them.** They are recorded as unresolved rather than guessed at.
+### The three open decisions, and how they were settled
 
-**Where does the first probability come from?** Every comparison is relative to
-the current chance of success. At the very first decision nothing has been
-attempted, and the specification does not say what that number is. The old model
-never had to answer this, because there was always an opening attempt to measure
-from.
+The first version of this specification could not be implemented: three
+questions had no answers. They are recorded here with their resolutions, because
+the answers are hard to judge without the problems.
 
-**Can the same capability be bought twice?** Buying two independent second
-opinions is a reasonable thing to want. So is the intuition that once you have
-acquired a capability you have it. The answer determines whether the candidate
-set changes as a run proceeds, which is structural rather than a detail.
+**Where does the first probability come from?** — *Resolved.* It is an **input**,
+supplied by the layer that ran the first attempt and assessed it. Not a user
+input, and not a free "do nothing" candidate. Building that layer is a separate,
+unauthorized piece of work; this task simply receives the number.
 
-**What guarantees the loop ever stops?** The old model stopped because there
-were only two tiers. Now termination rests entirely on the budget shrinking with
-every purchase — and **that argument breaks for anything priced at zero.** A
-free candidate that improves the odds would be chosen, and then be equally
-eligible on identical terms, forever.
+**Can the same capability be bought twice?** — *Resolved.* **A specific offer is
+single-use; the kind of thing is repeatable once the situation changes.** Buying
+a second opinion, learning from it, and then buying another is allowed. Buying
+the identical offer twice on identical terms is not. Enforced by identifier
+alone, so the rule never learns to group candidates by type.
 
-That last one is the reason this is a specification and not an implementation.
-It was found by writing the rule down carefully, which is exactly what writing
-it down is for.
+**What guarantees the loop ever stops?** — *Resolved*, and this was the serious
+one. Budget depletion alone was not a proof: a free candidate that improved the
+odds would be bought forever without ever exceeding budget. Three safeguards now
+close it — nothing free is purchasable, an offer cannot be taken twice, and a
+hard ceiling on the number of purchases stops the run regardless of budget. The
+ceiling holds even if the other two were implemented wrongly.
+
+### What is still true
+
+- **The candidate set is supplied, not discovered.** Where offers come from is
+  out of scope, as is the layer that establishes the task state.
+- **All the numbers are still made up.** Every probability is a declared
+  fixture.
+- **Compatibility with the delivered system is near-total, not total.** The
+  positive-cost rule means a hypothetical free escalation could be expressed
+  under the old model and cannot under this one. Every scenario the repository
+  actually contains is unaffected, and the specification states the exception
+  rather than claiming compatibility it does not have.
 
 ## 13. Explicitly out of scope
 
@@ -219,9 +273,10 @@ the decision needs.
 
 ## 14. Deferred to future tasks
 
-Everything the specification describes. It becomes buildable when the product
-owner resolves the three open decisions in §12 and authorizes the work — two
-separate acts, in that order.
+Everything the specification describes. The three open decisions are now
+settled, so what remains is **authorization** — a separate act, and one this
+pull request does not perform. `BL-13` and TASK-006 stay **SPECIFIED —
+UNAUTHORIZED**.
 
 Execution of a selected capability is a different task again, as is the run-record
 schema that would carry the new figures.
@@ -250,7 +305,10 @@ pointers to sections that are not there.
 > is selling. Price and effect, nothing else. The moment a provider's name can
 > tip a decision, you have a procurement preference dressed up as economics.
 >
-> And we haven't built it. Writing it down surfaced three questions we can't
-> answer yet — including one where the loop provably never terminates if a
-> capability is free. Those are in the document, unresolved, rather than
-> discovered halfway through implementation.
+> And we haven't built it. Writing it down surfaced three questions we couldn't
+> answer — including one where the loop provably never terminates if a
+> capability is free. We answered them before writing any code: nothing free is
+> for sale, an offer can be taken once, and there is a hard cap on how many
+> things a run may buy, independent of the budget.
+>
+> Finding that in a document is cheap. Finding it in a demo is not.

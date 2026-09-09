@@ -80,6 +80,41 @@ undefined. This mirrors TASK-001's refusal of unordered strategy collections:
 an input that cannot produce a deterministic answer is rejected rather than
 processed into one.
 
+### 2.2a Inputs the decision receives, beyond the candidates
+
+A decision is not made from the candidate set alone. Four further inputs enter
+it, and **none of them is a candidate**:
+
+| Input | Where it comes from |
+|---|---|
+| `current_success_probability` | The **current task state**, established by the baseline execution and evaluation layer |
+| `remaining_budget` | The run's ledger, already net of everything spent so far — including the baseline |
+| `capability_step_count` | The run: how many capabilities have been purchased so far |
+| `max_capability_steps` | **Run policy** — see §2.5 |
+
+`task_value` is a task input under `PREREQ-001` §4.3 and is unchanged.
+
+**`current_success_probability` is not a user input**, and it is **not**
+represented as a zero-cost candidate. It is a fact about the task as it now
+stands, supplied to the decision:
+
+```
+user task
+  → baseline execution / evaluation
+  → current task state
+  → TASK-006 capability selection
+```
+
+**How that baseline state is produced is outside TASK-006.** Nothing in this
+task specifies, authorizes, or constrains the execution and evaluation layer
+that produces it, and no part of the implementation may reach into it. It is an
+input at the boundary, exactly as the candidate set is.
+
+**`max_capability_steps` is not a sixth user input** under `PREREQ-001` §4, and
+must not become one here. It is authoritative run policy supplied to the run;
+where it is configured is not settled by TASK-006 and does not need to be for
+the rule to be implementable.
+
 ### 2.3 The economic rule is preserved
 
 Unchanged from TASK-001 §2.5, applied per candidate:
@@ -89,24 +124,39 @@ incremental_expected_value =
     (candidate_success_probability - current_success_probability) × task_value
 ```
 
-A candidate is **economically eligible** only when all three hold:
+A candidate is **eligible** only when **all six** hold:
 
 ```
+candidate_cost > 0
 candidate_cost <= remaining_budget
 candidate_success_probability > current_success_probability
 incremental_expected_value > candidate_cost
+candidate_id has not already been consumed in this run
+capability_step_count < max_capability_steps
 ```
 
 Otherwise it is **ineligible**. Ineligibility is an ordinary outcome, not an
 error.
 
-**On the second condition.** Given that `Money` validation makes cost and task
-value non-negative, it is implied by the third: eligibility requires
-`incremental_expected_value > candidate_cost >= 0`, and a positive incremental
-value with a non-negative task value requires a positive uplift. It is stated
-anyway, as an explicit gate — it makes the intent checkable at review, and it
-holds the invariant if those non-negativity constraints are ever revisited. An
-implementation may not drop it on the grounds that it is redundant.
+The first four are economic. The last two are the termination safeguards in
+§2.5, and they are stated here as eligibility conditions because that is what
+they are: a consumed candidate and an exhausted step budget make every affected
+candidate unbuyable. The sixth is run-level rather than per-candidate — when it
+fails, it fails for every candidate at once — so an implementation may
+short-circuit to STOP without evaluating any candidate, provided the run record
+still says why.
+
+**`candidate_cost > 0` is new**, and it is a termination safeguard rather than
+an economic one. See §2.5 A. A zero-cost or local action is **not a purchasable
+candidate** and must not be represented as one.
+
+**On the uplift condition.** Given the positive-cost invariant and a
+non-negative `task_value`, it is implied by the incremental-value condition:
+eligibility requires `incremental_expected_value > candidate_cost > 0`, and a
+positive incremental value with a non-negative task value requires a positive
+uplift. It is stated anyway, as an explicit gate — it makes the intent checkable
+at review, and it holds the invariant if those constraints are ever revisited.
+An implementation may not drop it on the grounds that it is redundant.
 
 **The strict `>` on value is load-bearing**, exactly as in TASK-001. A candidate
 whose incremental expected value exactly equals its cost buys nothing and is
@@ -144,9 +194,10 @@ to be demonstrated.
 
 ### 2.5 Terminal conditions
 
-**STOP** — and the run terminates, reporting honestly — when either:
+**STOP** — and the run terminates, reporting honestly — when any of:
 
-- the **task success condition is already satisfied**; or
+- the **task success condition is already satisfied**;
+- **`capability_step_count >= max_capability_steps`**; or
 - **no candidate is eligible**, including the case of zero candidates offered.
 
 The success condition is evaluated **before** selection is considered, never
@@ -157,6 +208,63 @@ about a task that is already done.
 Stopping remains a **first-class successful behaviour**, per `PREREQ-001` §5.4.
 An implementation that treats "no eligible candidate" as a failure, an
 exception, or an empty result to be worked around has misread the product.
+
+#### Termination is guaranteed by three safeguards, not by the budget
+
+**Budget depletion alone is not an adequate termination proof.** A free
+candidate with any positive uplift would be eligible, be selected, and — since
+probabilities are declared fixtures — be eligible again on identical terms,
+forever, without ever exceeding the budget. Three safeguards close that, and all
+three are mandatory.
+
+**A. Positive-cost invariant.** Every candidate participating in economic
+selection must have `candidate_cost > 0`. Zero-cost and local actions sit
+**outside the paid-capability selector** and must not be represented as
+purchasable candidates. With this in force, every purchase strictly decreases
+the remaining budget.
+
+**B. Single-use candidate IDs.** A `candidate_id` that has already been consumed
+in this run is ineligible — §2.5a.
+
+**C. Hard capability-step ceiling.** Every run carries `max_capability_steps`
+and `capability_step_count`. When the count reaches the maximum, TASK-006
+returns STOP and **no further external capability may be purchased**.
+
+**C is deterministic and independent of the remaining budget.** It holds even if
+the budget is untouched, even if every candidate is a bargain, and even if A and
+B were somehow defeated. It is a safety constraint, not an economic one, and it
+must never be described as an economic decision in a run record.
+
+**`max_capability_steps` is authoritative run policy, not a product constant.**
+The ETHOnline demonstration is intended to configure it to **4**. That figure is
+a demo configuration value and **must not be hard-coded** as a universal
+constant, a default buried in the rule, or a magic number in the selection
+logic.
+
+### 2.5a Single-use candidates, repeatable capability types
+
+**A candidate offer is single-use.** Once a candidate with a given
+`candidate_id` has been executed, that exact candidate is ineligible for the
+remainder of the run.
+
+**A capability *type* may be purchased again after the task state changes.** The
+constraint is on the offer, not on the kind of thing offered.
+
+Illustratively — and these identifiers are shapes, not a naming scheme this task
+imposes — a candidate `second-opinion-001` may execute once. Once new evidence
+has changed the task state, a *different* candidate such as
+`second-opinion-002` may be generated and considered on its own merits. The same
+applies to several targeted research calls.
+
+This keeps two things true at once. Buying two independent second opinions is a
+reasonable thing for a run to do, so the model does not forbid it. And no single
+offer can be bought twice on identical terms, which is what B in §2.5 needs.
+
+The rule enforces this by ID and by nothing else. **It has no notion of a
+capability "type", "class", or "family"**, and must not acquire one — that would
+be a fourth field in §2.2 and a provider-shaped concept in a provider-neutral
+model. Whether two candidates are the same kind of thing is a question for
+whatever generates candidates, which is outside this task.
 
 ### 2.6 Budget invariants
 
@@ -170,16 +278,55 @@ All preserved from TASK-001 and `PREREQ-001` §4.2, unchanged:
 4. **Unused budget remains unused.** There is no mechanism that consumes it.
 5. **Budget is permission to spend, not a target to spend.** A run that stops
    with most of the budget unspent has not underperformed.
+6. **Termination does not depend on the budget.** The ceiling bounds spend; it
+   is the safeguards in §2.5 that bound the number of decisions. A run may — and
+   under a step ceiling routinely will — terminate with budget remaining.
+
+### 2.7 The iterative loop, and what TASK-006 is not
+
+**TASK-006 performs one selection, against one candidate set, for one current
+task state.** It is a decision, not a loop.
+
+After the selected capability executes:
+
+1. its `candidate_id` becomes **consumed**;
+2. `capability_step_count` increases by one;
+3. the **task state is re-evaluated**, producing a new
+   `current_success_probability`;
+4. a **new candidate set may be generated** for that new state;
+5. TASK-006 may run again against it.
+
+**TASK-006 implements none of steps 1 through 4 as behaviour of its own.** It
+does not execute capabilities, does not evaluate task state, and does not
+generate candidates. It consumes the results of those as inputs and returns a
+selection or STOP.
+
+| Concern | Owner |
+|---|---|
+| Deciding **what to buy** | **TASK-006** |
+| Executing the purchase | A separate task — §10 |
+| Re-evaluating the task state | A separate task, outside this one — §2.2a |
+| Generating the candidate set | A separate task — §3 |
+| Tracking consumed IDs and the step count across a run | The run loop, which supplies them as inputs |
+
+This distinction is the whole reason the rule can stay provider-neutral. A
+selector that also executed, evaluated, or discovered would need to know what
+kind of thing it was buying, and §2.1 forbids exactly that.
 
 ## 3. Out of scope — explicitly not authorized
 
 None of the following is part of TASK-006, and none may appear in its
 implementation:
 
+- **The baseline execution and evaluation layer** that establishes the current
+  task state — §2.2a. TASK-006 receives `current_success_probability`; it does
+  not produce it, and this task authorizes none of that work.
 - **Task evidence or state transitions** beyond what is required to supply the
   current success probability to a decision.
+- **Candidate generation** — deciding what to offer for a given task state.
 - **Sponsor integrations** of any kind.
 - **Provider discovery** — finding, listing, or querying available capabilities.
+- **Any notion of capability type, class, or family** — §2.5a.
 - **Payment execution** and **wallet logic**.
 - **Real marketplace pricing.** Costs remain declared.
 - **Learned performance estimates** — `BL-05`, `BL-06`.
@@ -221,6 +368,24 @@ success signal (`BL-08`) remain unauthorized.
 16. **Duplicate stable IDs within one decision are refused**, per §2.2.
 17. **Every decision is inspectable after the fact** — the figures in §8 are
     recorded for every candidate considered, not only the winner.
+18. **A zero-cost candidate is rejected.** `cost == 0` is ineligible however
+    attractive its uplift, and a set consisting only of zero-cost candidates
+    yields STOP.
+19. **A consumed candidate is rejected.** A `candidate_id` already executed in
+    this run is ineligible when offered again, even if it would otherwise win
+    outright.
+20. **The same capability type may reappear under a new candidate ID after the
+    state changes.** A run executes `second-opinion-001`, the task state
+    changes, `second-opinion-002` is offered, and it is evaluated on its merits
+    and may be selected. The rule must reach this outcome **without** any notion
+    of type — by ID alone.
+21. **`capability_step_count >= max_capability_steps` → STOP**, with no
+    capability purchased, even where budget remains and eligible-looking
+    candidates are on offer.
+22. **Termination does not depend solely on budget depletion.** Demonstrated by
+    a run that terminates on the step ceiling with budget remaining, and by a
+    test that the positive-cost invariant holds so that every purchase strictly
+    reduces the remaining budget.
 
 ## 5. Deliverables
 
@@ -231,6 +396,13 @@ success signal (`BL-08`) remain unauthorized.
    spirit as TASK-001's `DECLARED_STRATEGIES` and under the same honesty
    constraint in §9.
 5. A demonstration that TASK-001's scenarios reproduce, per §7.
+6. A way for the run to supply `max_capability_steps` as policy, with **no
+   default that makes it optional** and no literal in the selection logic.
+
+`capability_step_count` and the set of consumed candidate IDs are **inputs** to
+a decision, per §2.7. Whatever loop drives the run maintains them; TASK-006
+reads them. A selector that keeps its own mutable state across decisions has
+taken on the loop's job.
 
 Dependencies: **none.** TASK-006 is pure economic policy and needs nothing
 external. `AI_BUILD_GOVERNANCE.md` §2.2 permits a task to name dependencies it
@@ -256,58 +428,42 @@ Resolved — §9. TASK-006 adds no learning and no runtime estimation.
 Resolved: out of scope — §10. Selection and execution are separate concerns and
 separate tasks.
 
-### 6.6 The starting current success probability ⚠️ **UNRESOLVED**
+### 6.6 The starting current success probability ✅
 
-Every eligibility test is relative to `current_success_probability`. At the
-first decision of a run, **nothing has been attempted, and this specification
-does not say what that value is.**
+Resolved. **`current_success_probability` is an input to TASK-006**, supplied by
+the current task state — §2.2a.
 
-TASK-001 never faced the question: its escalation compared against the initial
-attempt's declared probability, and there was always an initial attempt. Here
-the first decision may be a choice among several candidates with no baseline
-behind it.
+It is **not** a user input, and it is **not** modelled as a zero-cost candidate.
+Selection runs against a task state that has already been established:
 
-Three shapes are possible — a declared baseline of zero; a baseline declared per
-task alongside the other five inputs; or a "do nothing" candidate at zero cost
-whose probability is the baseline. They are not equivalent: the third makes the
-baseline compete under the ordinary rule, and the second adds a sixth input to
-`PREREQ-001` §4.
+```
+user task → baseline execution / evaluation → current task state → TASK-006
+```
 
-**This is a product decision for the human product owner.** Implementation
-cannot begin without it, because every eligibility outcome depends on it.
+How the baseline is produced is outside this task and is not authorized by it.
 
-### 6.7 Whether a capability may be selected more than once ⚠️ **UNRESOLVED**
+### 6.7 Whether a capability may be selected more than once ✅
 
-After a capability is executed, the current success probability changes and the
-decision runs again. **May the same stable ID be offered and selected a second
-time?**
+Resolved. **A candidate offer is single-use; a capability type is repeatable
+after the task state changes** — §2.5a.
 
-Both answers are defensible. Repeat purchase is realistic — buying two
-independent second opinions is a real thing to want. Single purchase is simpler
-and matches the intuition that a capability, once acquired, is acquired.
+A `candidate_id` executed in this run is ineligible thereafter. A different
+candidate representing a similar capability may be generated for the new state
+and considered on its own merits. The rule enforces this by ID and acquires no
+notion of type.
 
-The answer determines whether the candidate set is stateful across a run, which
-is a structural question and not a detail.
+### 6.8 What guarantees the loop terminates ✅
 
-### 6.8 What guarantees the loop terminates ⚠️ **UNRESOLVED**
+Resolved. **Three mandatory safeguards, none of which is the budget** — §2.5.
 
-TASK-001 terminated structurally: two tiers, then the run was over. **This model
-has no such bound.**
+**A.** Every candidate must cost more than zero, so every purchase strictly
+reduces the remaining budget. **B.** A consumed `candidate_id` is ineligible.
+**C.** A hard `max_capability_steps` ceiling returns STOP regardless of budget.
 
-Termination now rests entirely on the budget: every selected candidate costs
-something, so the remaining budget strictly decreases and eligibility eventually
-fails. **That argument breaks for a zero-cost candidate.** A candidate costing
-nothing with any positive uplift is eligible, is selected, and — if probabilities
-are declared fixtures that do not change when it is executed — is eligible again
-on identical terms, forever.
-
-Options include forbidding zero-cost candidates, requiring the current
-probability to strictly increase after execution, bounding the number of
-decisions per run, or accepting zero-cost candidates only once under §6.7.
-
-**This must be settled before implementation.** A specification whose loop can
-be shown not to terminate is not ready to build, and criterion 13 does not catch
-it: spend stays within budget the whole time it is looping.
+C alone is sufficient, and is deliberately independent of the other two: it
+holds even if a defect in A or B lets a candidate repeat. The demonstration
+configures the ceiling to **4**; that is run policy, not a product constant, and
+must not be hard-coded.
 
 ## 7. Backward compatibility with TASK-001
 
@@ -330,9 +486,33 @@ must be run through the new rule and produce the same outcomes, or this
 compatibility claim is withdrawn rather than qualified.
 
 Two things this table does **not** say. The initial attempt is not modelled as a
-zero-cost candidate — it has a cost, and it is charged. And the mapping is a
+zero-cost candidate — it has a cost, and it is charged before the decision, so
+the `remaining_budget` TASK-006 sees is already net of it. And the mapping is a
 statement about behaviour, not about types: nothing here requires the
 implementation to keep the `Strategy` shape.
+
+### One narrowing, stated plainly
+
+The positive-cost invariant in §2.5 A makes compatibility **near-total rather
+than total**, and the gap is worth naming rather than glossing.
+
+TASK-001's `Strategy` validation rejects a *negative* escalation cost but
+permits a **zero** one. Such a strategy could exist under the old model and
+cannot be represented as a candidate under this one.
+
+In practice nothing is lost. All three declared TASK-001 fixtures have positive
+escalation costs, so every scenario the repository actually contains reproduces.
+And a zero-cost escalation was already inert economically: eligibility needed
+`incremental_expected_value > 0`, so it was selected whenever it improved the
+odds at all — which is precisely the non-terminating case §2.5 exists to
+exclude.
+
+Criterion 14 covers the fixtures that exist. **It does not claim that every
+strategy TASK-001's types could express remains expressible**, because that is
+not true, and a compatibility claim is worth less than the exception it hides.
+
+A step ceiling of at least 1 is also required for the two-tier scenarios to
+reproduce, since the escalation is a capability step.
 
 TASK-001 itself is not edited. `ARCHITECTURE.md` §2.2.1 continues to describe
 what was delivered.
@@ -343,6 +523,8 @@ The generalized run record must eventually expose, for every decision:
 
 - the **current success probability** the decision was made against;
 - the **remaining budget** at that moment;
+- the **capability step count** and the **maximum** in force;
+- the **candidate IDs already consumed** in this run;
 - **every candidate considered** — not only the selected one;
 
 and for each candidate:
@@ -352,7 +534,9 @@ and for each candidate:
 - its **expected post-action success probability**;
 - its **incremental expected value**;
 - its **net expected value**;
-- its **eligibility**, and which condition failed when ineligible;
+- its **eligibility**, and which of the six conditions in §2.3 failed when
+  ineligible — including when it failed as consumed, as zero-cost, or because
+  the step ceiling was reached;
 
 and for the decision:
 
@@ -361,6 +545,11 @@ and for the decision:
 Recording the rejected candidates is the point. `PREREQ-001` §8 criterion 3
 requires every economic decision to be inspectable afterwards, and a record
 showing only what was bought cannot answer why the alternatives were not.
+
+**A STOP on the step ceiling must be recorded as a safety stop, not an economic
+one.** It is the one terminal condition that is not a judgement about value, and
+a record that blurs the two would claim the economics rejected something they
+never assessed.
 
 **No schema change is implemented by TASK-006.** `docs/RUN_RECORDS.md` documents
 the current two-tier record and is not edited by this task. The schema work is
@@ -413,6 +602,15 @@ When reviewing an implementation of TASK-006, verify specifically:
 - TASK-001's scenarios are actually re-run, not merely asserted to be equivalent.
 - **No item in §3 appears anywhere**, including in dependencies, configuration,
   comments, or abstractions built "for later."
-- The three unresolved decisions in §6.6, §6.7 and §6.8 were resolved by the
-  human product owner before implementation began, and the implementation
-  matches what was decided rather than what was convenient.
+- All **six** eligibility conditions in §2.3 are implemented, including the two
+  that are not economic. Dropping the uplift condition as redundant is a defect.
+- `max_capability_steps` is read from run policy. **A literal 4 anywhere in the
+  selection logic is a defect**, as is a default that makes the policy optional.
+- The step-ceiling STOP is recorded as a safety stop, distinguishable in the run
+  record from an economic one — §8.
+- Consumption is tracked by ID and by nothing else. **Any notion of capability
+  type, class, or family is a defect** — §2.5a, criterion 20.
+- Zero-cost candidates are refused rather than quietly ranked last —
+  criterion 18.
+- The implementation matches what §6.6–§6.8 record as decided, rather than what
+  is convenient.
