@@ -465,6 +465,141 @@ they had been made would be worse than leaving them open.
 outcome of this review is **unrecorded**, because none was returned. A clean
 re-run has been requested.
 
+## 2d. Third review
+
+Run after the corrections following the corrupted pass. Recorded as received.
+
+> Reviewed current PR head `f07f7f9`. The eight original findings and `CODEX-PR013-09` are fixed, but I found four new defects.
+>
+> CODEX-PR013-10
+>
+> File: [radhanite/run.py:355](/Users/arkoganguli/Projects/radhanite-ethonline/radhanite/run.py:355)
+>
+> `_next_action()` now filters out unaffordable and non-improving candidates before calling `decide()`. Consequently, the loop can never exercise §2.5's budget-failure or no-improvement branches.
+>
+> I reproduced both with single-strategy catalogues:
+>
+> - An escalation offering `0.50 → 0.50` stopped with `decision=None`; `decide()` was never called.
+> - An escalation costing `$1.00` with `$0.48` remaining also stopped with `decision=None`; `decide()` was never called.
+> - Across ordinary runs at eight budget levels, every invocation of `decide()` had already passed the budget test and offered positive improvement.
+>
+> Passing over a dominated candidate while another useful candidate exists can legitimately be selection. Terminating this way cannot: TASK-001 §2.5 expressly says no improvement produces `Stop` without a special-case path, and criterion 9 names failure of the budget condition. The terminal selection rewrite moved both required refusals out of the economic rule.
+>
+> This departs from TASK-001 §§2.5–2.6 and acceptance criteria 5, 9, 11 and 14.
+>
+> CODEX-PR013-11
+>
+> Files: [radhanite/run.py:157](/Users/arkoganguli/Projects/radhanite-ethonline/radhanite/run.py:157), [tests/test_run.py:97](/Users/arkoganguli/Projects/radhanite-ethonline/tests/test_run.py:97), [PR-013_TASK-001_EXPLANATION.md:213](/Users/arkoganguli/Projects/radhanite-ethonline/docs/pr_explanations/PR-013_TASK-001_EXPLANATION.md:213)
+>
+> The claim that `decision` is `None` "for the opening attempt only," and that every later step carries a decision, is false.
+>
+> The default stopped scenario has a fourth, terminal step with `decision=None`. The test named `test_every_later_step_does_carry_one` only exercises a scenario that succeeds before such a terminal step can occur, so it cannot detect the contradiction.
+>
+> This is an unsupported code/documentation claim and leaves the optional-`decision` behavior inaccurately specified, contrary to TASK-001 §2.6 and §5 deliverable 4.
+>
+> CODEX-PR013-12
+>
+> Files: [PR-013_TASK-001_EXPLANATION.md:22](/Users/arkoganguli/Projects/radhanite-ethonline/docs/pr_explanations/PR-013_TASK-001_EXPLANATION.md:22), [docs/RUN_RECORDS.md:31](/Users/arkoganguli/Projects/radhanite-ethonline/docs/RUN_RECORDS.md:31), [PR-013_CODEX_REVIEW.md:494](/Users/arkoganguli/Projects/radhanite-ethonline/docs/reviews/PR-013_CODEX_REVIEW.md:494)
+>
+> Several correction-sensitive claims are stale:
+>
+> - Discovery finds 49 tests in `test_run.py`, 6 in `test_cli.py`, 55 new tests and 238 overall—not 37, 6, 43 and 226.
+> - The explanation's five-step trace still gives the opening attempt an `ESCALATE` decision and records separate `Stop` decisions for Progressive and Exhaustive. The actual scenario has four steps, with `decision=None` on the opening and terminal steps.
+> - The run-record example likewise shows the obsolete opening decision and omits current fields such as `selection_reason`, `remaining_budget` and `unusable`.
+> - The review correction table still says `record_directory=None` is supported and that the terminal fallback applies §2.5 to the cheapest candidate. Neither remains true.
+>
+> The file count is correct: the PR changes 11 files and the table has 11 rows.
+>
+> These inaccuracies depart from TASK-001 §2.6 and §5 deliverable 4's requirement for an accurate plain-English description of the implemented record.
+>
+> CODEX-PR013-13
+>
+> File: [radhanite/run.py:439](/Users/arkoganguli/Projects/radhanite-ethonline/radhanite/run.py:439)
+>
+> `run()` reads the accepted strategy `Sequence` more than once: first to construct `available`, then again for opening selection, and potentially again when recording an unaffordable opening.
+>
+> I supplied a valid `Sequence` whose successive iterations exposed different strategy snapshots. The loop selected and executed strategy B while `available` contained strategy A, then raised:
+>
+> ```text
+> ValueError: _Candidate(... strategy B ...) is not in list
+> ```
+>
+> No run record was written. The sequence should be captured once after validation and that single snapshot used throughout.
+>
+> This undermines deterministic selection for an accepted input type and departs from TASK-001 §2.2 and acceptance criteria 1, 2 and 14.
+>
+> ## Acceptance criteria
+>
+> | Criterion | Result |
+> |---|---|
+> | 1 | Not fully met—accepted changing `Sequence` can crash after execution |
+> | 2 | Not fully met—strategy input is not captured as one deterministic snapshot |
+> | 3 | Met |
+> | 4 | Met |
+> | 5 | Not met end to end—selection prevents two rule branches |
+> | 6 | Met |
+> | 7 | Met |
+> | 8 | Met |
+> | 9 | Not met as specified—the §2.5 budget condition is unreachable |
+> | 10 | Met |
+> | 11 | Not met—no improvement uses a special selection path |
+> | 12 | Met |
+> | 13 | Met |
+> | 14 | Not met—required terminal refusals are not economic decisions, and an accepted sequence can leave no record |
+> | 15 | Covered, although the budget test currently asserts the wrong pipeline behavior |
+> | 16 | Met |
+> | 17 | Met—238 tests pass |
+>
+> Rejected — TASK-001 §§2.2, 2.5 and 2.6 and acceptance criteria 1, 2, 5, 9, 11 and 14 are departed from.
+
+## 2e. Fourth review
+
+Run against commit `9fae266`, after the corrections to the third pass. Recorded
+as received.
+
+It confirmed `CODEX-PR013-10` and `-13` fixed, reported `-06`, `-11` and `-12`
+still unresolved, and prioritised the remainder for hackathon speed.
+
+> For hackathon speed, prioritize by acceptance risk:
+>
+> 1. P0 — `CODEX-PR013-11`: fix the exhausted-catalogue path. After a failed final attempt, the run must either produce an honest §2.5 `Stop` or explicitly model why no economic decision exists. Add the missing single-strategy exhaustion test. Don't spend time refactoring.
+>
+> 2. P0 — `CODEX-PR013-06`: make the terminal record say:
+>    "Progressive Escalation was selected for the terminal decision because it is first remaining in declared order."
+>    Assert that exact subject. Confirm changing `available[0]` to `available[-1]` fails.
+>
+> 3. P1 — `CODEX-PR013-12`: mechanical documentation cleanup:
+>    - `0.75 → 0.55`
+>    - incremental value `-$4.00`
+>    - actual value-condition stopping reason
+>    - "two explicit rejections plus one corrupted pass"
+>    - remove obsolete terminal/no-decision docstrings
+>
+> Suggested delivery: one code-and-tests commit for `-06/-11`, then one documentation commit for `-12`. Run the focused loop tests, then all 241+ tests. Avoid any broader cleanup until PR #13 is accepted.
+
+Commits `92681be` and `fe79183` followed, and are the corrections that were
+ultimately merged **unreviewed**. No fifth pass was run.
+
+### How these were worked
+
+The product owner relayed the prioritisation rather than requesting a full pass: `-11` and `-06` as P0, `-12` as P1, with an instruction to avoid any
+broader refactoring until PR #13 was accepted.
+
+`-10` was the consequential one, and it was the fix for `-02` overcorrecting.
+Filtering unaffordable and non-improving candidates before consulting §2.5 made
+both of the rule's refusal branches unreachable. The reviewer's own distinction
+supplied the resolution: passing over a dominated candidate while a usable one
+remains is selection; terminating that way is not. Selection still passes over
+while it has a choice; when it has none, §2.5 rules on the first remaining
+candidate in declared order and its Stop ends the run.
+
+`-11` was found to have a second case the first fix missed — a single strategy
+exhausting itself leaves nothing to rule on, which is a different absence from
+"nothing judged yet". Both are now modelled explicitly.
+
+**PR #13 was merged with the corrections from the fourth pass unreviewed.** The
+fourth pass is recorded above in §2e; no fifth pass followed it.
+
 ## 3. Outcome
 
 **Rejected.** All eight findings accepted without dispute and corrected.

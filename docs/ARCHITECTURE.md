@@ -92,6 +92,16 @@ system. It holds authority; it does not issue it.
 Intended later to make the budget real value rather than an internal number.
 Radhanite must **not** implement token accounting, transfers, or settlement.
 
+Specified in [TASK-005](../tasks/TASK-005_BUDGET_IN_REAL_USDC_ON_ARC.md), which
+is where the prohibition in §6 item 8 is lifted — and only for values that are
+genuinely USDC.
+
+Arc is chosen for a property rather than a logo: it settles in USDC and charges
+gas in USDC, so a budget, a spend and a fee are one unit. A chain charging fees
+in a second token would split every cost into the price of the thing and the
+price of paying for it, and "what did this task cost" would stop having a single
+answer.
+
 Until Arc is authorized, budget and task value are **USD-denominated decimal
 numbers** internal to Radhanite. They must not be named, labelled, or described
 as USDC. Simulated numbers are not a currency, and calling them one before real
@@ -130,20 +140,21 @@ file that names them explicitly. Entries in
 
 ## 4a. The integration phase
 
-TASK-001 builds the economic loop with nothing real attached. Three tasks then
+TASK-001 builds the economic loop with nothing real attached. Four tasks then
 make it real, in an order set by what each depends on:
 
 | Task | What becomes real | Backlog entries retired |
 |---|---|---|
 | [TASK-002](../tasks/TASK-002_REAL_INFERENCE_VIA_OPENROUTER.md) | Inference, and therefore the spend | `BL-01` |
-| [TASK-003](../tasks/TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md) | Authority the agent cannot grant itself, over a wallet holding USDC on Arc | `BL-02` |
-| [TASK-004](../tasks/TASK-004_AGENTIC_PAYMENTS_VIA_HEDERA_AND_X402.md) | The agent paying for its own purchases | `BL-03`, `BL-04` |
+| [TASK-003](../tasks/TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md) | Authority the agent cannot grant itself, over an account on Arc | `BL-02` |
+| [TASK-005](../tasks/TASK-005_BUDGET_IN_REAL_USDC_ON_ARC.md) | The budget itself, as USDC that exists on a chain | `BL-03` |
+| [TASK-004](../tasks/TASK-004_AGENTIC_PAYMENTS_VIA_HEDERA_AND_X402.md) | The agent paying for its own purchases | `BL-04` |
 
 **None of these is authorized.** A task file specifies work; it does not permit
 it. §4 above is unchanged: an integration becomes authorized only when the human
 product owner says so.
 
-### Four assumptions the loop makes that reality breaks
+### Five assumptions the loop makes that reality breaks
 
 Each is named in the task that has to answer it, and each is a genuine design
 question rather than a matter of wiring:
@@ -161,16 +172,25 @@ question rather than a matter of wiring:
    and discards it. A wallet persists and is shared, and one task can drain what
    the next needs. Allocating across tasks is `BL-09` and is not authorized —
    TASK-003 §7.4.
-4. **Every limit is self-imposed.** The ceiling holds because Radhanite's own
+4. **A budget is a number; a balance is a fact.** `Task.budget` is supplied by
+   the caller and fixed for the run. A USDC balance changes without asking — it
+   can be topped up, drawn down by another run, or spent by anything else
+   holding the wallet. A budget can also exceed it, and USDC's six decimals
+   cannot express a cost that `Money` can. Deciding what happens then is not
+   wiring; it determines whether a run record's total is what was decided or
+   what was paid — TASK-005 §4.
+5. **Every limit is self-imposed.** The ceiling holds because Radhanite's own
    code respects it. Nothing outside the agent can refuse a spend, and nothing
    stops a later change quietly raising a limit. An authority layer introduces a
    refusal the agent cannot overrule — and with it a new outcome the loop has no
    path for: the economics say buy, and authority says no — TASK-003 §2, §7.3.
 
-None is fatal, and two are additions at the execution boundary, which is where
-§5 always said integrations would land. The third is a genuine difference in
-shape. The fourth is the most interesting: it is not a limitation of the code but
-of who the code answers to, and it cannot be fixed from inside.
+None is fatal. Two are additions at the execution boundary, which is where §5
+always said integrations would land. The third and fourth are genuine
+differences in shape — a budget belonging to a run rather than an account, and a
+number that is only a fact about the world once it is money. The fifth is the
+most interesting: it is not a limitation of the code but of who the code answers
+to, and it cannot be fixed from inside.
 
 ## 5. Boundary posture for TASK-001
 

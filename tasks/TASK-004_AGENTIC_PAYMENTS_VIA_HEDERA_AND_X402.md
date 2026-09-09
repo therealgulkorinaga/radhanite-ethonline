@@ -4,7 +4,7 @@
 **Authorization:** None. This document does not permit implementation.
 **Traces to:** [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §2.1
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §3.3, §3.4
-**Replaces backlog entries:** `BL-03`, `BL-04`
+**Replaces backlog entry:** `BL-04`. (`BL-03` belongs to [TASK-005](TASK-005_BUDGET_IN_REAL_USDC_ON_ARC.md).)
 **Depends on:** TASK-003 complete and merged
 
 ---
@@ -23,18 +23,12 @@ something deciding whether each purchase is worth making, and Radhanite is that
 thing. Until the agent actually pays, the decision layer is reasoning about
 somebody else's money.
 
-## 2. A direction the architecture does not yet describe
+## 2. Direction
 
-`ARCHITECTURE.md §3.4` reserves Hedera/x402 for making **Radhanite consumable as
-a paid machine service** — money coming *in*, others paying Radhanite.
-
-This task is the opposite direction: **money going out**, Radhanite paying for
-what it consumes. Both are legitimate and they are not the same feature.
-
-`ARCHITECTURE.md` must gain the outbound direction before this is authorized.
-It currently describes only the inbound one, and building outbound payments
-against a document that describes inbound would be exactly the kind of silent
-scope drift `§2` forbids.
+This task is the **outbound** direction: money going out, Radhanite paying for
+what it consumes. `ARCHITECTURE.md §3.4` describes both directions since PR #14;
+the inbound one — Radhanite consumable as a paid service — is `BL-04b` and is a
+separate feature.
 
 ## 3. Scope
 
@@ -103,7 +97,9 @@ payments cannot be verified is back to asking for trust.
 
 ## 7. Open decisions — product owner input required
 
-1. **`ARCHITECTURE.md §3.4` must first describe outbound payments.** §2.
+1. **Which rail the agent pays on.** ✅ *Superseded — see TASK-005 §7.5, which
+   holds the unresolved question of how money on Arc pays for a service on
+   Hedera. This task cannot be specified further until that is settled.*
 2. **The relationship between decided, paid and received**, and what the loop
    does when they disagree. §4.
 3. **What is actually being paid for.** Paying OpenRouter over x402 requires
