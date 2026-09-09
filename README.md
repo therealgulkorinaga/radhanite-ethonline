@@ -2,8 +2,17 @@
 
 **An economic control layer for autonomous AI agents.**
 
-Radhanite is being built for ETHOnline 2026. This repository currently contains
-governance and planning scaffolding only. No product code has been written yet.
+Radhanite is being built for ETHOnline 2026.
+
+**TASK-001 is implemented and merged.** What runs today is the deterministic
+**two-tier economic kernel**: an opening attempt and one optional escalation,
+with declared costs and declared success probabilities. **242 tests pass on
+Python 3.12.**
+
+**Dynamic capability acquisition — deciding which external skill is worth buying
+next — is the newly authorized product direction, not yet the implemented
+runtime.** The distinction is kept deliberately sharp throughout this
+repository.
 
 ---
 
@@ -15,13 +24,18 @@ what it cost. Radhanite changes the unit of instruction.
 A user gives Radhanite a **business task, a budget, a task value, constraints,
 and a measurable success condition** — not a prompt. Radhanite then:
 
-1. selects an execution strategy,
-2. allocates inference expenditure across the task,
+1. selects a capability to acquire,
+2. allocates expenditure across the task,
 3. evaluates results against the success condition, and
-4. decides whether additional intelligence is economically justified.
+4. decides whether buying more is economically justified.
 
-The last point is the product. Radhanite is not another agent framework; it is
-the layer that decides **how much intelligence to buy, when to buy more, and
+The last point is the product:
+
+> **Payment infrastructure answers "How can the machine pay?"**
+> **Radhanite answers "Should the machine pay, and what is worth buying?"**
+
+Radhanite is not another agent framework, and not a payment rail. It is the
+layer above the rail that decides **what is worth buying, when to buy more, and
 when to stop paying**.
 
 > Give Radhanite a task, what success is worth, how much it may spend, and the
@@ -35,39 +49,51 @@ spending limit.
 The full statement of the product is in
 [`docs/PREREQ-001_PRODUCT_DEFINITION.md`](docs/PREREQ-001_PRODUCT_DEFINITION.md).
 
-## V1 use case (ETHOnline)
+## ETHOnline demonstration
 
-Autonomous software engineering.
+**Supplier onboarding and due diligence** — deciding whether a prospective
+supplier should be approved, escalated to a human, or rejected, and deciding
+what evidence is economically worth buying to answer that.
 
 | | |
 |---|---|
-| **Input** | A coding task, a budget, a task value, and constraints |
-| **Output** | Successful task completion, or termination when further spend is not justified |
-| **Objective success condition** | The repository's tests pass |
+| **Input** | The task, its value, a maximum autonomous spend, and constraints |
+| **Output** | `APPROVE` / `ESCALATE` / `REJECT`, or termination when further spend is not justified |
+| **Success condition** | The deterministic completion contract in `PREREQ-001` §6.5 — *not* the recommendation itself |
 
-A complete V1 task:
+Buying diligence evidence is always possible and is not always worth it, which
+is exactly the decision Radhanite exists to make. A run that stops without
+buying anything is a correct run.
 
-```
-Task:              Fix GitHub issue #184
-Budget:            $2.00
-Task value:        $20.00
-Constraints:       no dependency changes
-Success condition: tests pass
-```
-
-Tests passing is a machine-checkable, non-negotiable success signal. That is why
-software engineering is the first vertical: the success condition cannot be
-argued with, so the economic decisions can be evaluated honestly.
+**This demonstration is frozen direction, not implemented, and not authorized.**
+The implemented V1 is still autonomous software engineering — TASK-001, merged.
+Both framings and the status of each are tabulated in
+[`docs/PREREQ-001_PRODUCT_DEFINITION.md`](docs/PREREQ-001_PRODUCT_DEFINITION.md)
+§6.6; the earlier framing is preserved in §6.4 rather than deleted. None of the
+external integrations named here is authorized either.
 
 ## Repository status
 
 | Item | Status |
 |---|---|
 | Governance and planning scaffolding | Present |
-| Product code | **None written** |
-| Authorized task in progress | TASK-001 (specified, all decisions resolved, not yet implemented) |
-| Language | Python 3.12 (decided; nothing written yet) |
-| External integrations (OpenRouter, Privy, Arc/USDC, Hedera/x402) | **Not authorized** |
+| Product code | **Present** — the deterministic two-tier economic kernel |
+| TASK-001 | **Implemented and merged.** All seventeen acceptance criteria met |
+| Tests | **242 passing** on Python 3.12 |
+| Language | Python 3.12, standard library only — no external dependencies |
+| Dynamic capability acquisition | **Product direction only — not implemented** (`BL-13`) |
+| External integrations (OpenRouter, Privy, Arc/USDC, Hedera/x402, Circle) | **Not authorized** |
+
+## Running the tests
+
+```
+python3.12 -m unittest discover -q
+```
+
+Python 3.12 specifically — `pyproject.toml` pins `>=3.12,<3.13` and a test
+asserts the running version, so the suite fails by design on anything else.
+There is nothing to install: the project declares no third-party packages and no
+build backend, and is run directly from the source tree.
 
 ## Repository layout
 
@@ -78,8 +104,11 @@ docs/                      Product definition, architecture, rules, governance
   ARCHITECTURE.md                    System boundaries and ownership
   HACKATHON_RULES.md                 ETHOnline constraints we build under
   AI_BUILD_GOVERNANCE.md             How AI agents are permitted to build here
+radhanite/                 The economic kernel (TASK-001, implemented)
+tests/                     The test suite — 242 tests, standard library only
 tasks/                     Authorized work, one file per task
-  TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md   The only authorized task
+  TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md   Implemented and merged
+  TASK-002 .. TASK-005                      Proposed, none authorized
   BACKLOG.md                                Unauthorized future placeholders
 prompts/                   Preserved AI prompts that caused repository changes
 ```

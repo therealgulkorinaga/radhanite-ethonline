@@ -8,6 +8,13 @@
 **Depends on:** TASK-002 and TASK-003 complete and merged
 **Blocked by:** §7.5 and §7.6 — two unresolved product decisions
 
+**Predates the product pivot.** Written under the previous product definition
+(inference-expenditure allocation). Preserved as a **proposed specification and
+historical record** under [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md)
+§2.3; its technical decisions are unaltered. **Its place in the dependency chain
+is not automatically authorized** under the new direction — see
+[`BACKLOG.md`](BACKLOG.md) and [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §4a.
+
 ---
 
 ## 1. Purpose
