@@ -78,7 +78,7 @@ recorded separately rather than letting the two blur.
 | BL-10 | Human-facing UI for submitting tasks and reviewing run records | **UNAUTHORIZED** |
 | BL-11 | Verticals beyond software engineering | **UNAUTHORIZED** |
 | BL-12 | Several Radhanite agents under shared, externally granted authority | **UNAUTHORIZED** |
-| BL-13 | A strategy as an ordered plan of stages, rather than one attempt and one escalation | **UNAUTHORIZED** |
+| BL-13 | Selection among candidate capabilities, rather than one attempt and one escalation — specified as [TASK-006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **SPECIFIED — UNAUTHORIZED** |
 | BL-14 | Radhanite hosting a paid x402 endpoint as hackathon test infrastructure | **UNAUTHORIZED** |
 
 ## Notes
@@ -103,10 +103,22 @@ them, chosen against the current state of the task. The delivered two-tier model
 cannot express that. `ARCHITECTURE.md` §2.2.2 records the direction; §2.2.3
 requires it to arrive as its own authorized task.
 
-**It is the next technical step in this repository, and it is still
-UNAUTHORIZED.** A product direction being agreed is not permission to implement
-what it implies — that is exactly rule 1 at the top of this file. `BL-13`
-becomes buildable when the human product owner creates a task file for it.
+**`BL-13` is now specified as
+[TASK-006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md), and is still
+UNAUTHORIZED.** A task file is a specification, not an authorization — the same
+rule that governs TASK-002 through TASK-005 above. Rule 1 at the top of this
+file is unchanged: nothing here confers permission to build.
+
+Specifying it refined the concept. The entry above previously read *"an ordered
+plan of stages"*, which was the shape the problem looked like from outside. What
+the economics actually need is a **set of candidates ranked by net expected
+value** — an order over options at one decision point, not a plan laid out in
+advance. The row is updated to say so.
+
+TASK-006 also carries **three unresolved product decisions** — the starting
+success probability, whether a capability may be bought twice, and what
+guarantees the loop terminates. Implementation cannot begin until the human
+product owner settles them; see TASK-006 §6.6–§6.8.
 
 `BL-14` is distinct from `BL-04b`. `BL-04b` is Radhanite sold as a paid service —
 a product direction. `BL-14` is a seller endpoint stood up only so that the
