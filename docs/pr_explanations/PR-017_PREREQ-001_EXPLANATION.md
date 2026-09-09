@@ -387,13 +387,25 @@ The record now exists, and it carries two disclosures rather than hiding either:
    requiring the opposite exists so a prompt cannot be quietly reshaped to fit
    the answer it got. That protection was not in place here, and the record says
    so instead of implying otherwise.
-2. **The reviewer's exact words were not available** to the agent writing the
-   record. The findings are as relayed by the product owner. Nothing was
-   invented to fill the gap, and the record marks precisely where the verbatim
-   text is missing.
+2. ~~**The reviewer's exact words were not available** to the agent writing the
+   record.~~ **Since resolved.** The exact prompt and the exact response were
+   supplied afterwards and are now recorded verbatim in §1 and §2 of the review
+   record. Nothing was ever invented to fill the gap in the meantime.
+
+The first disclosure stands and is not affected by the second being resolved:
+the prompt was still written down after the review ran, and no amount of
+completeness afterwards makes that ordering correct.
 
 Recording a process failure honestly is worth more than a tidy record that
 claims a compliance which did not occur.
+
+**One correction is outstanding.** The verbatim finding shows that
+`CODEX-PR017-02` asked for two things, and only one was done. §2.1 of the
+product definition still opens *"In V1 — autonomous software engineering:"*
+without marking that as the historical TASK-001 framing rather than the current
+demonstration. §6.6 explains the relationship and §2.1 links to it, but the
+heading itself is unlabelled. This is recorded in §4 of the review record and
+needs its own authorization to fix.
 
 ## 15. How to explain this to a judge
 
