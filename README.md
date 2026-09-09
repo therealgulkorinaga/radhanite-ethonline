@@ -10,9 +10,10 @@ with declared costs and declared success probabilities. **242 tests pass on
 Python 3.12.**
 
 **Dynamic capability acquisition — deciding which external skill is worth buying
-next — is the newly authorized product direction, not yet the implemented
-runtime.** The distinction is kept deliberately sharp throughout this
-repository.
+next — is specified and authorized as
+[TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md), and is not yet
+implemented.** The distinction between what runs and what is authorized to be
+built is kept deliberately sharp throughout this repository.
 
 ---
 
@@ -81,7 +82,7 @@ external integrations named here is authorized either.
 | TASK-001 | **Implemented and merged.** All seventeen acceptance criteria met |
 | Tests | **242 passing** on Python 3.12 |
 | Language | Python 3.12, standard library only — no external dependencies |
-| Dynamic capability acquisition | **Product direction only — not implemented** (`BL-13`) |
+| Dynamic capability acquisition | **Authorized, not yet implemented** — [TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) (`BL-13`) |
 | External integrations (OpenRouter, Privy, Arc/USDC, Hedera/x402, Circle) | **Not authorized** |
 
 ## Running the tests

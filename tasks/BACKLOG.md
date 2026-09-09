@@ -78,7 +78,7 @@ recorded separately rather than letting the two blur.
 | BL-10 | Human-facing UI for submitting tasks and reviewing run records | **UNAUTHORIZED** |
 | BL-11 | Verticals beyond software engineering | **UNAUTHORIZED** |
 | BL-12 | Several Radhanite agents under shared, externally granted authority | **UNAUTHORIZED** |
-| BL-13 | Selection among candidate capabilities, rather than one attempt and one escalation — specified as [TASK-006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **SPECIFIED — UNAUTHORIZED** |
+| BL-13 | Selection among candidate capabilities, rather than one attempt and one escalation — [TASK-006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **AUTHORIZED** |
 | BL-14 | Radhanite hosting a paid x402 endpoint as hackathon test infrastructure | **UNAUTHORIZED** |
 
 ## Notes
@@ -103,11 +103,14 @@ them, chosen against the current state of the task. The delivered two-tier model
 cannot express that. `ARCHITECTURE.md` §2.2.2 records the direction; §2.2.3
 requires it to arrive as its own authorized task.
 
-**`BL-13` is now specified as
-[TASK-006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md), and is still
-UNAUTHORIZED.** A task file is a specification, not an authorization — the same
-rule that governs TASK-002 through TASK-005 above. Rule 1 at the top of this
-file is unchanged: nothing here confers permission to build.
+**`BL-13` is specified as
+[TASK-006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) and is now
+AUTHORIZED**, by the human product owner on 2026-09-09.
+
+It is the **only** authorized entry in this file, and its authorization extends
+to TASK-006's §2 and nothing else. Rule 1 at the top of this file is unchanged
+for everything else here, including `BL-05` and `BL-06`, which TASK-006 §9
+explicitly does not touch.
 
 Specifying it refined the concept. The entry above previously read *"an ordered
 plan of stages"*, which was the shape the problem looked like from outside. What
@@ -119,8 +122,8 @@ TASK-006 carried three unresolved product decisions when first specified — the
 starting success probability, whether a capability may be bought twice, and what
 guarantees the loop terminates. **All three are now resolved** by the human
 product owner and frozen in TASK-006 §6.6–§6.8. Resolving them did not authorize
-the work: the task remains **SPECIFIED — UNAUTHORIZED**, and authorization is a
-separate act.
+the work — authorization was a separate act, taken afterwards, and recorded in
+its own pull request so that the two remain visibly distinct in the history.
 
 `BL-14` is distinct from `BL-04b`. `BL-04b` is Radhanite sold as a paid service —
 a product direction. `BL-14` is a seller endpoint stood up only so that the
