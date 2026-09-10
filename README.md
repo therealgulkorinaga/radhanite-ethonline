@@ -112,6 +112,7 @@ tasks/                     Authorized work, one file per task
   TASK-002 .. TASK-005                      Proposed, none authorized
   BACKLOG.md                                Unauthorized future placeholders
 prompts/                   Preserved AI prompts that caused repository changes
+site/                      The public ETHOnline progress page (§3.2)
 ```
 
 ## How work happens here

@@ -129,7 +129,8 @@ requires; TASK-004 what the verified x402 tooling requires.
 ## 3. Change-authorization rule
 
 > **Every committed change must map to an authorized task, a prerequisite, a
-> governance amendment, or a documented review correction.**
+> governance amendment, a documented review correction, or — narrowly, and
+> under §3.2 — public communication material.**
 
 This rule covers **all committed repository content**, not only code:
 
@@ -146,7 +147,9 @@ Each commit message states which authority it derives from:
   changes (for example, `PREREQ-001`);
 - a **governance** commit references the governance amendment it applies, which
   the human product owner must have authorized;
-- a **correction** commit references the review finding it resolves.
+- a **correction** commit references the review finding it resolves;
+- a **communication** commit references §3.2, the narrowest authority, and is
+  bound by every constraint stated there.
 
 ### 3.1 Referencing a review finding
 
@@ -189,6 +192,48 @@ retroactively justified.
 Commits follow the hackathon requirements in
 [`HACKATHON_RULES.md`](HACKATHON_RULES.md): frequent, meaningful, and small
 enough to review.
+
+### 3.2 Public communication material
+
+> **A fifth authority, and the narrowest one: material whose purpose is to
+> describe this repository to people outside it.**
+
+A progress page, a demonstration write-up, or a submission summary is none of
+the four things above. It implements no task, establishes no prerequisite,
+amends no governance, and corrects no finding — it only *describes*. Before this
+amendment such material had no authority it could honestly claim, and §3 covers
+"all committed repository content", so it could not be committed at all.
+
+Material committed under this authority must satisfy **all** of the following.
+
+1. **Every factual claim is true of a named commit**, and the material states
+   which commit and on what date. A reader who finds the repository has moved on
+   must be able to see that the material is the stale side.
+2. **[`ARCHITECTURE.md`](ARCHITECTURE.md) §6 applies in full**, and items 8
+   through 12 with particular force. Simulated values are not USDC, declared
+   fixtures are not measurements, testnet value is not production value, a payee
+   is not inferred, and no claim is made about work Radhanite has not done.
+3. **It introduces no product, architecture, or implementation decision.** It
+   describes documents that already exist. Where it and an authoritative
+   document disagree, the authoritative document is right and the material is a
+   defect.
+4. **Describing an integration does not authorize it.** Unauthorized work named
+   in such material must be visibly marked as unauthorized, in the material
+   itself and not only in a document the reader will not open.
+5. **Staleness is a defect, and correcting it is a §3.2 commit.** When a change
+   invalidates a claim, the same pull request corrects the claim or its
+   provenance line.
+
+**What this authority does not permit.** It is not a route for shipping code,
+configuration, or dependencies under a documentation heading. Where such
+material needs a build step, a framework, or a runtime, that need is its own
+task and gets one. Static files and the minimum configuration required to serve
+them are the whole of it.
+
+The reason for the constraint is the obvious one. A page written for an
+audience is where a project is most tempted to describe what it wishes it had
+built, and this repository has spent more effort than anything else on not doing
+that.
 
 ## 4. Pull request readiness and the explanation artifact
 
