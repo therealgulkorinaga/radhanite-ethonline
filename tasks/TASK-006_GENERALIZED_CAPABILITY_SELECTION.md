@@ -1,6 +1,6 @@
 # TASK-006 — Generalized capability selection
 
-**Status:** Specified, all decisions resolved — **AUTHORIZED for implementation**
+**Status:** Authorized and implemented — **NOT CLOSED.** All six deliverables met and 20 of 22 acceptance criteria demonstrated; criteria 10 and 13 are blocked by this task's own scope, see §5a
 **Authorization:** Authorized by the human product owner, 2026-09-09
 **Traces to:** [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §4a, §5.1
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.2.2, §2.2.3
@@ -389,15 +389,21 @@ success signal (`BL-08`) remain unauthorized.
 
 ## 5. Deliverables
 
-1. The generalized selection rule implementing §2.3–§2.5, in Python 3.12.
-2. A candidate model carrying exactly the three fields in §2.2.
-3. A test suite covering §4.
-4. Declared candidate fixtures sufficient to exercise the rule, in the same
+1. ✅ The generalized selection rule implementing §2.3–§2.5, in Python 3.12.
+   `radhanite/eligibility.py`, `radhanite/selection.py`.
+2. ✅ A candidate model carrying exactly the three fields in §2.2.
+   `radhanite/capability.py`.
+3. ✅ A test suite covering §4 — 20 of its 22 criteria; see §5a for the two that
+   this task cannot reach.
+4. ✅ Declared candidate fixtures sufficient to exercise the rule, in the same
    spirit as TASK-001's `DECLARED_STRATEGIES` and under the same honesty
-   constraint in §9.
-5. A demonstration that TASK-001's scenarios reproduce, per §7.
-6. A way for the run to supply `max_capability_steps` as policy, with **no
+   constraint in §9. `capability.DECLARED_CANDIDATES` — three entries, no
+   provider identity, ordered by ascending cost.
+5. ✅ A demonstration that TASK-001's scenarios reproduce, per §7.
+   `tests/test_compatibility.py`.
+6. ✅ A way for the run to supply `max_capability_steps` as policy, with **no
    default that makes it optional** and no literal in the selection logic.
+   `radhanite/policy.py` — `RunPolicy`.
 
 `capability_step_count` and the set of consumed candidate IDs are **inputs** to
 a decision, per §2.7. Whatever loop drives the run maintains them; TASK-006
@@ -408,6 +414,30 @@ Dependencies: **none.** TASK-006 is pure economic policy and needs nothing
 external. `AI_BUILD_GOVERNANCE.md` §2.2 permits a task to name dependencies it
 requires; this one requires none, and adding any would need the specification
 amended first.
+
+## 5a. Closure status — two criteria this task cannot reach
+
+**All six deliverables in §5 are met. TASK-006 is not closed.**
+
+Criteria 10 and 13 of §4 require behaviour that §2.5, §2.7 and §3 of this same
+task explicitly place outside it. That is an inconsistency in this
+specification, not an implementation gap, and it is recorded here rather than
+resolved by quietly satisfying the criteria in the wrong layer.
+
+| Criterion | Why it cannot be demonstrated here |
+|---|---|
+| **10** — *task already successful → STOP, with no candidate evaluated* | §2.5 says this terminal condition is **"not decided here… this module is never told the answer"**. Nothing in TASK-006 can observe that a task has succeeded |
+| **13** — *total spend can never exceed the budget, on every path* | The selector never spends. Per-decision affordability **is** enforced and tested, including where cost exactly equals the remaining budget — but a *total* across purchases needs something that accumulates, and §2.7 gives that to the run loop |
+
+Both belong to the run loop, and **no authorized task owns the run loop.** §2.7
+hands it steps 1 through 4 of the iterative cycle and stops; nothing picks them
+up.
+
+**What this means.** The economic kernel is complete and demonstrated. What is
+missing is the thing that would drive it — and until the product owner decides
+where the loop lives, these two criteria have nowhere legitimate to be
+satisfied. TASK-006 stays open rather than being marked complete against
+criteria it cannot meet.
 
 ## 6. Decisions
 

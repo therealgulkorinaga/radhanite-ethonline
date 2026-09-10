@@ -20,12 +20,14 @@ Implemented so far:
   buying it would be worth (TASK-006 §2.3)
 - ``radhanite.selection`` — choosing one capability from an offer, or stopping
   (TASK-006 §2.4, §2.5)
+- ``radhanite.policy`` — the ceiling a run states for itself (TASK-006 §2.2a)
 
 TASK-001 is complete. TASK-006 — choosing among candidate capabilities rather
 than escalating through two fixed tiers — is authorized and partially built: the
-the candidate model, the per-candidate eligibility rule and the ranking exist.
-The run loop that maintains the step count and the consumed identifiers does
-not. Nothing beyond those is authorized: no real inference, no
+the candidate model, the eligibility rule, the ranking, the declared fixtures
+and the run policy exist, and TASK-001's scenarios are demonstrated to decide
+identically under them. The run loop that maintains the step count and the
+consumed identifiers does not. Nothing beyond those is authorized: no real inference, no
 wallet, no tokens, no interface, and no learning.
 
 Intended behaviour, once complete: Radhanite is given a task, a budget, a task
@@ -37,12 +39,13 @@ economically justified.
 See docs/PREREQ-001_PRODUCT_DEFINITION.md for the product definition.
 """
 
-from radhanite.capability import Candidate, validate_candidates
+from radhanite.capability import DECLARED_CANDIDATES, Candidate, validate_candidates
 from radhanite.eligibility import Assessment, Ineligibility, assess
 from radhanite.escalation import Decision, EscalationDecision, FailedCondition, decide
 from radhanite.evaluation import Evaluation, Verdict, evaluate
 from radhanite.execution import Attempt, Observation, ScriptedSimulator
 from radhanite.money import CURRENCY, Money
+from radhanite.policy import RunPolicy
 from radhanite.probability import Probability
 from radhanite.run import RunOutcome, RunRecord, Step, run
 from radhanite.selection import Selection, SelectionOutcome, select_capability
@@ -53,6 +56,7 @@ __version__ = "0.1.0"
 
 __all__ = [
     "CURRENCY",
+    "DECLARED_CANDIDATES",
     "DECLARED_STRATEGIES",
     "Assessment",
     "Attempt",
@@ -66,6 +70,7 @@ __all__ = [
     "Money",
     "Probability",
     "RunOutcome",
+    "RunPolicy",
     "RunRecord",
     "Selection",
     "SelectionOutcome",

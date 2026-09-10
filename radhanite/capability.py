@@ -33,7 +33,7 @@ from radhanite._immutable import refuse_rehydration
 from radhanite.money import Money
 from radhanite.probability import Probability
 
-__all__ = ["Candidate", "validate_candidates"]
+__all__ = ["DECLARED_CANDIDATES", "Candidate", "validate_candidates"]
 
 
 @refuse_rehydration
@@ -104,6 +104,48 @@ class Candidate:
 
     def __str__(self) -> str:
         return self.candidate_id
+
+
+#: Declared candidate fixtures for TASK-006 — §5 deliverable 4.
+#:
+#: In the same spirit as TASK-001's ``DECLARED_STRATEGIES``, and under the same
+#: honesty constraint in TASK-006 §9: **these are numbers someone typed** so the
+#: economic rule can be exercised deterministically. Nothing discovered them,
+#: nothing measured them, and no one is selling them. A candidate set looks like
+#: a market, which is exactly what makes it tempting to present these as market
+#: data. They are not.
+#:
+#: Deliberately kept to three. This is a test fixture, not a catalogue, and it
+#: is **not** a candidate-discovery mechanism — finding what is on offer is
+#: outside TASK-006 entirely (§3).
+#:
+#: Ordered by ascending cost, so the order is a stated property rather than an
+#: accident. Selection does not depend on it — §2.4's ranking is total — but the
+#: run record does, and a fixture list that reordered between reads could not
+#: produce a reproducible one.
+#:
+#: The figures mirror the escalations of the three declared strategies, which is
+#: what makes them sufficient for criterion 14 without inventing a second set of
+#: numbers to reason about. The identifiers carry **no provider, network, or
+#: payment identity** — §2.1 — and describe only what kind of thing is being
+#: bought.
+DECLARED_CANDIDATES: tuple[Candidate, ...] = (
+    Candidate(
+        candidate_id="quick-check-001",
+        cost=Money("0.08"),
+        success_probability=Probability("0.55"),
+    ),
+    Candidate(
+        candidate_id="standard-review-001",
+        cost=Money("0.40"),
+        success_probability=Probability("0.85"),
+    ),
+    Candidate(
+        candidate_id="deep-analysis-001",
+        cost=Money("1.50"),
+        success_probability=Probability("0.92"),
+    ),
+)
 
 
 def validate_candidates(candidates: Sequence[Candidate]) -> tuple[Candidate, ...]:
