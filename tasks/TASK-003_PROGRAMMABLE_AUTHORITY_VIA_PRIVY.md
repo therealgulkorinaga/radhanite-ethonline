@@ -1,11 +1,36 @@
 # TASK-003 — Programmable authority over the agent, via Privy
 
-**Status:** Specified — **NOT AUTHORIZED**
-**Authorization:** None. This document does not permit implementation.
+**Status:** **DEPRIORITIZED / SUPERSEDED FOR CURRENT ETHONLINE BUILD** — specified, NOT AUTHORIZED
+**Authorization:** None. This document does not permit implementation, and is not on the active integration path.
 **Traces to:** [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §2.2, §4.2
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §3.2
 **Replaces backlog entry:** `BL-02`
 **Depends on:** TASK-002 complete and merged
+
+> ## Superseded for the current build — 2026-09-11
+>
+> **Privy is no longer a current build priority.** The human product owner
+> deprioritized it, for three reasons recorded here rather than left to memory:
+>
+> 1. **Circle Agent Wallets and Arc now cover the relevant wallet and payment
+>    infrastructure** for the current build. What this task was to establish is
+>    largely provided by an environment already on the integration path.
+> 2. **Privy would add overlap rather than a distinct economic capability.** A
+>    second route to the same wallet-and-permissions layer is not a second
+>    capability Radhanite could decide to buy.
+> 3. **Radhanite's differentiation is not wallet authorization.** It is deciding
+>    *whether a purchase is worth making*. An integration that strengthens the
+>    part nobody is competing on spends the scarcer resource.
+>
+> **This specification is not withdrawn and not deleted.** The argument in §1 —
+> that an agent enforcing its own spending limits is circular, and that a refusal
+> it cannot overrule has to come from outside — is unaffected by the
+> deprioritization and remains the reason this task would be worth doing later.
+> Nothing below has been rewritten.
+>
+> Its place on the active path is taken by
+> [TASK-007](TASK-007_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md), which adds a
+> capability Radhanite can *buy* rather than an authority it must *hold*.
 
 **Predates the product pivot.** Written under the previous product definition
 (inference-expenditure allocation). Preserved as a **proposed specification and

@@ -49,7 +49,8 @@ to the human product owner, not an order inherited by default. See
 | ID | Concept | Specified in | Status |
 |---|---|---|---|
 | BL-01 | Real inference execution via OpenRouter | [TASK-002](TASK-002_REAL_INFERENCE_VIA_OPENROUTER.md) | **UNAUTHORIZED** |
-| BL-02 | Programmable authority over the agent, via Privy | [TASK-003](TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md) | **UNAUTHORIZED** |
+| BL-02 | Programmable authority over the agent, via Privy | [TASK-003](TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md) | **UNAUTHORIZED — deprioritized** |
+| BL-15 | Onchain information as a paid capability, via The Graph | [TASK-007](TASK-007_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md) | **UNAUTHORIZED** |
 | BL-03 | Agent budget denominated in real USDC on Arc | [TASK-005](TASK-005_BUDGET_IN_REAL_USDC_ON_ARC.md) | **UNAUTHORIZED** |
 | BL-04 | The agent paying for its own purchases, over x402 on Hedera | [TASK-004](TASK-004_AGENTIC_PAYMENTS_VIA_HEDERA_AND_X402.md) | **UNAUTHORIZED** |
 | BL-04b | Radhanite consumed as a paid machine service — the inbound direction | *(none)* | **UNAUTHORIZED** |
@@ -59,6 +60,18 @@ Circle work had been folded into a paragraph of TASK-003 as an aside, so a track
 being targeted had no task file, no acceptance criteria, and nothing a reader
 could point at. TASK-005 owns it now. TASK-003 establishes the wallet and the
 authority over it; TASK-005 makes the budget in that wallet real money.
+
+`BL-02` was **deprioritized on 2026-09-11** and is no longer on the active
+integration path. Circle Agent Wallets and Arc now cover the relevant wallet and
+payment infrastructure, so Privy would add overlap rather than a distinct
+economic capability — and wallet authorization is not what Radhanite is
+differentiated on. TASK-003's specification stands unaltered; the argument in it
+is unaffected by the ordering decision. `BL-15` takes its place on the path.
+
+`BL-15` is a capability Radhanite could **buy**, which is why it replaces an
+authority Radhanite would have to **hold**. The Graph is not part of the
+decision engine and must never influence ranking by being The Graph —
+`TASK-006` §2.1 is unchanged and TASK-007 §3 restates the prohibition.
 
 `BL-04` previously described only the inbound direction — other machines paying
 Radhanite. The outbound direction, Radhanite's agent paying for what it buys, is

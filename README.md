@@ -83,7 +83,8 @@ external integrations named here is authorized either.
 | Tests | **242 passing** on Python 3.12 |
 | Language | Python 3.12, standard library only — no external dependencies |
 | Dynamic capability acquisition | **Authorized, not yet implemented** — [TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) (`BL-13`) |
-| External integrations (OpenRouter, Privy, Arc/USDC, Hedera/x402, Circle) | **Not authorized** |
+| External integrations (Hedera/x402, Circle/Arc, The Graph, OpenRouter) | **Not authorized** |
+| Privy | **Deprioritized** — superseded on the active path ([TASK-003](tasks/TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md)) |
 
 ## Running the tests
 
