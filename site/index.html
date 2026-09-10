@@ -1,0 +1,323 @@
+<title>Radhanite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Petrona:ital,wght@0,400..700;1,400..600&family=Karla:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --paper:#EEF1ED; --card:#F7F9F6; --sunk:#E4E9E2;
+  --ink:#14201C; --ink-2:#4C5C55; --ink-3:#7C8A83;
+  --verdigris:#2C6B5A; --verdigris-soft:rgba(44,107,90,.10);
+  --brass:#7E6029; --brass-soft:rgba(126,96,41,.10);
+  --madder:#8E3A2D;
+  --rule:rgba(20,32,28,.13); --rule-soft:rgba(20,32,28,.07);
+  --lift:0 1px 2px rgba(20,32,28,.04),0 8px 28px -18px rgba(20,32,28,.28);
+
+  --display:"Petrona",Georgia,"Times New Roman",serif;
+  --body:"Karla",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --data:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0D1512; --card:#17211D; --sunk:#111A17;
+    --ink:#E7ECE8; --ink-2:#9EAEA6; --ink-3:#6B7A73;
+    --verdigris:#63B69B; --verdigris-soft:rgba(99,182,155,.13);
+    --brass:#C6A257; --brass-soft:rgba(198,162,87,.13);
+    --madder:#D4746A;
+    --rule:rgba(231,236,232,.15); --rule-soft:rgba(231,236,232,.08);
+    --lift:0 8px 32px -22px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0D1512; --card:#17211D; --sunk:#111A17;
+  --ink:#E7ECE8; --ink-2:#9EAEA6; --ink-3:#6B7A73;
+  --verdigris:#63B69B; --verdigris-soft:rgba(99,182,155,.13);
+  --brass:#C6A257; --brass-soft:rgba(198,162,87,.13);
+  --madder:#D4746A;
+  --rule:rgba(231,236,232,.15); --rule-soft:rgba(231,236,232,.08);
+  --lift:0 8px 32px -22px rgba(0,0,0,.9);
+}
+
+*{box-sizing:border-box}
+html{scroll-snap-type:y proximity; scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto; scroll-snap-type:none}}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--body); font-size:16px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2{font-family:var(--display); font-weight:600; text-wrap:balance; margin:0; letter-spacing:-.015em}
+p{margin:0}
+a{color:var(--verdigris); text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--verdigris); outline-offset:3px}
+.num{font-variant-numeric:tabular-nums}
+
+/* ── deck ───────────────────────────────────────────── */
+.deck{max-width:1000px; margin:0 auto; padding-inline:20px; padding-block:22px 22px; display:grid; gap:20px}
+.card{
+  scroll-snap-align:center;
+  background:var(--card); border:1px solid var(--rule); box-shadow:var(--lift);
+  padding:clamp(26px,4.4vw,52px);
+  min-height:min(640px,80vh);
+  display:grid; align-content:center; gap:clamp(20px,3vw,34px);
+}
+.card.split{grid-template-columns:minmax(0,0.92fr) minmax(0,1.08fr); align-items:center; column-gap:clamp(28px,5vw,64px)}
+.say{display:grid; gap:14px; align-content:center}
+
+.idx{
+  font-family:var(--data); font-size:11px; font-weight:500; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--ink-3);
+  display:flex; align-items:center; gap:10px;
+}
+.idx::before{content:""; width:18px; height:1px; background:var(--ink-3)}
+h2{font-size:clamp(24px,3.4vw,36px); line-height:1.18}
+.line{color:var(--ink-2); font-size:clamp(15px,1.5vw,17px); max-width:40ch}
+.line em{font-style:normal; color:var(--ink); font-weight:600}
+
+/* card 1 */
+.wordmark{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
+.wordmark b{font-family:var(--display); font-weight:600; font-size:clamp(26px,4vw,34px); letter-spacing:-.02em}
+.wordmark span{font-family:var(--data); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3)}
+.thesis{font-family:var(--display); font-size:clamp(28px,4.6vw,46px); line-height:1.16; letter-spacing:-.018em}
+.thesis .q{display:block; color:var(--ink-3)}
+.thesis .a{display:block}
+.thesis em{font-style:italic; color:var(--verdigris)}
+.figs{display:grid; grid-template-columns:repeat(2,1fr); gap:1px; background:var(--rule); border:1px solid var(--rule)}
+.fig{background:var(--card); padding:16px 18px}
+.fig b{font-family:var(--data); font-size:clamp(20px,2.6vw,26px); font-weight:600; letter-spacing:-.02em; display:block}
+.fig span{font-size:12.5px; color:var(--ink-3); display:block; margin-top:3px}
+
+/* card 2 — the sum */
+.sum{border:1px solid var(--rule); background:var(--sunk)}
+.sum .r{display:flex; justify-content:space-between; gap:16px; padding:13px 18px; border-bottom:1px solid var(--rule-soft); font-size:14.5px}
+.sum .r span:first-child{color:var(--ink-2)}
+.sum .r span:last-child{font-family:var(--data); font-weight:500}
+.sum .r.tot{border-bottom:0; border-top:1px solid var(--rule); padding-block:16px}
+.sum .r.tot span:first-child{color:var(--ink); font-weight:600}
+.sum .r.tot span:last-child{font-size:22px; font-weight:600; color:var(--verdigris)}
+.stamp{
+  display:flex; align-items:center; gap:10px; padding:14px 18px; background:var(--verdigris-soft);
+  font-family:var(--data); font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--verdigris); font-weight:600;
+}
+.stamp::before{content:""; width:9px; height:9px; background:var(--verdigris); flex:none}
+.fine{font-size:12.5px; color:var(--ink-3); max-width:38ch}
+
+/* card 3 — gates */
+.gates{display:grid}
+.gate{display:grid; grid-template-columns:1fr auto; gap:14px; align-items:center; padding:12px 0; border-bottom:1px solid var(--rule-soft)}
+.gate:first-child{border-top:1px solid var(--rule-soft)}
+.gate code{font-family:var(--data); font-size:13.5px}
+.tag{font-family:var(--data); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; padding:3px 8px; white-space:nowrap}
+.tag.e{color:var(--verdigris); background:var(--verdigris-soft)}
+.tag.s{color:var(--brass); background:var(--brass-soft)}
+
+/* card 4 — stop */
+.pull{
+  font-family:var(--display); font-size:clamp(26px,4vw,40px); line-height:1.2; letter-spacing:-.018em;
+  border-left:3px solid var(--verdigris); padding-left:clamp(18px,2.5vw,28px);
+}
+.pull small{display:block; font-family:var(--body); font-size:15px; color:var(--ink-2); margin-top:16px; letter-spacing:0; max-width:36ch; line-height:1.55}
+
+/* cards 5/6 — lists */
+.list{display:grid}
+.li{display:grid; grid-template-columns:12px 1fr; gap:13px; align-items:baseline; padding:9px 0; border-bottom:1px solid var(--rule-soft); font-size:14.5px}
+.li i{width:8px; height:8px; margin-top:6px; font-style:normal}
+.on i{background:var(--verdigris)}
+.off i{border:1.5px solid var(--brass)}
+.count{font-family:var(--data); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3); padding-bottom:10px; border-bottom:2px solid var(--ink)}
+.off .count{border-bottom-color:var(--brass)}
+
+/* card 7 — record */
+.roles{display:grid; gap:14px}
+.role{display:grid; grid-template-columns:auto 1fr; gap:14px; align-items:baseline}
+.role b{font-family:var(--data); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); white-space:nowrap; padding-top:2px}
+.role span{font-size:14.5px}
+.rec{border:1px solid var(--rule); overflow:hidden}
+.rec .rr{display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:baseline; padding:11px 16px; border-bottom:1px solid var(--rule-soft); font-size:14px}
+.rec .rr:last-child{border-bottom:0}
+.rec .rr b{font-family:var(--data); font-size:12.5px; color:var(--ink-3); font-weight:400}
+.rec .rr em{font-family:var(--data); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; font-style:normal; white-space:nowrap}
+.rej{color:var(--madder)} .app{color:var(--verdigris)}
+
+/* card 8 — tracks */
+.tracks{display:grid; gap:1px; background:var(--rule); border:1px solid var(--rule)}
+.tr{background:var(--card); padding:18px}
+.tr b{font-family:var(--display); font-size:18px; font-weight:600; display:block}
+.tr span{font-size:13.5px; color:var(--ink-2); display:block; margin-top:5px}
+.tr em{font-family:var(--data); font-size:9.5px; letter-spacing:.11em; text-transform:uppercase; font-style:normal; color:var(--brass); background:var(--brass-soft); padding:3px 8px; display:inline-block; margin-top:11px}
+.asof{font-family:var(--data); font-size:11px; line-height:1.7; color:var(--ink-3); margin-top:16px; max-width:60ch}
+.asof code{font-size:11px}
+.close{display:flex; gap:20px; flex-wrap:wrap; justify-content:space-between; align-items:baseline; font-size:13.5px; color:var(--ink-3); border-top:1px solid var(--rule); padding-top:20px}
+
+/* rail */
+.rail{position:fixed; right:16px; top:50%; transform:translateY(-50%); display:grid; gap:9px; z-index:5}
+.rail a{width:7px; height:7px; border:1px solid var(--ink-3); border-radius:50%; display:block; transition:background .2s,border-color .2s}
+.rail a[aria-current="true"]{background:var(--verdigris); border-color:var(--verdigris)}
+@media (max-width:900px){.rail{display:none}}
+
+@media (max-width:760px){
+  .card{grid-template-columns:1fr !important; min-height:0; padding:26px 22px}
+  .figs{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+
+<nav class="rail" aria-label="Sections">
+  <a href="#c1" aria-label="The question"></a><a href="#c2" aria-label="The sum"></a>
+  <a href="#c3" aria-label="The gates"></a><a href="#c4" aria-label="Stopping"></a>
+  <a href="#c5" aria-label="Built"></a><a href="#c6" aria-label="Not built"></a>
+  <a href="#c7" aria-label="Method"></a><a href="#c8" aria-label="Direction"></a>
+</nav>
+
+<main class="deck">
+
+  <section class="card split" id="c1">
+    <div class="say">
+      <div class="wordmark"><b>Radhanite</b><span>ETHOnline 2026</span></div>
+      <h1 class="thesis">
+        <span class="q">Rails answer how a machine pays.</span>
+        <span class="a">We answer <em>whether it should</em>.</span>
+      </h1>
+      <p class="line">An economic control layer for autonomous work.</p>
+    </div>
+    <div class="figs">
+      <div class="fig"><b class="num">423</b><span>tests, Python 3.12</span></div>
+      <div class="fig"><b class="num">23</b><span>pull requests merged</span></div>
+      <div class="fig"><b class="num">47</b><span>review findings, all fixed</span></div>
+      <div class="fig"><b class="num">0</b><span>external dependencies</span></div>
+    </div>
+  </section>
+
+  <section class="card split" id="c2">
+    <div class="say">
+      <div class="idx">01 &middot; The decision</div>
+      <h2>Every purchase is one sum.</h2>
+      <p class="line">Something costs 50&cent; and lifts your odds from 50% to 80%. The outcome is worth $20. <em>That is the whole product.</em></p>
+      <p class="fine">Probabilities are declared fixtures. Nothing here measures or learns them.</p>
+    </div>
+    <div class="sum">
+      <div class="r"><span>Chance of success now</span><span class="num">0.50</span></div>
+      <div class="r"><span>Chance after buying it</span><span class="num">0.80</span></div>
+      <div class="r"><span>Worth finishing the task</span><span class="num">$20.00</span></div>
+      <div class="r"><span>Price</span><span class="num">&minus;&thinsp;$0.50</span></div>
+      <div class="r tot"><span>Net expected value</span><span class="num">$5.50</span></div>
+      <div class="stamp">Buy it</div>
+    </div>
+  </section>
+
+  <section class="card split" id="c3">
+    <div class="say">
+      <div class="idx">02 &middot; The gates</div>
+      <h2>Six conditions. Three aren&rsquo;t about money.</h2>
+      <p class="line">The economic three decide whether it&rsquo;s worth it. The safeguards are what <em>guarantee the run ends</em>.</p>
+    </div>
+    <div class="gates">
+      <div class="gate"><code>cost &gt; 0</code><span class="tag s">safeguard</span></div>
+      <div class="gate"><code>cost &lt;= remaining_budget</code><span class="tag e">economic</span></div>
+      <div class="gate"><code>probability &gt; current</code><span class="tag e">economic</span></div>
+      <div class="gate"><code>value &gt; cost</code><span class="tag e">economic</span></div>
+      <div class="gate"><code>not already bought</code><span class="tag s">safeguard</span></div>
+      <div class="gate"><code>steps &lt; max_steps</code><span class="tag s">safeguard</span></div>
+    </div>
+  </section>
+
+  <section class="card" id="c4">
+    <div class="idx">03 &middot; The counterintuitive part</div>
+    <p class="pull">
+      A run that buys nothing at all is a <em style="font-style:italic;color:var(--verdigris)">correct</em> run.
+      <small>Budget is permission to spend, not a target. Stopping early with money unspent is the system working &mdash; and it says <em style="font-style:normal;font-weight:600;color:var(--ink)">why</em> it stopped, so a safety limit is never reported as &ldquo;nothing was worth buying&rdquo;.</small>
+    </p>
+  </section>
+
+  <section class="card split" id="c5">
+    <div class="say">
+      <div class="idx">04 &middot; Shipped</div>
+      <h2>The engine runs today.</h2>
+      <p class="line">Merged, tested, independently reviewed. <em>No dependencies.</em></p>
+    </div>
+    <div class="list on">
+      <div class="count">Implemented &middot; 12 modules</div>
+      <div class="li on"><i></i><span>Exact decimal money &mdash; floats refused</span></div>
+      <div class="li on"><i></i><span>The five task inputs</span></div>
+      <div class="li on"><i></i><span>The escalate-or-stop rule</span></div>
+      <div class="li on"><i></i><span>Deterministic two-tier kernel</span></div>
+      <div class="li on"><i></i><span>Candidate capability model</span></div>
+      <div class="li on"><i></i><span>Six-condition eligibility</span></div>
+      <div class="li on"><i></i><span>Ranking, with deterministic tie-breaks</span></div>
+      <div class="li on"><i></i><span>Run record &mdash; including what it rejected</span></div>
+    </div>
+  </section>
+
+  <section class="card split" id="c6">
+    <div class="say">
+      <div class="idx">05 &middot; Not shipped</div>
+      <h2>And here&rsquo;s what doesn&rsquo;t exist.</h2>
+      <p class="line">Every demo overclaims. <em>This one lists its own gaps</em> &mdash; and the repo enforces it.</p>
+    </div>
+    <div class="list off">
+      <div class="count">Specification only</div>
+      <div class="li off"><i></i><span>Any real model call &mdash; execution is simulated</span></div>
+      <div class="li off"><i></i><span>Any wallet, key or signature</span></div>
+      <div class="li off"><i></i><span>Any chain, token or settlement</span></div>
+      <div class="li off"><i></i><span>Any payment protocol</span></div>
+      <div class="li off"><i></i><span>The loop over many purchases</span></div>
+      <div class="li off"><i></i><span>Finding what&rsquo;s for sale</span></div>
+      <div class="li off"><i></i><span>Learned probabilities</span></div>
+      <div class="li off"><i></i><span>The supplier-diligence demo</span></div>
+    </div>
+  </section>
+
+  <section class="card split" id="c7">
+    <div class="say">
+      <div class="idx">06 &middot; Method</div>
+      <h2>Built by agents that can&rsquo;t approve themselves.</h2>
+      <div class="roles">
+        <div class="role"><b>Human</b><span>Authorizes each task. Performs every merge.</span></div>
+        <div class="role"><b>Claude</b><span>Implements only what a task specifies.</span></div>
+        <div class="role"><b>Codex</b><span>Reviews independently, against the spec.</span></div>
+      </div>
+      <p class="fine">Prompts and findings committed verbatim &mdash; including the reviews where the process itself slipped.</p>
+    </div>
+    <div class="rec">
+      <div class="rr"><b>#6</b><span>Money and task inputs</span><em class="rej">Rejected &times;2</em></div>
+      <div class="rr"><b>#11</b><span>Strategy selection</span><em class="rej">Rejected &times;2</em></div>
+      <div class="rr"><b>#13</b><span>The loop and record</span><em class="rej">Rejected &times;2</em></div>
+      <div class="rr"><b>#21</b><span>Candidate model</span><em class="app">Approved</em></div>
+      <div class="rr"><b>#22</b><span>Eligibility</span><em class="app">Corrections</em></div>
+      <div class="rr"><b>#23</b><span>Ranking</span><em class="rej">Rejected</em></div>
+    </div>
+  </section>
+
+  <section class="card" id="c8">
+    <div class="idx">07 &middot; Direction</div>
+    <h2 style="max-width:22ch">Supplier diligence: approve, escalate, or reject &mdash; and decide what evidence is worth paying for.</h2>
+    <div class="tracks">
+      <div class="tr"><b>Hedera</b><span>An independent second opinion, bought over a paid endpoint.</span><em>Not authorized</em></div>
+      <div class="tr"><b>Circle &amp; Arc</b><span>Discovery, settlement, and the budget as real value.</span><em>Not authorized</em></div>
+      <div class="tr"><b>Privy</b><span>Authority the agent cannot grant itself.</span><em>Not authorized</em></div>
+    </div>
+    <p class="fine" style="max-width:52ch">Independent environments &mdash; no bridge, one budget above both. Testnet value is a test fixture, and we won&rsquo;t present it as anything else.</p>
+    <div class="close">
+      <span>Named for the merchants who ran the routes &mdash; and kept the ledgers.</span>
+      <a href="https://github.com/therealgulkorinaga/radhanite-ethonline">View the repository &rarr;</a>
+    </div>
+    <p class="asof">Every figure on this page describes <code>main</code> at <a href="https://github.com/therealgulkorinaga/radhanite-ethonline/commit/e39c2db">e39c2db</a>, 11 September 2026. If the repository has moved on and this page has not, the page is the stale one.</p>
+  </section>
+
+</main>
+
+<script>
+(function(){
+  var dots=[].slice.call(document.querySelectorAll('.rail a'));
+  var cards=[].slice.call(document.querySelectorAll('.card'));
+  if(!('IntersectionObserver' in window)||!dots.length)return;
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if(!e.isIntersecting)return;
+      var i=cards.indexOf(e.target);
+      dots.forEach(function(d,n){d.setAttribute('aria-current',n===i?'true':'false');});
+    });
+  },{threshold:.5});
+  cards.forEach(function(c){io.observe(c);});
+  dots[0].setAttribute('aria-current','true');
+})();
+</script>
