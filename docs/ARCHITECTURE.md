@@ -125,7 +125,8 @@ the only thing Radhanite is uniquely qualified to own.
 | Concern | Intended external system | Status |
 |---|---|---|
 | Inference execution | OpenRouter | **Not authorized yet** |
-| Programmable authority over the agent, and its wallet | Privy | **Not authorized yet** |
+| Programmable authority over the agent, and its wallet | Privy | **Not authorized — deprioritized**, §3.2 |
+| Onchain information as a purchasable capability | The Graph | **Not authorized yet** |
 | Agent economic budget | Arc / USDC | **Not authorized yet** |
 | Agent payments, outbound and inbound | Hedera / x402 | **Not authorized yet** |
 | Capability discovery and marketplace settlement | Circle Agent Marketplace | **Not authorized yet** |
@@ -151,7 +152,20 @@ provider-specific clients, or inference billing.
 Radhanite's job stops at deciding *what capability tier to buy and how much to
 spend*. Actually purchasing and executing that inference is OpenRouter's job.
 
-### 3.2 Privy — programmable authority over the agent
+### 3.2 Privy — programmable authority over the agent *(deprioritized)*
+
+> **Not on the active integration path.** Deprioritized 2026-09-11: Circle Agent
+> Wallets and Arc cover the relevant wallet and payment infrastructure for the
+> current build, so Privy would add overlap rather than a distinct economic
+> capability — and wallet authorization is not Radhanite's differentiation.
+> [TASK-003](../tasks/TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md) records the
+> decision in full.
+>
+> **The argument below is unaffected and is kept.** An agent that enforces its
+> own spending limits is circular, and a refusal it cannot overrule has to come
+> from outside. That remains true, remains unbuilt, and remains the reason this
+> would be worth doing later. Deprioritizing work is not discovering it was
+> wrong.
 
 Intended later for the agent's wallet, its custody, and — the part that matters
 — **authority the agent cannot grant itself**: what it may spend, on what terms,
@@ -213,12 +227,32 @@ Radhanite must **not** implement a payment protocol, metering rail, or settlemen
 layer in either direction. x402 is the protocol; Hedera is the rail. Radhanite
 decides *whether* to pay and *how much*.
 
+### 3.5 The Graph — onchain information Radhanite may buy
+
+Intended later as **one capability among the candidates**, not as a component of
+the decision. It would return structured onchain evidence — wallet, protocol or
+entity activity — which changes what the task knows and therefore what the next
+decision is measured against.
+
+Radhanite must **not** reimplement indexing, subgraph infrastructure, or query
+execution. It decides *whether the evidence is worth its price*.
+
+**The prohibition that matters here is §2.1's, and it is not relaxed.** A
+capability backed by a subgraph and one computed locally are indistinguishable
+to the selection rule: same three fields, same six conditions, same ranking. No
+provider earns a preference, a tie-break or a "trusted source" exemption by
+identity. If onchain evidence deserves to win, it wins on price and effect.
+
+Specified as a placeholder in
+[TASK-007](../tasks/TASK-007_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md), which
+carries three unresolved decisions and authorizes nothing.
+
 ## 4. Integration authorization status
 
 **No external integration is authorized at this time.**
 
-Specifically, **none** of OpenRouter, Privy, Arc/USDC, Hedera, or x402 is
-authorized in [`TASK-001`](../tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md).
+Specifically, **none** of OpenRouter, Arc/USDC, Hedera, x402, The Graph, or
+Privy is authorized in [`TASK-001`](../tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md).
 Any code, dependency, configuration, credential, or network call touching them
 is out of scope and must be rejected in review, regardless of how small.
 
@@ -234,13 +268,30 @@ make it real, in an order set by what each depends on:
 | Task | What becomes real | Backlog entries retired |
 |---|---|---|
 | [TASK-002](../tasks/TASK-002_REAL_INFERENCE_VIA_OPENROUTER.md) | Inference, and therefore the spend | `BL-01` |
-| [TASK-003](../tasks/TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md) | Authority the agent cannot grant itself, over an account on Arc | `BL-02` |
 | [TASK-005](../tasks/TASK-005_BUDGET_IN_REAL_USDC_ON_ARC.md) | The budget itself, as USDC that exists on a chain | `BL-03` |
 | [TASK-004](../tasks/TASK-004_AGENTIC_PAYMENTS_VIA_HEDERA_AND_X402.md) | The agent paying for its own purchases | `BL-04` |
 
 **None of these is authorized.** A task file specifies work; it does not permit
 it. §4 above is unchanged: an integration becomes authorized only when the human
 product owner says so.
+
+### The active integration path, in priority order
+
+Set by the human product owner on 2026-09-11. Nothing here is authorized; this
+is the order work would be taken in if it were.
+
+| | Integration | What it contributes |
+|---|---|---|
+| 1 | **Hedera / x402** — [TASK-004](../tasks/TASK-004_AGENTIC_PAYMENTS_VIA_HEDERA_AND_X402.md) | A paid independent-judgement capability |
+| 2 | **Circle / Arc** — [TASK-005](../tasks/TASK-005_BUDGET_IN_REAL_USDC_ON_ARC.md) | The marketplace and payment environment, and research |
+| 3 | **The Graph** — [TASK-007](../tasks/TASK-007_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md) | A paid onchain-information capability |
+
+**Privy is not on this path.** [TASK-003](../tasks/TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md)
+is deprioritized and records why; its specification is preserved unaltered.
+
+All three are capabilities the agent could **buy**, which is the shape the
+product definition now takes. That is the substantive difference from the
+authority Privy would have supplied, and the reason for the reordering.
 
 **This table predates the product pivot in
 [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION.md) §2.3, and its dependency chain
@@ -339,7 +390,8 @@ loop is complete and testable **without** any of them:
 - Execution is **simulated** and deterministic — no real model APIs.
 - Budget and task value are **internal accounting numbers**, USD-denominated
   decimals — no tokens, no transfers, and never labelled USDC.
-- There is **no identity or wallet layer** — no Privy.
+- There is **no identity or wallet layer** — no Privy, and none of its
+  successors.
 - There is **no payable endpoint** — no Hedera, no x402.
 
 The intent is that when integrations are later authorized, they replace

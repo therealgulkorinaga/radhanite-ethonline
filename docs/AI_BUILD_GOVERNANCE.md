@@ -65,7 +65,8 @@ not appear in the repository — not as code, not as a dependency, not as a
 configuration stub, not as an abstraction "ready for later."
 
 This applies with full force to the integrations named in `ARCHITECTURE.md`
-(OpenRouter, Privy, Arc/USDC, Hedera, x402). Anticipating them in code is a
+(OpenRouter, Arc/USDC, Hedera, x402, The Graph, and the deprioritized Privy).
+Anticipating them in code is a
 violation even when no external call is made.
 
 Backlog entries are **not** authorization. `tasks/BACKLOG.md` records ideas that
