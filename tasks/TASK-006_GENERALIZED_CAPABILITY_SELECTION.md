@@ -417,7 +417,13 @@ amended first.
 
 ## 5a. Closure status — two criteria this task cannot reach
 
-**All six deliverables in §5 are met. TASK-006 is not closed.**
+**Five of the six §5 deliverables are complete; deliverable 3 is partial. 20 of
+the 22 §4 acceptance criteria are fully demonstrated. TASK-006 is not
+complete.**
+
+Criteria 10 and 13 are exercised at the selector, but their full meaning —
+observing that a task has already succeeded, and bounding spend *across* a run —
+still requires the future run loop for end-to-end satisfaction.
 
 Criteria 10 and 13 of §4 require behaviour that §2.2a, §2.7 and §3 of this same
 task place outside it. That is an **ownership inconsistency** in this
