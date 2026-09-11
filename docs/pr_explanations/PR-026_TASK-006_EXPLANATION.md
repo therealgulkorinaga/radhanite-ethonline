@@ -18,15 +18,21 @@ To finish the three outstanding pieces of TASK-006:
 All three are done. **TASK-006 still cannot be marked complete**, and §12
 explains why — it is the most important thing in this document.
 
+**This PR was rejected on review and corrected.** §14a records all seven
+findings, including one where this document attributed a quotation to the
+specification that the specification does not contain.
+
 ## 2. What changed
 
 | File | What it is |
 |---|---|
 | `radhanite/policy.py` | **New.** `RunPolicy` — the ceiling, and nothing else |
 | `radhanite/capability.py` | `DECLARED_CANDIDATES` — three fixtures |
-| `tests/test_compatibility.py` | **New.** The Criterion 14 proof, 16 tests |
-| `tests/test_policy.py` | **New.** 17 tests |
+| `tests/test_compatibility.py` | **New.** The Criterion 14 proof — 18 tests, 21 after the §14a corrections |
+| `tests/test_policy.py` | **New.** 15 tests, 18 after the §14a corrections |
 | `tests/test_capability.py` | 11 fixture tests added |
+| `tests/test_selection.py` | *(correction)* Criterion 18 demonstrated at the selector — 80 tests |
+| `docs/ARCHITECTURE.md` | *(correction)* §2.2 now states what is actually implemented |
 | `radhanite/__init__.py` | Exports, and the status note |
 | `tasks/TASK-006_...md` | Deliverables ticked; **new §5a — why it cannot close** |
 | `tasks/BACKLOG.md` | `BL-13` marked implemented-not-closed; **`BL-16`** added |
@@ -63,7 +69,7 @@ ImportError: cannot import name 'DECLARED_CANDIDATES' from 'radhanite.capability
 Ran 390 tests — FAILED (errors=3)
 ```
 
-Then implemented. **467 passing.** §10 has the full before/after.
+Then implemented. **476 passing.** §10 has the full before/after.
 
 ### The fixtures
 
@@ -81,14 +87,13 @@ fixtures are the easiest place for a sponsor name to arrive.
 
 ### The run policy
 
-`RunPolicy` carries one field and refuses everything questionable: **no default**
-(a default would make a safety limit optional), zero, negative, non-integers, and
-**`True`** — which would otherwise pass as a ceiling of one, since `bool` is a
-subclass of `int`.
+`RunPolicy` carries one field and **has no default** — a default would make a
+safety limit optional. It refuses negatives, non-integers, and **`True`**, which
+would otherwise pass as a ceiling of one since `bool` is a subclass of `int`.
 
-It is deliberately stricter than the decision primitives, which tolerate a
-ceiling of zero. A run permitted to buy nothing has no use for a capability
-decision at all.
+**Zero is valid**, and means a run explicitly permitted to purchase nothing. An
+earlier revision refused it; that was a product rule this object had no
+authority to invent — `CODEX-PR026-02`.
 
 **It drives nothing.** No loop, no counter, no orchestration. A run reads the
 number and passes it to the decision.
@@ -149,11 +154,18 @@ checks below are what establish the latter.
 
 ```
 $ python3.12 -m unittest discover -q
-Ran 467 tests in 0.13s
+Ran 476 tests in 0.13s
 OK
 ```
 
-**423 existing, unchanged, plus 44 new.**
+**423 existing, unchanged, plus 53 new.**
+
+| File | At review | Final |
+|---|---|---|
+| `tests/test_compatibility.py` | 18 | **21** |
+| `tests/test_policy.py` | 15 | **18** |
+| `tests/test_capability.py` | 11 added | 11 added |
+| `tests/test_selection.py` | — | **+3** for criterion 18 |
 
 One test was rewritten during implementation. A scan for a hard-coded ceiling
 flagged `max_capability_steps=4` inside a **doctest** — a call site, which is
@@ -173,8 +185,32 @@ recorded in PR-023.
 | Compatibility path uses budget where task value belongs | **45 failures** |
 | Two declared fixtures share an identifier | **1 failure** |
 | A default `max_capability_steps = 4` appears | **2 failures** |
-| `RunPolicy` accepts zero steps | **1 failure** |
 | `RunPolicy` accepts `True` as one step | **1 failure** |
+
+And five more against the §14a corrections. **Three were caught; two were not,
+and both non-results are reported rather than dressed up:**
+
+| Fault introduced | Result |
+|---|---|
+| `RunPolicy` rejects zero again | **2 errors** |
+| A zero-cost-only offer no longer stops | **6 failures** |
+| The ceiling path clamps: `min(value, 4)` | **6 failures** |
+| Drop the both-conditions-fail scenario entirely | **Not caught — see below** |
+| The harness compares the new model to itself | **Not caught — see below** |
+
+**Deleting a test cannot turn a suite red.** Removing the both-conditions-fail
+scenario removes coverage; a suite that no longer runs a case does not fail
+because of it. That mutation asks a question mutation testing cannot answer, and
+the evidence that the scenario discriminates is that the *other* compatibility
+mutations — `>=` for `>`, budget for task value — still fail with it present.
+
+**The harness mutation survives because the harness was hardened.** Comparing
+`new_buys` to itself removes the direct cross-model check — but each model is
+now *also* pinned independently to the branch's expected outcome, so agreement
+is still proved transitively. That second pair of assertions was added
+*because* of this mutation: before it, removing the cross-model comparison left
+the generalized verdict entirely unchecked. The suite is stronger and the
+mutation is now redundant, which is a better outcome than catching it.
 
 ## 11. Assumptions made
 
@@ -184,12 +220,15 @@ recorded in PR-023.
 
 ## 12. Known limitations — **TASK-006 cannot be closed**
 
-All six deliverables are met and **20 of 22 acceptance criteria are
-demonstrated**. Two cannot be, and the reason is not an implementation gap.
+**Five deliverables are met and one — deliverable 3 — is partial.** 20 of 22
+acceptance criteria are directly demonstrated. Two cannot be, and the reason is
+not an implementation gap.
 
 **Criterion 10** — *task already successful → STOP, with no candidate
-evaluated.* §2.5 of the same task says this condition is *"**not** decided
-here… this module is never told the answer."* Nothing in TASK-006 can observe
+evaluated.* §2.5 **lists** an already-satisfied success condition as terminal.
+But §2.2a enumerates the decision's inputs and a success verdict is not among
+them; §2.7 assigns re-evaluating task state to a separate concern; and §3
+excludes the layer that would produce it. Nothing this task owns can observe
 that a task has succeeded.
 
 **Criterion 13** — *total spend can never exceed the budget, on every path.* The
@@ -200,10 +239,13 @@ purchases needs something that accumulates, and §2.7 gives that to the run loop
 **Both belong to the run loop, and no authorized task owns the run loop.** §2.7
 hands it four steps of the iterative cycle and stops; nothing picks them up.
 
-So TASK-006's own §4 asks for two things its own §2.5, §2.7 and §3 forbid it
-from doing. **That is an inconsistency in the specification**, recorded in a new
-§5a rather than resolved by satisfying the criteria in the wrong layer or by
-quietly marking the task done.
+So TASK-006's own §4 asks for two things no section of the same task assigns to
+anything inside it. **That is an ownership inconsistency in the
+specification**, recorded in a new §5a rather than resolved by satisfying the
+criteria in the wrong layer or by quietly marking the task done.
+
+**§5 deliverable 3 is partial, not complete.** It asks for a test suite covering
+§4, and two of §4's criteria have no home here.
 
 ### The one narrowing, still true
 
@@ -224,6 +266,97 @@ implementation and TASK-006's economic rule are untouched.
 
 **`BL-16` — the run loop.** Newly added, unauthorized, and now the thing
 standing between a working economic kernel and a working system.
+
+## 14a. Corrections after the Codex review
+
+**Rejected, seven findings, all corrected.** Three were behavioural; four were
+about evidence and truthfulness, and one of those is the most serious mistake in
+this pull request.
+
+### `-04` — a quotation attributed to a specification that does not contain it
+
+This document and TASK-006 §5a both quoted §2.5 as saying the success condition
+is *"not decided here… this module is never told the answer."* **§2.5 does not
+say that.** The sentence is from the module docstring of
+`radhanite/selection.py` — text this same author wrote — and it was quoted back
+as though it were the specification.
+
+The underlying point survives; the evidence for it was invented. §2.5 does list
+an already-satisfied success condition as terminal, and it does **not** forbid
+the selector from knowing about it. What is actually true is an **ownership**
+inconsistency: §2.2a's input list does not include a success verdict, §2.7 hands
+task-state re-evaluation elsewhere, and §3 excludes the layer that would produce
+it. That is now what both documents say.
+
+Attributing words to an authoritative document is exactly the failure this
+repository spends its effort on, and it happened in the document arguing for its
+own rigour.
+
+### `-01` — Criterion 14 was missing a branch
+
+The compatibility harness had no scenario where the budget condition **and** the
+value condition fail *simultaneously* — a branch TASK-001 §2.5 names and
+`test_escalation.py` exercises. Both models could have agreed on every
+single-cause stop and diverged when two coincide.
+
+Added, with a companion test that first asserts the scenario really does fail
+both conditions, and a third confirming both models record the same two causes.
+
+### `-02` — RunPolicy invented a product rule
+
+It refused `max_capability_steps = 0`, on the reasoning that a run permitted to
+buy nothing has no use for a capability decision. **TASK-006 authorizes no such
+minimum**, and that was a product rule this object had no authority to add.
+
+Zero is now valid and means what it says. The primitive condition
+`capability_step_count >= max_capability_steps` is unchanged and already gives
+zero the right behaviour: nothing is ever eligible.
+
+### `-03` — Criterion 18 was not actually demonstrated
+
+§4 criterion 18 requires that *a set consisting only of zero-cost candidates
+yields STOP*. Proving separately that `Candidate` refuses zero, that eligibility
+refuses zero, and that some unrelated all-ineligible set stops **is not that
+outcome**.
+
+`ZeroCostOnlyOfferTests` now runs an offer of only zero-cost candidates through
+the selector and asserts STOP — including one that is free *and* certain to
+succeed, which is the single most tempting thing that could be offered and the
+one that would never terminate. A third test confirms a priced candidate
+alongside them still wins, so the stop comes from the zero cost rather than from
+the offer being unusual.
+
+### `-06` — the ceiling guard did not guard
+
+Codex defeated the previous check by making the ceiling path
+`return min(value, 4)`: **every test still passed.** A source scan that reads
+signatures cannot see a literal buried in logic.
+
+The guard is now behavioural. Ceilings of 5, 6, 7, 10 and 99 are each exercised
+one step below the limit — where the candidate must still be buyable — and at
+the limit, where it must stop. A clamp to four fails the first assertion
+immediately. The signature checks are kept, but they are no longer the only
+defence.
+
+### `-05` — the architecture understated what exists
+
+`ARCHITECTURE.md` §2.2 still read as though nothing of the generalized model was
+built. It now states what exists and, more carefully, what does not: an
+implemented kernel is not a working autonomous runtime, and the delivered
+TASK-001 loop is still what runs.
+
+### `-07` — per-file counts
+
+Stated as reviewed: `tests/test_compatibility.py` **18**,
+`tests/test_policy.py` **15** before these corrections.
+
+### Red states, honestly
+
+Only `-02` produced one. `-01`, `-03` and `-06` were **missing evidence, not
+broken behaviour** — their tests pass against the implementation as it stood,
+because the implementation was already correct and the gap was in what had been
+demonstrated. Manufacturing red for those would have been theatre. The mutations
+below are what establish that the new tests discriminate.
 
 ## 15. How to explain this to a judge
 

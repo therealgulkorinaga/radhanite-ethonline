@@ -63,9 +63,29 @@ which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION
   the previous purchase revealed;
 - **dynamic skill acquisition** across independent environments.
 
-> **None of this is implemented. Nothing in this section describes code that
-> exists.** It records an agreed direction so that work can be specified against
-> it, and for no other purpose.
+> **The kernel described above is implemented. A working generalized runtime is
+> not.** Those are different claims and this section keeps them apart.
+
+**What exists** — `radhanite/capability.py`, `eligibility.py`, `selection.py`,
+`policy.py`:
+
+- the **candidate model**, three fields, provider-neutral;
+- the **eligibility rule**, all six conditions of TASK-006 §2.3;
+- **deterministic ranking and selection**, §2.4's three levels, order-independent;
+- **declared candidate fixtures**, a benchmark catalogue of three;
+- **run policy**, carrying the purchase ceiling with no default;
+- **compatibility tests** demonstrating that TASK-001's scenarios decide
+  identically under the generalized rule.
+
+**What does not exist.** The generalized kernel **is not driving the runtime**.
+`python -m radhanite` still runs TASK-001's two-tier loop, which has not been
+replaced and is still what §2.2.1 describes. There is no run loop over
+capabilities: nothing accumulates spend across purchases, nothing re-evaluates
+task state between them, and nothing decides that a task has already succeeded.
+That orchestration is **unauthorized and unimplemented** — `BL-16`.
+
+**An implemented kernel is not a working autonomous runtime**, and no document
+in this repository may imply otherwise.
 
 That specification now exists:
 [TASK-006](../tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) defines the
@@ -78,8 +98,9 @@ single-use while capability types may recur, and termination is guaranteed by a
 positive-cost invariant, single-use IDs, and a hard capability-step ceiling
 independent of budget.
 
-**TASK-006 is authorized and is not yet implemented.** Until it is, §2.2.1 still
-describes what runs.
+**TASK-006 is authorized and its kernel is implemented; the task is not closed.**
+Two of its acceptance criteria have no owner inside it — TASK-006 §5a. Until a
+run loop exists, §2.2.1 still describes what actually runs.
 
 #### 2.2.3 The generalization requires its own authorized task
 

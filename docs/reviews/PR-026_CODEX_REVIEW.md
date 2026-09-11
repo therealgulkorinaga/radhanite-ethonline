@@ -4,7 +4,7 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md`, `tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md`, `docs/ARCHITECTURE.md`, `docs/AI_BUILD_GOVERNANCE.md`
 **Date issued:** 2026-09-11
-**Outcome:** _pending — review not yet run_
+**Outcome:** **Rejected** — `CODEX-PR026-01` … `-07`; all seven corrected
 
 ---
 
@@ -140,12 +140,49 @@ End with exactly ONE outcome, per §7.2:
 
 ## 2. Findings returned
 
-_Pending. Codex has not yet reviewed this pull request._
+**The reviewer's verbatim response was not supplied** to the agent writing this
+record. What follows is the seven findings **as relayed by the human product
+owner** in the correction authorization. Nothing has been invented to fill the
+gap. §0 is unaffected: the prompt in §1 was committed before the review ran.
+
+The product owner relayed that the reviewer had verified the TASK-001/TASK-006
+economic decisions and exact arithmetic agree for every exercised case — so no
+finding concerns the rule itself.
+
+| | Finding | Departs from |
+|---|---|---|
+| `-01` | The compatibility harness omits the authoritative TASK-001 scenario where the **budget and value conditions fail simultaneously**. Criterion 14 is therefore incomplete | TASK-006 §4 criterion 14, §7 |
+| `-02` | `RunPolicy` rejects `max_capability_steps = 0`. **TASK-006 authorizes no such minimum** — the restriction is an invented product rule | TASK-006 §2.2a, §2.5 C |
+| `-03` | Closure evidence is overstated. Criterion 18 is not directly demonstrated: proving separately that `Candidate` refuses zero, that eligibility refuses zero, and that an unrelated all-ineligible set stops **is not the specified outcome**. The §4 count and the §5 deliverable-3 status must be recalculated | TASK-006 §4 criterion 18, §5 |
+| `-04` | A statement is attributed to TASK-006 §2.5 — *"not decided here … this module is never told the answer"* — which **is not present in the authoritative specification** | `ARCHITECTURE.md` §6; §4.3 |
+| `-05` | `docs/ARCHITECTURE.md` **materially understates** the implemented state: the kernel, fixtures, policy and compatibility tests exist and the document reads as though none do | `ARCHITECTURE.md` truthfulness |
+| `-06` | The no-hard-coded-ceiling guard **does not guard**. Codex changed the ceiling path to `return min(value, 4)` and every test still passed | TASK-006 §2.5 C, §5 |
+| `-07` | Per-file test counts are wrong: `test_compatibility.py` is **18**, `test_policy.py` is **15** | §4.2 item 10 |
 
 ## 3. Outcome
 
-_Pending._
+**Rejected** — `CODEX-PR026-01` through `-07`.
+
+`-04` alone would justify it. Attributing words to an authoritative document
+that the document does not contain is the failure this repository exists to
+prevent, and it occurred in the passage arguing for the project's own rigour.
+`-06` is the second serious one: a regression guard that a reviewer defeated in
+one line was worse than no guard, because it was believed.
 
 ## 4. Corrections
 
-_None yet._
+All seven corrected; see `docs/pr_explanations/PR-026_TASK-006_EXPLANATION.md`
+§14a for each.
+
+| Finding | Correction |
+|---|---|
+| `-01` | `BothConditionsFailTests` — three tests, one of which first asserts the scenario really does fail both conditions |
+| `-02` | Zero is valid. The primitive condition is unchanged and already gives zero the right behaviour |
+| `-03` | `ZeroCostOnlyOfferTests` demonstrates criterion 18 at the selector; counts recalculated; deliverable 3 marked **partial** |
+| `-04` | The quotation is removed from both documents and replaced with the actual ownership argument from §2.2a, §2.7 and §3 |
+| `-05` | `ARCHITECTURE.md` §2.2.2 now states what exists and, separately, that the kernel is **not driving the runtime** |
+| `-06` | Behavioural guard across ceilings of 5, 6, 7, 10 and 99. `min(value, 4)` now fails 6 tests |
+| `-07` | Corrected, with before-and-after figures |
+
+**Corrections are themselves subject to review** (`AI_BUILD_GOVERNANCE.md`
+§7.5). This corrective commit has not been reviewed.

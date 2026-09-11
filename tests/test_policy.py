@@ -27,9 +27,27 @@ class RunPolicyTests(unittest.TestCase):
         # §7: at least one step is needed for the two-tier scenarios to reproduce.
         self.assertEqual(RunPolicy(max_capability_steps=1).max_capability_steps, 1)
 
-    def test_zero_is_refused(self) -> None:
-        with self.assertRaises(ValueError):
-            RunPolicy(max_capability_steps=0)
+    def test_zero_is_a_valid_policy(self) -> None:
+        # CODEX-PR026-02. A run may be explicitly permitted to buy nothing.
+        # TASK-006 does not authorize a minimum of one, and inventing one was a
+        # product rule this implementation had no business adding.
+        self.assertEqual(RunPolicy(max_capability_steps=0).max_capability_steps, 0)
+
+    def test_a_zero_policy_refuses_every_candidate(self) -> None:
+        from radhanite.capability import Candidate
+        from radhanite.eligibility import Ineligibility, assess
+
+        policy = RunPolicy(max_capability_steps=0)
+        assessment = assess(
+            candidate=Candidate("c-1", Money("0.50"), Probability("0.80")),
+            current_success_probability=Probability("0.50"),
+            task_value=Money("20.00"),
+            remaining_budget=Money("10.00"),
+            capability_step_count=0,
+            max_capability_steps=policy.max_capability_steps,
+        )
+        # The primitive condition is unchanged: 0 >= 0.
+        self.assertIn(Ineligibility.STEP_CEILING, assessment.failed_conditions)
 
     def test_negative_is_refused(self) -> None:
         with self.assertRaises(ValueError):
@@ -129,6 +147,67 @@ class NoUniversalCeilingTests(unittest.TestCase):
         field = fields["max_capability_steps"]
         self.assertIs(field.default, dataclasses.MISSING)
         self.assertIs(field.default_factory, dataclasses.MISSING)
+
+    def test_a_ceiling_above_four_is_honoured_not_clamped(self) -> None:
+        """CODEX-PR026-06 — behavioural, because the source scan missed this.
+
+        Codex defeated the previous guard by making the ceiling path
+        ``return min(value, 4)``: every test still passed. A run permitted seven
+        steps that silently stops after four is the exact failure a hard-coded
+        literal produces, so it is tested by observing the decision rather than
+        by reading the source.
+        """
+        from radhanite.capability import Candidate
+        from radhanite.eligibility import Ineligibility, assess
+
+        candidate = Candidate("c-1", Money("0.50"), Probability("0.80"))
+
+        for ceiling in (5, 6, 7, 10, 99):
+            policy = RunPolicy(max_capability_steps=ceiling)
+            with self.subTest(ceiling=ceiling):
+                # One step below the ceiling: must still be buyable.
+                below = assess(
+                    candidate=candidate,
+                    current_success_probability=Probability("0.50"),
+                    task_value=Money("20.00"),
+                    remaining_budget=Money("10.00"),
+                    capability_step_count=ceiling - 1,
+                    max_capability_steps=policy.max_capability_steps,
+                )
+                self.assertTrue(
+                    below.eligible,
+                    f"a ceiling of {ceiling} stopped early at step {ceiling - 1}",
+                )
+
+                # At the ceiling: must stop.
+                at = assess(
+                    candidate=candidate,
+                    current_success_probability=Probability("0.50"),
+                    task_value=Money("20.00"),
+                    remaining_budget=Money("10.00"),
+                    capability_step_count=ceiling,
+                    max_capability_steps=policy.max_capability_steps,
+                )
+                self.assertIn(Ineligibility.STEP_CEILING, at.failed_conditions)
+
+    def test_the_ceiling_reaches_selection_unclamped(self) -> None:
+        from radhanite.capability import Candidate
+        from radhanite.eligibility import assess
+        from radhanite.selection import select_capability
+
+        policy = RunPolicy(max_capability_steps=9)
+        state = {
+            "current_success_probability": Probability("0.50"),
+            "task_value": Money("20.00"),
+            "remaining_budget": Money("10.00"),
+            "capability_step_count": 8,
+            "max_capability_steps": policy.max_capability_steps,
+        }
+        candidate = Candidate("c-1", Money("0.50"), Probability("0.80"))
+        s = select_capability(assessments=[assess(candidate=candidate, **state)], **state)
+        self.assertIsNotNone(s.selected)
+        self.assertEqual(s.max_capability_steps, 9)
+        self.assertFalse(s.ceiling_reached)
 
     def test_no_module_level_ceiling_constant_exists(self) -> None:
         # A named constant is the other way a universal ceiling arrives.

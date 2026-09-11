@@ -10,6 +10,10 @@ true of the candidates on offer. §5 forbids a default that would make it
 optional, and forbids a literal ceiling anywhere in the selection logic. The
 demonstration configures four; four is a setting, not a property of the product.
 
+**Zero is a valid policy**, meaning a run explicitly permitted to purchase
+nothing. This object states what a run may do; it does not decide which runs are
+worth having.
+
 **This object carries the ceiling and nothing else.** It is not a home for
 configuration in general, and it drives nothing: no run loop lives here, no
 counter is incremented, and no orchestration happens. A run reads the number and
@@ -32,6 +36,8 @@ class RunPolicy:
 
     >>> RunPolicy(max_capability_steps=4).max_capability_steps
     4
+    >>> RunPolicy(max_capability_steps=0).max_capability_steps
+    0
     """
 
     max_capability_steps: int
@@ -48,13 +54,16 @@ class RunPolicy:
                 f"{type(value).__name__}."
             )
 
-        if value < 1:
-            # Zero is refused here although the decision primitives tolerate it.
-            # A policy is a statement that a run may buy capabilities; a run
-            # permitted none has no use for the economic rule at all, and
-            # TASK-006 §7 requires at least one step for the delivered two-tier
-            # scenarios to reproduce.
+        if value < 0:
             raise ValueError(
-                f"max_capability_steps must be at least 1, got {value}. A run "
-                "that may buy nothing does not need a capability decision."
+                f"max_capability_steps cannot be negative, got {value}."
             )
+
+        # Zero is VALID and means exactly what it says: this run is permitted to
+        # purchase zero capabilities. An earlier revision refused it on the
+        # grounds that such a run has no use for a capability decision — which
+        # was a product rule this object had no authority to invent. TASK-006
+        # authorizes no minimum of one, and §2.5 C's condition
+        # `capability_step_count >= max_capability_steps` is unchanged and
+        # already gives zero the right behaviour: nothing is ever eligible.
+        # CODEX-PR026-02.

@@ -84,7 +84,11 @@ class CompatibilityHarness(unittest.TestCase):
             f"models disagree: TASK-001 {'escalates' if old_buys else 'stops'}, "
             f"TASK-006 {'selects' if new_buys else 'stops'} — {strategy.name}",
         )
-        self.assertEqual(old_buys, expected)
+        # Both models are ALSO pinned independently to the branch's expected
+        # outcome. Without this, removing the cross-model comparison above would
+        # leave the generalized verdict unchecked — a gap a mutation exposed.
+        self.assertEqual(old_buys, expected, "TASK-001 disagrees with the branch")
+        self.assertEqual(new_buys, expected, "TASK-006 disagrees with the branch")
 
         # The arithmetic must agree too, not merely the verdict.
         self.assertEqual(
@@ -185,6 +189,56 @@ class RuleBranchTests(CompatibilityHarness):
             a_strategy(escalated_success_probability=Probability("0.99")),
             task_value=Money("1000.00"), remaining_budget=Money("0.10"), expected=False,
         )
+
+
+class BothConditionsFailTests(CompatibilityHarness):
+    """CODEX-PR026-01 — the branch where budget AND value fail together.
+
+    TASK-001 §2.5 records both failed conditions rather than the first, and
+    tests/test_escalation.py exercises that branch. Criterion 14 is not complete
+    without it: an implementation could agree on every single-cause stop and
+    still diverge when two causes coincide.
+    """
+
+    BOTH_FAIL = dict(task_value=Money("1.00"), remaining_budget=Money("1.00"))
+
+    def _strategy(self):
+        # cost $5.00 > $1.00 budget            -> budget condition fails
+        # (0.51-0.50) x $1.00 = $0.01 < $5.00  -> value condition fails
+        return a_strategy(
+            escalation_cost=Money("5.00"),
+            escalated_success_probability=Probability("0.51"),
+        )
+
+    def test_the_scenario_really_does_fail_both_conditions(self) -> None:
+        # Without this, the branch below could pass while testing one cause.
+        from radhanite.escalation import FailedCondition
+
+        old = historical(self._strategy(), **self.BOTH_FAIL)
+        self.assertEqual(
+            set(old.failed_conditions),
+            {FailedCondition.BUDGET, FailedCondition.VALUE},
+        )
+
+    def test_both_models_stop_when_both_conditions_fail(self) -> None:
+        self.assertSameDecision(self._strategy(), **self.BOTH_FAIL, expected=False)
+
+    def test_both_models_record_the_same_two_causes(self) -> None:
+        from radhanite.eligibility import Ineligibility
+        from radhanite.escalation import FailedCondition
+
+        old = historical(self._strategy(), **self.BOTH_FAIL)
+        new = generalized(self._strategy(), **self.BOTH_FAIL)
+        assessment = new.assessments[0]
+
+        self.assertEqual(
+            set(old.failed_conditions),
+            {FailedCondition.BUDGET, FailedCondition.VALUE},
+        )
+        self.assertIn(Ineligibility.BUDGET, assessment.failed_conditions)
+        self.assertIn(Ineligibility.VALUE, assessment.failed_conditions)
+        # Neither model invents a third cause for this scenario.
+        self.assertNotIn(Ineligibility.UPLIFT, assessment.failed_conditions)
 
 
 class BudgetAndValueDoNotSubstituteTests(CompatibilityHarness):
