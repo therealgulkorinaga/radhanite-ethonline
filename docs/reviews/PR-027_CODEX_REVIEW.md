@@ -4,7 +4,7 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md`, `docs/PREREQ-001_PRODUCT_DEFINITION.md`, `docs/ARCHITECTURE.md`, `docs/AI_BUILD_GOVERNANCE.md`
 **Date issued:** 2026-09-11
-**Outcome:** **Rejected** — `CODEX-PR027-01` … `-05`; all five corrected
+**Outcome:** **Rejected** — `CODEX-PR027-01` … `-05`, then `-04` again with `-RR-01` and `-RR-02` on re-review; all corrected
 
 ---
 
@@ -166,5 +166,25 @@ failure now rests on an explicit terminal state.
 
 Acceptance criteria reconciled to **22**, not appended to.
 
-**Corrections are themselves subject to review** (`AI_BUILD_GOVERNANCE.md`
-§7.5). This corrective commit has not been reviewed.
+### Re-review — three further findings
+
+§7.5 requires corrections to be reviewed, and this is that review.
+
+| | Finding | Departs from |
+|---|---|---|
+| `-04` *(again)* | Classification still made a **mixed** refusal set `ECONOMIC_STOP` **at the ceiling**. TASK-006 §2.5 C makes the ceiling a run-level safeguard that outranks any economic reason | TASK-006 §2.5 C, §8 |
+| `-RR-01` | The step count incremented **only on positive committed cost**, making the ceiling **defeatable** by a source producing fresh IDs whose executions charge nothing | TASK-006 §2.5 C |
+| `-RR-02` | `total_spend = initial_budget - remaining_budget` without forbidding `remaining_budget > initial_budget`. Since `Money` represents negatives, a **negative `total_spend`** was expressible | `PREREQ-001` §4.2 |
+
+**Outcome: Rejected.** `-RR-01` is the serious one — a termination safeguard
+that can be walked around is not a safeguard.
+
+| Finding | Correction |
+|---|---|
+| `-04` | Ceiling outranks everything: `SAFETY_STOP` at the ceiling regardless of candidate reasons, with four worked examples. Mixed applies only below it. Per-candidate reasons preserved throughout |
+| `-RR-01` | `capability_step_count` measures **executed attempts**, incrementing once per attempt irrespective of cost, success or failure. Spend, offer reuse and execution count are three independent concepts |
+| `-RR-02` | New §3.2.1: `0 <= remaining_budget <= initial_budget`, `0 <= total_spend <= initial_budget`, and a table of five states that must be **refused** |
+
+Acceptance criteria reconciled to **28**. Pre-loop spend support preserved.
+
+**These corrections have not themselves been reviewed** (§7.5).

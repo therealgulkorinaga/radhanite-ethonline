@@ -47,8 +47,8 @@ read.
     │        ▼
     │   apply the result (§7):
     │     · consume the candidate ID           — always
+    │     · increment capability_step_count    — always, one per attempt
     │     · commit `committed_cost`            — always, success or failure
-    │     · increment the paid-step count      — iff committed_cost > 0
     │        │
     │        ├── failure ────────────► TERMINAL: execution failure (§6)
     │        │
@@ -79,7 +79,7 @@ a **new** state rather than mutating the last.
 | `remaining_budget` | Passed to eligibility each iteration | Yes |
 | `total_spend` | §3.2 | Yes |
 | `consumed_candidate_ids` | §2.5a single-use enforcement | Yes |
-| `paid_capability_step_count` | §2.5 C ceiling enforcement — §7.2 | Yes |
+| `capability_step_count` | **Executed attempts**, not dollars — §7.2 | Yes |
 | `status` | Running, or which terminal state — §6 | Yes |
 | `history` | §3.3 | Append-only |
 
@@ -141,6 +141,48 @@ Criterion 12 tests the initialization directly instead.
 
 All arithmetic is exact `Money`.
 
+#### 3.2.1 The ledger is bounded at both ends
+
+`Money` can represent negative amounts, so the identity in §3.2 is not
+sufficient on its own: `remaining_budget > initial_budget` would satisfy it
+while producing a **negative** `total_spend`, which is not a coherent ledger.
+
+**At loop entry, and after every transition:**
+
+```
+0 <= remaining_budget <= initial_budget
+0 <= total_spend      <= initial_budget
+total_spend + remaining_budget == initial_budget
+```
+
+A state violating any of these is **invalid and must be refused**, not
+processed. Specifically, all five of these are rejected:
+
+| Rejected state | Why |
+|---|---|
+| `remaining_budget < 0` | The ceiling has already been breached |
+| `remaining_budget > initial_budget` | A run cannot hold more than it was given |
+| `total_spend < 0` | Spend cannot be negative |
+| `total_spend > initial_budget` | `PREREQ-001` §4.2's hard ceiling, breached |
+| `total_spend + remaining_budget != initial_budget` | The ledger does not balance |
+
+**After an execution committing `committed_cost`:**
+
+```
+new_total_spend      = old_total_spend      + committed_cost
+new_remaining_budget = old_remaining_budget - committed_cost
+new_total_spend + new_remaining_budget == initial_budget
+```
+
+§7.1 already bounds `committed_cost` by `remaining_budget`, which is what keeps
+the lower bound on the remaining budget from being crossed.
+
+**Pre-loop spend is preserved, not assumed away.** `initial_budget` is the
+original task budget; `remaining_budget` may already be lower on entry because
+earlier work spent money. TASK-007 initializes `total_spend` from the
+difference rather than assuming zero — which is why the upper bound is stated
+separately from the identity.
+
 ### 3.3 The history is a sequence of transitions, not nested states
 
 One immutable `TransitionRecord` per iteration. **Nothing contains itself,
@@ -157,7 +199,7 @@ excludes `history`.
 A snapshot carries every §3 field except `history`: `task_value`,
 `initial_budget`, `policy`, `task_state`, `current_success_probability`,
 `remaining_budget`, `total_spend`, `consumed_candidate_ids`,
-`paid_capability_step_count`, `status`.
+`capability_step_count`, `status`.
 
 The `Selection` is kept **whole** rather than summarized, because TASK-006 §8
 already requires every candidate considered with its figures and the reason it
@@ -168,15 +210,17 @@ preserve.
 
 1. **`total_spend + remaining_budget == initial_budget`** after every
    transition, and at initialization — §3.2.
-2. **Remaining budget never becomes negative.**
+2. **`0 <= remaining_budget <= initial_budget`** and
+   **`0 <= total_spend <= initial_budget`**, always — §3.2.1.
 3. **A consumed candidate ID never executes again** — §2.5a.
 4. **The same capability type may return under a new candidate ID.** Enforced by
    ID alone; this task acquires no notion of type.
 5. **No capability executes unless TASK-006 selected it.**
 6. **At most one capability execution is attempted per iteration.**
-7. **`paid_capability_step_count` increments exactly once per attempt that
-   committed a positive cost**, and never otherwise — §7.2.
-8. **`paid_capability_step_count >= max_capability_steps` prevents another
+7. **`capability_step_count` increments exactly once per execution attempt**,
+   whatever it cost and whether it succeeded — §7.2. A decision that executes
+   nothing never increments it.
+8. **`capability_step_count >= max_capability_steps` prevents another
    execution** — TASK-006 §2.5 C, unchanged.
 9. **No execution occurs after a terminal state**, of any kind.
 10. **TASK-006 stays provider-neutral.** Nothing passed into the decision
@@ -247,8 +291,8 @@ spent effort creating.
 | State | Meaning |
 |---|---|
 | **`TASK_COMPLETE`** | The success condition was satisfied. **Zero further executions** |
-| **`ECONOMIC_STOP`** | Nothing eligible, and at least one candidate was refused on economic grounds |
-| **`SAFETY_STOP`** | Nothing eligible, and no candidate was refused on economic grounds — or a run-level safeguard blocked the run outright |
+| **`ECONOMIC_STOP`** | Nothing eligible, **below the ceiling**, and at least one candidate was refused on economic grounds |
+| **`SAFETY_STOP`** | The ceiling was reached — whatever else was true — or, below it, no candidate was refused on economic grounds |
 | **`EXECUTION_FAILURE`** | A capability was attempted and did not deliver — §7.3 |
 
 ### 6.1 Precedence — already-complete wins
@@ -274,18 +318,40 @@ TASK-006 already computes this: `Selection.stopped_without_economic_judgement`
 is true exactly when every refusal was a §2.5 safeguard. **This task must read
 that value rather than re-derive it.**
 
+**The ceiling outranks everything.** TASK-006 §2.5 C already makes
+`capability_step_count >= max_capability_steps` a run-level safeguard, and
+`stopped_without_economic_judgement` already returns true whenever the ceiling
+is reached — *whatever else was true of the candidates*. This task must not
+reinterpret that.
+
 | Situation | Terminal state |
 |---|---|
-| Every refusal was a safeguard — consumed, ceiling, non-positive cost | `SAFETY_STOP` |
-| Any candidate was refused on economic grounds — budget, uplift, value | `ECONOMIC_STOP` |
-| Zero candidates offered, below the ceiling | `ECONOMIC_STOP` — nothing was affordable because nothing was on offer |
-| Zero candidates offered, at the ceiling | `SAFETY_STOP` |
+| **`capability_step_count >= max_capability_steps`** | **`SAFETY_STOP`, always** — regardless of any economic failures also present |
 | `max_capability_steps == 0`, task not complete | `SAFETY_STOP`, immediately |
+| Below the ceiling, every refusal was a safeguard — consumed, non-positive cost | `SAFETY_STOP` |
+| Below the ceiling, any candidate refused on economic grounds | `ECONOMIC_STOP` |
+| Below the ceiling, zero candidates offered | `ECONOMIC_STOP` — nothing was affordable because nothing was on offer |
 
-**Mixed failures are recorded as they happened.** A run where one candidate
-failed on budget and another was already consumed is an `ECONOMIC_STOP` — a real
-economic verdict was reached on at least one — and the per-candidate reasons
-survive intact in the `Selection`. The run-level label never erases them.
+**Worked through, because this is where the earlier revision was wrong:**
+
+| At the ceiling, the offer contains… | Terminal state |
+|---|---|
+| An economically attractive candidate | `SAFETY_STOP` |
+| An economically poor candidate | `SAFETY_STOP` |
+| Both economic and safeguard failures, mixed | `SAFETY_STOP` |
+| Nothing at all | `SAFETY_STOP` |
+
+An earlier revision classified the mixed case as `ECONOMIC_STOP` on the grounds
+that a real economic verdict had been reached on at least one candidate. **That
+was wrong.** The run was already forbidden from buying anything before those
+candidates were weighed, so no economic verdict ended it. Mixed classification
+applies only **below** the ceiling.
+
+**Every per-candidate reason survives regardless.** The `Selection` records why
+each candidate failed — budget, uplift, value, consumed, ceiling — and the
+run-level label never erases or overwrites them. Classification answers *why the
+run ended*; the assessments answer *what was true of each candidate*, and the two
+are different questions.
 
 ## 7. Execution semantics
 
@@ -311,12 +377,29 @@ committed real money, and recording zero would falsify the ledger.
 ### 7.2 On every execution attempt, success or failure
 
 1. The selected **candidate ID becomes consumed.**
-2. **`committed_cost` is recorded** and applied to `total_spend` and
+2. **`capability_step_count` increments by exactly one.** An attempt occurred.
+3. **`committed_cost` is recorded** and applied to `total_spend` and
    `remaining_budget`.
-3. **If `committed_cost > 0`**, `paid_capability_step_count` increments — a paid
-   capability step occurred.
-4. **If `committed_cost == 0`**, the attempt is recorded but the paid-step count
-   does **not** increment. Nothing was bought.
+
+**The counter measures executed attempts, not dollars**, and that is what makes
+the ceiling a real termination safeguard.
+
+An earlier revision incremented only when `committed_cost > 0`. **That made the
+ceiling defeatable**: a candidate source producing fresh IDs whose executions
+committed nothing could loop forever without the count ever moving. A provider
+may legitimately execute and charge zero, so the safeguard cannot be made to
+depend on money changing hands.
+
+Three concepts, deliberately independent:
+
+| Concept | Measured by | Bounded by |
+|---|---|---|
+| **Spend** | `committed_cost` → `total_spend` | `initial_budget` |
+| **Offer reuse** | consumed candidate IDs | one execution each |
+| **Execution count** | `capability_step_count` | `max_capability_steps` |
+
+**Only an execution attempt increments the counter.** A decision that ends in
+STOP — of any kind, at any point — executes nothing and increments nothing.
 
 ### 7.3 Failure terminates the run
 
@@ -345,7 +428,7 @@ unchanged.
 | TASK-006 | As stated there | Inherited as |
 |---|---|---|
 | **Criterion 10** | *Task already successful → STOP, with no candidate evaluated* | §9 criteria 1 and 2 |
-| **Criterion 13** | *Total spend can never exceed the budget, on every path including boundary cases where cost exactly equals the remaining budget* | §9 criteria 12–15 |
+| **Criterion 13** | *Total spend can never exceed the budget, on every path including boundary cases where cost exactly equals the remaining budget* | §9 criteria 15–23 |
 
 **TASK-006 is not made complete by this document existing.** It becomes complete
 when a TASK-007 implementation demonstrates these — not before.
@@ -358,55 +441,76 @@ Terminal states and precedence:
    inherited criterion 10.
 2. **Already-complete takes precedence** over `max_capability_steps == 0`, over
    a reached ceiling, and over available eligible candidates.
-3. **Every candidate refused on economic grounds → `ECONOMIC_STOP`.**
-4. **Every candidate refused only by safeguards → `SAFETY_STOP`.**
-5. **Mixed refusals → `ECONOMIC_STOP`**, with every per-candidate reason
-   preserved in the `Selection`.
-6. **`max_capability_steps == 0` with an incomplete task → immediate
+3. **Below the ceiling**, every candidate refused on economic grounds →
+   `ECONOMIC_STOP`.
+4. **Below the ceiling**, every candidate refused only by safeguards →
+   `SAFETY_STOP`.
+5. **Below the ceiling**, mixed refusals → `ECONOMIC_STOP`, with every
+   per-candidate reason preserved in the `Selection`.
+6. **At the ceiling → `SAFETY_STOP`, always.** Demonstrated with four offers:
+   an economically attractive candidate, an economically poor one, a mixed set
+   of economic and safeguard failures, and an empty offer. All four classify
+   `SAFETY_STOP`, and in every case the per-candidate reasons survive intact.
+7. **`max_capability_steps == 0` with an incomplete task → immediate
    `SAFETY_STOP`**, zero executions.
-7. **The step ceiling prevents further execution.**
+8. **The step ceiling prevents further execution.**
 
 Execution and the loop:
 
-8. **One successful execution → state updates → STOP.**
-9. **Several successful executions run in sequence**, one per iteration.
-10. **A consumed candidate ID cannot execute again.**
-11. **The same capability type may reappear under a new ID** and execute — by ID
+9. **One successful execution → state updates → STOP.**
+10. **Several successful executions run in sequence**, one per iteration.
+11. **A consumed candidate ID cannot execute again.**
+12. **The same capability type may reappear under a new ID** and execute — by ID
     alone, with no notion of type anywhere.
+
+The capability-step count — the termination safeguard:
+
+13. **Every execution attempt increments `capability_step_count` exactly once**,
+    irrespective of `committed_cost`, success or failure. Demonstrated across
+    all four combinations: success at positive cost, success at zero cost,
+    failure at positive cost, failure at zero cost.
+14. **A decision that executes nothing never increments it** — any STOP, of any
+    kind, at any point.
 
 Accounting — inherited criterion 13:
 
-12. **Baseline spend initializes correctly**: entering with
-    `remaining_budget < initial_budget` yields
-    `total_spend == initial_budget - remaining_budget`.
-13. **A committed cost exactly equal to the remaining budget is permitted**
-    where the economics selected it.
-14. **`committed_cost` never exceeds the candidate's declared cost, nor the
+15. **Entry with no pre-loop spend**: `remaining_budget == initial_budget`
+    yields `total_spend == 0`.
+16. **Entry with valid pre-loop spend**: `remaining_budget < initial_budget`
+    yields `total_spend == initial_budget - remaining_budget`.
+17. **Entry with `remaining_budget == 0`** is valid, and yields
+    `total_spend == initial_budget`.
+18. **Entry with `remaining_budget > initial_budget` is refused**, along with
+    every other state in §3.2.1's rejection table.
+19. **A committed cost exactly equal to the remaining budget is permitted**
+    where the economics selected it, and leaves `remaining_budget == 0`.
+20. **`committed_cost` never exceeds the candidate's declared cost, nor the
     remaining budget.**
-15. **`total_spend + remaining_budget == initial_budget`** holds across every
-    transition, and `total_spend` equals the sum of all committed costs plus
-    the entry spend.
+21. **Exact accounting after a successful execution**, and **after a failed
+    execution that committed a cost** — both apply the same arithmetic.
+22. **A zero-cost execution leaves spend unchanged** and **still increments the
+    capability-step count**.
+23. **`total_spend + remaining_budget == initial_budget`**, with
+    `0 <= total_spend <= initial_budget` and
+    `0 <= remaining_budget <= initial_budget`, across every transition.
 
 Failure semantics:
 
-16. **Success with committed spend** updates accounting and increments the
-    paid-step count.
-17. **Failure with committed spend** records the spend, consumes the ID,
-    increments the paid-step count, and terminates `EXECUTION_FAILURE`.
-18. **Failure with zero committed spend** consumes the ID, leaves the paid-step
-    count unchanged, and terminates `EXECUTION_FAILURE`.
-19. **No execution occurs after any terminal state.**
+24. **Failure terminates `EXECUTION_FAILURE`**, having consumed the ID,
+    incremented the capability-step count, and recorded whatever was committed —
+    with no retry.
+25. **No execution occurs after any terminal state.**
 
 Neutrality and audit:
 
-20. **Provider metadata cannot influence TASK-006.** Candidates whose external
+26. **Provider metadata cannot influence TASK-006.** Candidates whose external
     metadata differs but whose three economic fields are identical produce
     **identical assessments and an identical selection**. This asserts nothing
     about execution results, evidence, subsequent task states, or whole runs —
     §9a.
-21. **Candidate ordering cannot change the winner** — permuted offers, identical
+27. **Candidate ordering cannot change the winner** — permuted offers, identical
     selections.
-22. **The history is non-recursive** and reconstructs every decision and
+28. **The history is non-recursive** and reconstructs every decision and
     transition, including the rejected candidates and their reasons.
 
 ### 9a. What criterion 20 does not claim
@@ -483,8 +587,14 @@ product's central claim.
 - Confirm **no provider name** appears anywhere, including fixtures, comments
   and test names.
 - Confirm §7's execution semantics are implemented **exactly** — the authorized
-  maximum, `committed_cost` driving the accounting, the paid-step count rising
-  only on positive spend, and failure terminating the run with no retry.
+  maximum, `committed_cost` driving the accounting, the capability-step count
+  rising **once per attempt regardless of cost**, and failure terminating the
+  run with no retry.
+- Confirm the **ceiling outranks every economic reason** in terminal
+  classification, and that `stopped_without_economic_judgement` is read rather
+  than reinterpreted — §6.2.
+- Confirm the ledger bounds in §3.2.1 are enforced at entry and after every
+  transition, and that an out-of-range state is **refused**, not processed.
 - Confirm `task_state` is **never read** by this task or by the decision, and
   that no field, branch or helper inspects it — §3.1, §5.4.
 - Confirm the history is **non-recursive**: no snapshot contains a history.

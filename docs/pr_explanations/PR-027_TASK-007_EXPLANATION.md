@@ -96,13 +96,17 @@ It is the same open question as TASK-008 §6.3, and no authorized task owns it.
 
 **Already-complete is checked first**, before any candidate. A finished task
 terminates `TASK_COMPLETE` even at a zero-step policy, even at the ceiling, even
-with eligible candidates on offer. A completed task is not stopped by a ceiling;
-it is finished.
+with eligible candidates on offer.
 
-The two STOP kinds are **read from**
-`Selection.stopped_without_economic_judgement` rather than re-derived. Mixed
-failures are recorded as they happened: one economic refusal makes it an
-`ECONOMIC_STOP`, and every per-candidate reason survives in the `Selection`.
+**Then the ceiling outranks everything else.** At the ceiling the run is
+`SAFETY_STOP` whatever the candidates looked like — attractive, poor, or a mix.
+The run was forbidden from buying before they were weighed, so no economic
+verdict ended it. Economic and mixed classification apply only **below** the
+ceiling.
+
+Both are **read from** `Selection.stopped_without_economic_judgement` rather
+than re-derived, and every per-candidate reason survives in the `Selection`
+regardless of the run-level label.
 
 ## 6. What goes into the system
 
@@ -229,14 +233,59 @@ candidate's declared cost and by the remaining budget. **That figure drives the
 accounting, not the declared cost**, and failure does not imply zero spend: a
 call that debited then failed committed real money.
 
-Every attempt consumes the ID and records the cost. The paid-step count rises
-**only when the committed cost is positive**. Failure terminates the run as
+Every attempt consumes the ID, **increments the capability-step count**, and
+records whatever was committed. Failure terminates the run as
 `EXECUTION_FAILURE`, with no retry.
+
+**The counter measures executed attempts, not dollars** — three separate
+concepts: spend is bounded by the budget, offer reuse by ID consumption, and
+execution count by the ceiling.
 
 **One claim from the earlier draft was withdrawn.** It said consuming the
 candidate ID guaranteed termination on the failure path. It does not — nothing
 stops a candidate source regenerating an equivalent capability under a fresh ID.
 Termination now rests on §7.3's explicit terminal state, and §7.3 says so.
+
+## 14c. Second round of corrections
+
+Three more findings, all in the specification.
+
+**`-04` again — the ceiling did not outrank economics.** The first correction
+derived STOP classification from refusal reasons, but still classified a *mixed*
+set as `ECONOMIC_STOP` even at the ceiling. Wrong for the same reason the
+original was: the run was already forbidden from buying anything before those
+candidates were weighed, so no economic verdict ended it.
+
+**At the ceiling it is `SAFETY_STOP`, always** — attractive candidate, poor
+candidate, mixed failures, or nothing at all. Four worked examples are in §6.2.
+Economic and mixed classification apply only below the ceiling, and every
+per-candidate reason survives regardless: classification answers *why the run
+ended*, the assessments answer *what was true of each candidate*.
+
+**`-RR-01` — the ceiling was defeatable.** The step count incremented only when
+`committed_cost > 0`. A candidate source producing fresh IDs whose executions
+committed nothing could loop forever without the count moving. And a provider
+may legitimately execute and charge zero, so the safeguard cannot depend on
+money changing hands.
+
+**The counter now measures executed attempts**, incrementing exactly once per
+attempt whatever it cost and whether it succeeded. Spend, offer reuse and
+execution count are three independent concepts — §7.2 tabulates them. A STOP
+executes nothing and increments nothing.
+
+**`-RR-02` — the ledger had no bounds.** `total_spend = initial_budget -
+remaining_budget` was stated without forbidding `remaining_budget >
+initial_budget`, and `Money` represents negatives — so a **negative
+`total_spend`** was expressible.
+
+New §3.2.1 bounds both ends: `0 <= remaining_budget <= initial_budget` and
+`0 <= total_spend <= initial_budget`, with a table of five states that must be
+**refused rather than processed**. Pre-loop spend is preserved, which is exactly
+why the upper bound had to be stated separately from the identity.
+
+Acceptance criteria reconciled to **28**, with the accounting cases enumerated
+individually: no pre-loop spend, valid pre-loop spend, `remaining_budget == 0`,
+and the invalid `remaining_budget > initial_budget`.
 
 ## 14b. A note on the renumbering
 
