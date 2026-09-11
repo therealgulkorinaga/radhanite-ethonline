@@ -1,7 +1,7 @@
 # TASK-007 — The capability run loop
 
-**Status:** Specified — **NOT AUTHORIZED for implementation**
-**Authorization:** None. This document specifies the work; it does not permit it.
+**Status:** Authorized — **PR A implemented.** The §3 state model exists; the loop, execution and classification do not
+**Authorization:** PR A authorized by the human product owner, 2026-09-11
 **Traces to:** [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §5.2, §5.5
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.1, §2.2.3, §6
 **Replaces backlog entry:** `BL-16`
@@ -110,6 +110,55 @@ reads it.
 > **Producing and interpreting `task_state` is owned by a separate future task
 > that does not yet exist**, and is not designed here. See §5.3 and §10.
 
+#### 3.1.1 Opacity is not aliasing
+
+**Opaque means TASK-007 does not interpret the state. It does not mean TASK-007
+may retain a mutable reference to it.** An earlier revision of this section
+concluded otherwise — that storing by reference *followed* from opacity, because
+copying or freezing would require inspection. `CODEX-PR030-02` rejected that,
+and it was wrong on both counts:
+
+- **It does not follow.** Freezing a structure reads its *shape* — is this a
+  mapping, a sequence, a set — and never its meaning. No key, value or field is
+  interpreted, so nothing about opacity is given up.
+- **The consequence is unacceptable.** With a live reference, a caller mutating
+  their own object rewrites what an already-written audit record appears to say,
+  and can insert a back-reference into it that makes it recursive after the
+  fact — defeating §3.3 without touching this module.
+
+So `task_state` is **frozen structurally on the way in**: containers become
+immutable equivalents, already-immutable values pass through, cycles are
+refused, and **an object that cannot be frozen is refused rather than stored**.
+Refusal is decided from the object's type alone, so even a value that raises on
+every read is refused without being read.
+
+**Immutability is established by exact type, not by `isinstance`.** A subclass
+of an immutable scalar is not immutable: `class Smuggler(int)` satisfies
+`isinstance(x, int)` while carrying a list the caller still owns, so an
+`isinstance` rule stores that list by reference through a check that looked
+airtight. The same applies one level up to `Enum`: a member's `value` can be a
+list, and every member has an instance dictionary. **No `Enum` is blanket-safe**,
+and narrowing this to specific authorized Enum types is not PR A's decision.
+
+Exact matching closes a quieter hole too: a `str` subclass is a `Sequence`, so
+an `isinstance` rule would convert `"abc"` into `("a", "b", "c")` and record
+that as the caller's state.
+
+| Accepted, by exact type | |
+|---|---|
+| Passed through | `None`, `bool`, `int`, `float`, `complex`, `str`, `bytes`, `Decimal`, `Money`, `Probability`, `RunPolicy` |
+| Rebuilt immutable | `dict`/`mappingproxy` → read-only mapping over a fresh dict · `list`/`tuple` → tuple · `set`/`frozenset` → frozenset |
+| Refused | a cycle (`ValueError`); **everything else**, subclasses of the above included (`TypeError`) |
+
+Containers are rebuilt rather than passed through even when they are already
+immutable, because a `mappingproxy` can wrap a dict the caller still holds and
+a subclass of `tuple` or `frozenset` can carry mutable attributes.
+
+The obligation this places on callers is explicit: **supply exactly immutable
+values, or ordinary containers of them.** That is a narrower contract than
+"anything at all", and a deliberate one — auditability is the point of §3, and a
+record that can change after it is written is not a record.
+
 ### 3.2 Budget accounting
 
 `initial_budget` is **the original run budget**, not a capability-only
@@ -193,7 +242,7 @@ excludes `history`.
 |---|---|
 | `before` | Run-state snapshot, **excluding `history`** |
 | `selection` | The **complete** TASK-006 `Selection` |
-| `execution` | The execution result or failure record — absent on a STOP iteration |
+| `execution` | The execution result or failure record — absent on a STOP iteration. **Reserved in PR A: `None` until PR B introduces the authorized type** — §3.4 |
 | `after` | Run-state snapshot, **excluding `history`** |
 
 A snapshot carries every §3 field except `history`: `task_value`,
@@ -205,6 +254,82 @@ The `Selection` is kept **whole** rather than summarized, because TASK-006 §8
 already requires every candidate considered with its figures and the reason it
 failed. Summarizing here would discard exactly what that section exists to
 preserve.
+
+### 3.4 What PR A delivered
+
+`radhanite/runstate.py`, and nothing else.
+
+| | |
+|---|---|
+| `RunStatus` | `RUNNING` plus §6's four terminal values. **Holding one; deciding which is not this step's job** |
+| `RunSnapshot` | Every §3 field **except `history`** — §3.3 |
+| `TransitionRecord` | `before`, `selection`, `after`, `execution`. Defined so `history` has a member type; **no transition is produced** |
+| `RunState` | The §3 fields, `.max_capability_steps` read from the policy, and `.snapshot()` |
+| `begin_run(...)` | Derives `total_spend` from the budgets. A convenience, **not the only validated path** |
+
+**Every construction is validated.** The invariants live in `__post_init__` on
+all three records, so `RunState(...)`, `RunSnapshot(...)` and
+`TransitionRecord(...)` enforce the same rules `begin_run` does. An earlier
+revision put them only in `begin_run` while exporting a directly constructible
+`RunState`; `CODEX-PR030-01` rejected that, on the grounds that one safe path
+and one unsafe path is one unsafe path.
+
+**Anything retained is matched by exact type, never by `isinstance`.** Every
+record here is frozen, but a frozen *subclass* may add a field holding a list —
+and a frozen reference to a list is not an immutable list. A subclass accepted
+as a history member is caller-owned mutable state inside an audit record: the
+defect §3.1.1 closed for `task_state`, arriving through the type system rather
+than past it. The same holds one level down, where a `str` subclass makes a
+perfectly good candidate identifier and a perfectly good place to keep mutable
+state.
+
+| Matched exactly | `Money`, `Probability`, `RunPolicy`, `RunStatus`, `RunSnapshot`, `TransitionRecord`, `Selection`, `str` identifiers, `int` step counts |
+|---|---|
+| **Matched by `isinstance`** | **the input containers only** — a `history` sequence or a `consumed_candidate_ids` collection is read once and rebuilt as a tuple, never retained, so a subclass of it changes nothing |
+
+Subclasses are **refused, not inspected**. Deciding which ones happen to be
+safe would mean walking their fields at construction and would still be wrong
+the moment one of them grew a field. Matching `int` exactly also subsumes the
+old `bool` special case: `True` is an `int` by inheritance, and is no longer a
+count of one.
+
+**`task_state` is frozen, not aliased** — §3.1.1.
+
+**`TransitionRecord.execution` is a reserved placeholder and must be `None` in
+PR A.** The field exists so the shape of a transition is settled; **the
+authorized execution result type is introduced in PR B**, and is not designed
+here.
+
+Accepting an arbitrary payload was the last live alias in the module: a mutable
+payload is a caller-owned object inside an audit record, and a `RunState`
+payload puts a history inside a history — §3.3, defeated through a field rather
+than through a type. Refusing outright is the smallest safe contract, because
+PR A implements no execution and no caller has a payload to pass. Freezing an
+arbitrary payload instead would be PR B's schema arriving early under a
+different name (`ARCHITECTURE.md` §6 item 7).
+
+**Not built**: execution, the executor interface, execution results,
+committed-cost transitions, candidate consumption, step increments, task-state
+updates, acquisition calls, eligibility, ranking, selection, terminal
+classification, retry, and the loop itself.
+
+### 3.5 Retracted: the `task_state` storage question was not ambiguous
+
+This section previously recorded an "ambiguity §3.1 leaves open": that §3.1
+settled opacity but not what happens when a caller mutates the state
+afterwards, leaving the choice between aliasing and immutability an open
+product question.
+
+**That was not an ambiguity; it was a wrong conclusion.** Aliasing was never
+entailed by opacity, and the requirement that resolves it — §4 invariant 13,
+every transition reconstructable from a non-recursive history — was already
+written down. `CODEX-PR030-02` identified this. The resolution is §3.1.1, and
+no product decision was needed to reach it.
+
+One question genuinely remains open, and it is narrower: **§3.1.1 constrains
+what a `task_state` may be, and the task that will produce `task_state` does
+not exist yet** (§5.3, §10). That task must produce immutable state. Recorded
+here so it is a known constraint on a future design rather than a surprise.
 
 ## 4. Invariants
 

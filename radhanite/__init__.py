@@ -23,6 +23,8 @@ Implemented so far:
 - ``radhanite.policy`` — the ceiling a run states for itself (TASK-006 §2.2a)
 - ``radhanite.acquisition`` — external capabilities become provider-neutral
   candidates (TASK-008)
+- ``radhanite.runstate`` — what a capability run carries, and the snapshots
+  that audit it (TASK-007 §3)
 
 TASK-001 is complete. TASK-006 — choosing among candidate capabilities rather
 than escalating through two fixed tiers — is authorized and partially built: the
@@ -56,6 +58,13 @@ from radhanite.money import CURRENCY, Money
 from radhanite.policy import RunPolicy
 from radhanite.probability import Probability
 from radhanite.run import RunOutcome, RunRecord, Step, run
+from radhanite.runstate import (
+    RunSnapshot,
+    RunState,
+    RunStatus,
+    TransitionRecord,
+    begin_run,
+)
 from radhanite.selection import Selection, SelectionOutcome, select_capability
 from radhanite.strategy import DECLARED_STRATEGIES, Strategy, select
 from radhanite.task import Task
@@ -80,17 +89,22 @@ __all__ = [
     "Money",
     "Probability",
     "RunOutcome",
+    "RunSnapshot",
+    "RunState",
+    "RunStatus",
     "RunPolicy",
     "RunRecord",
     "Selection",
     "SelectionOutcome",
     "ScriptedSimulator",
     "Step",
+    "TransitionRecord",
     "Strategy",
     "Task",
     "Verdict",
     "__version__",
     "acquire",
+    "begin_run",
     "assess",
     "decide",
     "evaluate",
