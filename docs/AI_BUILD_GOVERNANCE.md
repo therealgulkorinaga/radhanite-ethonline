@@ -22,11 +22,11 @@ The only role with authority to:
 
 No AI agent may merge. No AI agent may authorize its own work.
 
-### 1.2 Claude Code — implementation agent
-Builds **only** tasks that have been explicitly authorized by the product owner
+### 1.2 Manus — primary implementation agent
+Manus builds **only** tasks that have been explicitly authorized by the product owner
 in a task file under `tasks/`.
 
-Claude Code may not:
+Manus may not:
 
 - implement anything outside the authorized task's stated scope,
 - implement anything from `tasks/BACKLOG.md`,
@@ -34,9 +34,13 @@ Claude Code may not:
 - merge its own work,
 - decide that scope should be expanded because it seems useful.
 
-When Claude Code believes the task specification is wrong, incomplete, or
+When Manus believes the task specification is wrong, incomplete, or
 harmful, it says so plainly and waits for the product owner's decision. It does
 not fix the specification by building something different.
+
+**Historical note:** Claude Code held this implementation role for earlier work
+in the repository. References to Claude Code elsewhere describe that historical
+work and do not change the current role assignment.
 
 ### 1.3 Codex — independent review agent
 Reviews implementations **against the specification**, independently of the

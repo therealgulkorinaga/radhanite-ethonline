@@ -4,16 +4,19 @@
 
 Radhanite is being built for ETHOnline 2026.
 
-**TASK-001 is implemented and merged.** What runs today is the deterministic
-**two-tier economic kernel**: an opening attempt and one optional escalation,
-with declared costs and declared success probabilities. **242 tests pass on
-Python 3.12.**
+**TASK-001 is implemented and merged.** It remains the active CLI/runtime path:
+the deterministic **two-tier economic kernel** makes an opening attempt and one
+optional escalation, with declared costs and declared success probabilities.
+The full suite currently passes **652 tests on Python 3.12**.
 
-**Dynamic capability acquisition — deciding which external skill is worth buying
-next — is specified and authorized as
-[TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md), and is not yet
-implemented.** The distinction between what runs and what is authorized to be
-built is kept deliberately sharp throughout this repository.
+The generalized capability-selection kernel in
+[TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) is implemented but
+not closed. TASK-007 PR A provides the immutable run-state foundation, and
+TASK-008 PR A provides the descriptor-to-candidate acquisition/catalog boundary.
+The remaining TASK-007 loop and execution work, TASK-008 source-specific
+candidate generation, the benchmark, and external adapters are not yet
+implemented. The distinction between what runs, what is partially implemented,
+and what is authorized to be built remains deliberate throughout this repository.
 
 ---
 
@@ -78,12 +81,14 @@ that buys nothing is a correct run. See
 | Item | Status |
 |---|---|
 | Governance and planning scaffolding | Present |
-| Product code | **Present** — the deterministic two-tier economic kernel |
+| Product code | **Present** — TASK-001’s active runtime plus the TASK-006 kernel, TASK-007 PR A state foundation, and TASK-008 PR A acquisition/catalog boundary |
 | TASK-001 | **Implemented and merged.** All seventeen acceptance criteria met |
-| Tests | **242 passing** on Python 3.12 |
+| Tests | **652 passing** on Python 3.12 |
 | Language | Python 3.12, standard library only — no external dependencies |
 | Capability selection engine | **Implemented** — [TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md); the task is not closed |
-| Run loop, adapters, benchmark | **Specified, not authorized** — TASK-007 … TASK-014 |
+| TASK-007 run loop | **PR A implemented** — state model and immutable snapshots; execution, transitions, classification, and loop remain incomplete |
+| TASK-008 acquisition | **PR A implemented** — normalization/catalog boundary; source-specific generation and adapters remain incomplete |
+| Benchmark and adapters | **Specified, not implemented** — TASK-009 … TASK-014 |
 | External integrations (Circle/Arc, The Graph, Hedera, OpenRouter) | **Not authorized** |
 | Privy | **Deprioritized** — superseded on the active path ([TASK-003](tasks/TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md)) |
 
@@ -107,11 +112,14 @@ docs/                      Product definition, architecture, rules, governance
   ARCHITECTURE.md                    System boundaries and ownership
   HACKATHON_RULES.md                 ETHOnline constraints we build under
   AI_BUILD_GOVERNANCE.md             How AI agents are permitted to build here
-radhanite/                 The economic kernel (TASK-001, implemented)
-tests/                     The test suite — 242 tests, standard library only
+radhanite/                 The economic kernel and generalized foundations
+tests/                     The test suite — 652 tests, standard library only
 tasks/                     Authorized work, one file per task
   TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md   Implemented and merged
-  TASK-002 .. TASK-005                      Proposed, none authorized
+  TASK-006                                  Kernel implemented, not closed
+  TASK-007                                  PR A state foundation implemented
+  TASK-008                                  PR A acquisition/catalog boundary implemented
+  TASK-002 .. TASK-005, TASK-009 .. TASK-014 Proposed or specified, not authorized
   BACKLOG.md                                Unauthorized future placeholders
 prompts/                   Preserved AI prompts that caused repository changes
 site/                      The public ETHOnline progress page (§3.2)
@@ -123,7 +131,7 @@ Radhanite is built by AI agents under human authorization. The rules are not
 advisory:
 
 - A **human product owner** authorizes tasks and performs all merges.
-- **Claude Code** implements only tasks that have been explicitly authorized.
+- **Manus** implements only tasks that have been explicitly authorized.
 - **Codex** independently reviews implementations against the specification.
 - Future scope is never silently implemented. If it is not in an authorized
   task, it does not get built.

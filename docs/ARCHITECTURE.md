@@ -45,11 +45,12 @@ authoritative for the implementation.**
   `escalation_cost` / `escalated_success_probability`.
 - §2.5's escalation rule is defined against precisely that shape.
 
-Every acceptance criterion in TASK-001, every field in the run record documented
-in [`RUN_RECORDS.md`](RUN_RECORDS.md), and all 242 tests are written against
-this model. It is the delivered product.
+Every acceptance criterion in TASK-001 and every field in the run record
+documented in [`RUN_RECORDS.md`](RUN_RECORDS.md) were written against this
+model. It remains the active runtime. The repository now contains **652 passing
+tests**; the TASK-001 two-tier model is no longer the only implemented layer.
 
-#### 2.2.2 Authorized migration direction — not implemented
+#### 2.2.2 Authorized migration direction — partially implemented
 
 The product definition has moved from allocating inference spend to deciding
 which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION.md)
@@ -67,13 +68,17 @@ which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION
 > not.** Those are different claims and this section keeps them apart.
 
 **What exists** — `radhanite/capability.py`, `eligibility.py`, `selection.py`,
-`policy.py`:
+`policy.py`, `acquisition.py`, and `runstate.py`:
 
 - the **candidate model**, three fields, provider-neutral;
 - the **eligibility rule**, all six conditions of TASK-006 §2.3;
 - **deterministic ranking and selection**, §2.4's three levels, order-independent;
 - **declared candidate fixtures**, a benchmark catalogue of three;
 - **run policy**, carrying the purchase ceiling with no default;
+- the TASK-007 PR A **run-state foundation**, including immutable snapshots,
+  validated ledger state, and non-recursive transition shape;
+- the TASK-008 PR A **acquisition/catalog boundary**, which retains source
+  descriptors outside the provider-neutral candidate;
 - **compatibility tests** demonstrating that TASK-001's scenarios decide
   identically under the generalized rule.
 
@@ -82,10 +87,11 @@ which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION
 replaced and is still what §2.2.1 describes. There is no run loop over
 capabilities: nothing accumulates spend across purchases, nothing re-evaluates
 task state between them, and nothing decides that a task has already succeeded.
-That orchestration is **specified and unauthorized** —
-[TASK-007](../tasks/TASK-007_CAPABILITY_RUN_LOOP.md), `BL-16`. It inherits
-TASK-006's criteria 10 and 13, and carries one unresolved product decision about
-execution failure.
+That orchestration remains incomplete. TASK-007 PR A provides state only; its
+executor, execution transitions, terminal classification, and loop remain
+unbuilt. TASK-008 PR A provides normalization and catalog lookup only; candidate
+generation from task state and provider-specific adapters remain unbuilt. The
+remaining work is specified but not authorized by the current PR-A scopes.
 
 **An implemented kernel is not a working autonomous runtime**, and no document
 in this repository may imply otherwise.
@@ -124,10 +130,12 @@ describe something other than what happened.
 product owner **authorized it on 2026-09-09**. Its three open product decisions
 were resolved first, and authorization followed as a separate act.
 
-**This is the second authorized implementation task in the project**, after
-TASK-001, and its authorization reaches TASK-006's §2 and nothing further.
-TASK-006 §3 still excludes provider discovery, payment execution, the task-state
-layer, and candidate generation; §4 above is unchanged for every integration.
+TASK-006 was the second authorized implementation task in the project, after
+TASK-001. PR-A work for TASK-007 and TASK-008 was authorized afterwards, but
+only within the state-model and normalization/catalog boundaries described in
+those task files. TASK-006 §3 still excludes provider discovery, payment
+execution, the task-state layer, and candidate generation; §4 above is
+unchanged for every integration.
 
 ### 2.3 Budget allocation
 Deciding how the authorized budget is distributed across attempts. Enforcing the
@@ -306,14 +314,15 @@ product owner says so.
 
 ### The task sequence
 
-Set by the human product owner. **Nothing beyond TASK-006 is authorized**; this
-is the order work would be taken in if it were.
+Set by the human product owner. TASK-007 PR A and TASK-008 PR A are authorized
+and implemented; the remaining runtime, benchmark, and integration work is not
+authorized. This is the order work would be taken in if it were.
 
 | | Task | Layer |
 |---|---|---|
 | 006 | [Generalized capability selection](../tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **Engine** — implemented, provider-neutral, task-agnostic |
-| 007 | [Capability run loop](../tasks/TASK-007_CAPABILITY_RUN_LOOP.md) | **Engine** — generic, opaque task state |
-| 008 | [Capability acquisition](../tasks/TASK-008_CAPABILITY_ACQUISITION.md) | **Boundary** — descriptors become provider-neutral candidates |
+| 007 | [Capability run loop](../tasks/TASK-007_CAPABILITY_RUN_LOOP.md) | **Engine** — PR A state foundation implemented; execution, transitions, classification, and loop incomplete |
+| 008 | [Capability acquisition](../tasks/TASK-008_CAPABILITY_ACQUISITION.md) | **Boundary** — PR A normalization/catalog boundary implemented; generation and adapters incomplete |
 | 009 | [Revenue opportunity state](../tasks/TASK-009_REVENUE_OPPORTUNITY_STATE.md) | **Benchmark reasoning** — the only place it lives |
 | 010 | [Circle marketplace and Arc payments](../tasks/TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | **Adapter** — discovery and settlement |
 | 011 | [Onchain intelligence via The Graph](../tasks/TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md) | **Adapter** — evidence |
