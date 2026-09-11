@@ -82,14 +82,15 @@ recorded separately rather than letting the two blur.
 ## The current task sequence
 
 Set by the human product owner on 2026-09-11, when the benchmark became
-autonomous revenue opportunity pursuit. **Nothing beyond TASK-006 is
-authorized.**
+autonomous revenue opportunity pursuit. TASK-007 PR A and TASK-008 PR A are
+authorized and implemented; no remaining run-loop work, provider-specific
+generation, benchmark work, or external integration is authorized.
 
 | Task | Layer | Status |
 |---|---|---|
 | [006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | Engine — selection | **Implemented**, not closed |
-| [007](TASK-007_CAPABILITY_RUN_LOOP.md) | Engine — the run loop | Specified |
-| [008](TASK-008_CAPABILITY_ACQUISITION.md) | Boundary — candidate generation | Specified |
+| [007](TASK-007_CAPABILITY_RUN_LOOP.md) | Engine — the run loop | **PR A implemented** — state model only; execution, transitions, classification, and loop remain incomplete |
+| [008](TASK-008_CAPABILITY_ACQUISITION.md) | Boundary — candidate generation | **PR A implemented** — normalization/catalog boundary; source-specific generation and adapters remain incomplete |
 | [009](TASK-009_REVENUE_OPPORTUNITY_STATE.md) | Benchmark reasoning | Specified |
 | [010](TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | Adapter — Circle / Arc | Specified |
 | [011](TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md) | Adapter — The Graph | Specified |
@@ -116,7 +117,7 @@ generic boundaries.
 | BL-11 | Verticals beyond software engineering | **UNAUTHORIZED** |
 | BL-12 | Several Radhanite agents under shared, externally granted authority | **UNAUTHORIZED** |
 | BL-13 | Selection among candidate capabilities, rather than one attempt and one escalation — [TASK-006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **AUTHORIZED — implemented, not closed** |
-| BL-16 | The run loop that drives repeated capability decisions — [TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md) | **SPECIFIED — UNAUTHORIZED** |
+| BL-16 | The run loop that drives repeated capability decisions — [TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md) | **AUTHORIZED PR A IMPLEMENTED — REMAINDER UNAUTHORIZED** |
 | BL-14 | Radhanite hosting a paid x402 endpoint as hackathon test infrastructure | **UNAUTHORIZED** |
 
 ## Notes
@@ -164,21 +165,22 @@ the work — authorization was a separate act, taken afterwards, and recorded in
 its own pull request so that the two remain visibly distinct in the history.
 
 `BL-16` is what TASK-006 §5a exposed, and it is **now specified** as
-[TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md). Five of that task's deliverables
-are complete and one is partial; 20 of its 22 acceptance criteria are fully
-demonstrated. Criteria 10 and 13 need a run loop — something that observes the
-task has succeeded, and something that accumulates spend across purchases —
-which §2.7 places outside TASK-006.
+[TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md). TASK-006 has five of its six
+deliverables complete and 20 of its 22 acceptance criteria directly demonstrated.
+Its criteria 10 and 13 need a run loop — something that observes the task has
+succeeded, and something that accumulates spend across purchases — which §2.7
+places outside TASK-006. TASK-007 PR A delivered the state model; its execution,
+transitions, classification, and loop remain outstanding.
 
 **TASK-007 inherits those two criteria** with their meaning unchanged, per its
 §8. TASK-006 is not made complete by that specification existing: it closes only
 once a TASK-007 implementation actually demonstrates the inherited behaviour.
 
-TASK-007 is **specified and not authorized**, and carries one unresolved product
-decision — what happens to spend, consumption, the step count and retryability
-when a selected capability fails. Its §7 states four options and recommends one,
-and says plainly that implementation cannot begin until the human product owner
-settles it.
+TASK-007 PR A is **authorized and implemented**. Its state model is present, but
+the remaining execution and loop work is not authorized by that PR-A scope. The
+execution-failure semantics in §7 are now settled in the specification: a failed
+attempt commits whatever cost was actually committed, consumes the candidate ID,
+increments the capability-step count, and terminates without retry.
 
 **The Graph moved from TASK-007 to
 [TASK-011](TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md)** so the run loop
