@@ -1,7 +1,7 @@
 # TASK-007 — The capability run loop
 
-**Status:** Specified — **NOT AUTHORIZED for implementation**
-**Authorization:** None. This document specifies the work; it does not permit it.
+**Status:** Authorized — **PR A implemented.** The §3 state model exists; the loop, execution and classification do not
+**Authorization:** PR A authorized by the human product owner, 2026-09-11
 **Traces to:** [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §5.2, §5.5
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.1, §2.2.3, §6
 **Replaces backlog entry:** `BL-16`
@@ -205,6 +205,40 @@ The `Selection` is kept **whole** rather than summarized, because TASK-006 §8
 already requires every candidate considered with its figures and the reason it
 failed. Summarizing here would discard exactly what that section exists to
 preserve.
+
+### 3.4 What PR A delivered
+
+`radhanite/runstate.py`, and nothing else.
+
+| | |
+|---|---|
+| `RunStatus` | `RUNNING` plus §6's four terminal values. **Holding one; deciding which is not this step's job** |
+| `RunSnapshot` | Every §3 field **except `history`** — §3.3 |
+| `TransitionRecord` | `before`, `selection`, `after`, `execution`. Defined so `history` has a member type; **no transition is produced** |
+| `RunState` | The §3 fields, `.max_capability_steps` read from the policy, and `.snapshot()` |
+| `begin_run(...)` | Validated initialization. `total_spend` is **derived**, never supplied |
+
+**`task_state` is held by reference**, which §3.1 entails: copying or freezing an
+arbitrary object means inspecting it, and this task must not. The consequence —
+a caller mutating that object changes what every snapshot appears to have
+recorded — is documented in `RunState` rather than left to be discovered. See
+§3.5.
+
+**Not built**: execution, the executor interface, execution results,
+committed-cost transitions, candidate consumption, step increments, task-state
+updates, acquisition calls, eligibility, ranking, selection, terminal
+classification, retry, and the loop itself.
+
+### 3.5 An ambiguity §3.1 leaves open ⚠️
+
+§3.1 requires `task_state` to be opaque and never inspected, which settles
+*how* it is stored — by reference, since the alternatives require inspection.
+
+**It does not say what happens when a caller mutates it afterwards.** A snapshot
+holds the same reference, so the audit record silently changes with it. The
+implementation documents the obligation on the caller; whether the specification
+should instead *require* immutable task state, and how it would check that
+without inspecting, is an open product question.
 
 ## 4. Invariants
 
