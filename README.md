@@ -50,28 +50,28 @@ spending limit.
 The full statement of the product is in
 [`docs/PREREQ-001_PRODUCT_DEFINITION.md`](docs/PREREQ-001_PRODUCT_DEFINITION.md).
 
-## ETHOnline demonstration
+## ETHOnline benchmark
 
-**Supplier onboarding and due diligence** — deciding whether a prospective
-supplier should be approved, escalated to a human, or rejected, and deciding
-what evidence is economically worth buying to answer that.
+**Autonomous revenue opportunity pursuit** — an agent pursuing a deal it could
+win, deciding what evidence and judgement are worth buying on the way.
 
 | | |
 |---|---|
-| **Input** | The task, its value, a maximum autonomous spend, and constraints |
-| **Output** | `APPROVE` / `ESCALATE` / `REJECT`, or termination when further spend is not justified |
-| **Success condition** | The deterministic completion contract in `PREREQ-001` §6.5 — *not* the recommendation itself |
+| **Opportunity** | A $50,000 crypto-native infrastructure contract |
+| **Operating budget** | $250 |
+| **Available** | Research, onchain intelligence, specialist analysis, independent review — each priced, each optional |
+| **The question** | What should it spend next, if anything, to raise the probability of winning? |
 
-Buying diligence evidence is always possible and is not always worth it, which
-is exactly the decision Radhanite exists to make. A run that stops without
-buying anything is a correct run.
+A large opportunity does not justify spending badly. The benchmark is built so
+that **poor execution strategy destroys margin even when the opportunity is
+large** — and unused budget is retained margin, not a shortfall.
 
-**This demonstration is frozen direction, not implemented, and not authorized.**
-The implemented V1 is still autonomous software engineering — TASK-001, merged.
-Both framings and the status of each are tabulated in
+Circle/Arc supplies discovery and payment; The Graph and Hedera are capabilities
+the agent may buy. **Radhanite decides what is worth buying.** None of those
+integrations is authorized, and the capability order is not hard-coded: a run
+that buys nothing is a correct run. See
 [`docs/PREREQ-001_PRODUCT_DEFINITION.md`](docs/PREREQ-001_PRODUCT_DEFINITION.md)
-§6.6; the earlier framing is preserved in §6.4 rather than deleted. None of the
-external integrations named here is authorized either.
+§6.
 
 ## Repository status
 
@@ -82,8 +82,9 @@ external integrations named here is authorized either.
 | TASK-001 | **Implemented and merged.** All seventeen acceptance criteria met |
 | Tests | **242 passing** on Python 3.12 |
 | Language | Python 3.12, standard library only — no external dependencies |
-| Dynamic capability acquisition | **Authorized, not yet implemented** — [TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) (`BL-13`) |
-| External integrations (Hedera/x402, Circle/Arc, The Graph, OpenRouter) | **Not authorized** |
+| Capability selection engine | **Implemented** — [TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md); the task is not closed |
+| Run loop, adapters, benchmark | **Specified, not authorized** — TASK-007 … TASK-014 |
+| External integrations (Circle/Arc, The Graph, Hedera, OpenRouter) | **Not authorized** |
 | Privy | **Deprioritized** — superseded on the active path ([TASK-003](tasks/TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md)) |
 
 ## Running the tests

@@ -50,7 +50,7 @@ to the human product owner, not an order inherited by default. See
 |---|---|---|---|
 | BL-01 | Real inference execution via OpenRouter | [TASK-002](TASK-002_REAL_INFERENCE_VIA_OPENROUTER.md) | **UNAUTHORIZED** |
 | BL-02 | Programmable authority over the agent, via Privy | [TASK-003](TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md) | **UNAUTHORIZED — deprioritized** |
-| BL-15 | Onchain information as a paid capability, via The Graph | [TASK-008](TASK-008_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md) | **UNAUTHORIZED** |
+| BL-15 | Onchain commercial intelligence as a paid capability, via The Graph | [TASK-011](TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md) | **UNAUTHORIZED** |
 | BL-03 | Agent budget denominated in real USDC on Arc | [TASK-005](TASK-005_BUDGET_IN_REAL_USDC_ON_ARC.md) | **UNAUTHORIZED** |
 | BL-04 | The agent paying for its own purchases, over x402 on Hedera | [TASK-004](TASK-004_AGENTIC_PAYMENTS_VIA_HEDERA_AND_X402.md) | **UNAUTHORIZED** |
 | BL-04b | Radhanite consumed as a paid machine service — the inbound direction | *(none)* | **UNAUTHORIZED** |
@@ -71,13 +71,37 @@ is unaffected by the ordering decision. `BL-15` takes its place on the path.
 `BL-15` is a capability Radhanite could **buy**, which is why it replaces an
 authority Radhanite would have to **hold**. The Graph is not part of the
 decision engine and must never influence ranking by being The Graph —
-`TASK-006` §2.1 is unchanged and TASK-008 §3 restates the prohibition.
+`TASK-006` §2.1 is unchanged and TASK-011 §3 restates the prohibition.
 
 `BL-04` previously described only the inbound direction — other machines paying
 Radhanite. The outbound direction, Radhanite's agent paying for what it buys, is
 the one that makes this an economic control layer for agentic payments, and it
 had no entry at all. It has one now, and `BL-04b` keeps the inbound direction
 recorded separately rather than letting the two blur.
+
+## The current task sequence
+
+Set by the human product owner on 2026-09-11, when the benchmark became
+autonomous revenue opportunity pursuit. **Nothing beyond TASK-006 is
+authorized.**
+
+| Task | Layer | Status |
+|---|---|---|
+| [006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | Engine — selection | **Implemented**, not closed |
+| [007](TASK-007_CAPABILITY_RUN_LOOP.md) | Engine — the run loop | Specified |
+| [008](TASK-008_CAPABILITY_ACQUISITION.md) | Boundary — candidate generation | Specified |
+| [009](TASK-009_REVENUE_OPPORTUNITY_STATE.md) | Benchmark reasoning | Specified |
+| [010](TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | Adapter — Circle / Arc | Specified |
+| [011](TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md) | Adapter — The Graph | Specified |
+| [012](TASK-012_HEDERA_INDEPENDENT_REVIEW.md) | Adapter — Hedera | Specified |
+| [013](TASK-013_REVENUE_AGENT_BENCHMARK.md) | Assembly — the benchmark | Specified |
+| [014](TASK-014_DEMO_AND_RUN_RECORD.md) | Presentation | Specified |
+
+**The engine did not move because the benchmark did.** TASK-006 and TASK-007 are
+task-agnostic and were not redesigned; everything specific to revenue pursuit is
+confined to TASK-009 and the adapters. `BL-10` is now TASK-014, and `BL-15`
+became TASK-011 when The Graph was renumbered from 008 to make room for the
+generic boundaries.
 
 ## Capability placeholders
 
@@ -88,7 +112,7 @@ recorded separately rather than letting the two blur.
 | BL-07 | Real software-engineering execution against a live repository | **UNAUTHORIZED** |
 | BL-08 | Test-suite outcome as the live success signal | **UNAUTHORIZED** |
 | BL-09 | Multi-task budget allocation across a portfolio of tasks | **UNAUTHORIZED** |
-| BL-10 | Human-facing UI for submitting tasks and reviewing run records | **UNAUTHORIZED** |
+| BL-10 | Human-facing UI for submitting tasks and reviewing run records — [TASK-014](TASK-014_DEMO_AND_RUN_RECORD.md) | **UNAUTHORIZED** |
 | BL-11 | Verticals beyond software engineering | **UNAUTHORIZED** |
 | BL-12 | Several Radhanite agents under shared, externally granted authority | **UNAUTHORIZED** |
 | BL-13 | Selection among candidate capabilities, rather than one attempt and one escalation — [TASK-006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **AUTHORIZED — implemented, not closed** |
@@ -157,7 +181,7 @@ and says plainly that implementation cannot begin until the human product owner
 settles it.
 
 **The Graph moved from TASK-007 to
-[TASK-008](TASK-008_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md)** so the run loop
+[TASK-011](TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md)** so the run loop
 could take 007, which is the number the product owner originally proposed for
 the run-loop work. Nothing about that specification changed but its number.
 
@@ -169,8 +193,9 @@ such**, not allowed to become part of the product architecture by having been
 built.
 
 `BL-11` needs a note after the product pivot. `PREREQ-001` §6 now names
-**supplier onboarding and due diligence** as the frozen primary ETHOnline
-demonstration direction, which is a vertical beyond software engineering.
+**autonomous revenue opportunity pursuit** as the current ETHOnline benchmark —
+a vertical beyond software engineering, and the second such framing after
+supplier onboarding, which §6.3a preserves as the previous one.
 
 **That settles direction only.** `BL-11` covers *implementing* another vertical,
 and it is:

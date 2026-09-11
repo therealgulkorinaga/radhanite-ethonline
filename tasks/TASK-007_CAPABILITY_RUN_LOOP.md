@@ -275,7 +275,7 @@ calls this boundary and stores what comes back.
 > exist and is not designed here. Turning opaque evidence into a declared
 > probability and a completion verdict is a domain judgement — the same open
 > question recorded in
-> [TASK-008](TASK-008_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md) §6.3.
+> [TASK-011](TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md) §6.3.
 
 ### 5.4 What may cross into the decision
 
@@ -556,12 +556,12 @@ safeguards.
 
 ## 11. The demonstration this has to support
 
-The supplier-onboarding demonstration in `PREREQ-001` §6 must be expressible:
+The revenue-pursuit benchmark in `PREREQ-001` §6 must be expressible:
 
 ```
-baseline  →  a second opinion  →  updated state
-          →  research           →  updated state
-          →  optionally, analysis
+baseline  →  onchain intelligence  →  updated state
+          →  research               →  updated state
+          →  optionally, an independent review
           →  STOP
 ```
 
