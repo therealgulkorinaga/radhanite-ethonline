@@ -32,7 +32,7 @@ difference rather than starting at zero.
 
 from __future__ import annotations
 
-from collections.abc import Collection, Mapping, Sequence, Set
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
@@ -74,29 +74,55 @@ class RunStatus(Enum):
         return self is not RunStatus.RUNNING
 
 
-#: Values that are already immutable and pass through `_frozen` untouched.
-#: Deliberately structural — a type, never a meaning. `Money`, `Probability` and
-#: `RunPolicy` are here because they are this repository's own frozen values,
-#: not because of anything they represent.
-_IMMUTABLE_ATOMS = (
+#: Values that pass through `_frozen` unchanged, matched by **exact type**.
+#:
+#: Exact, not `isinstance` — `CODEX-PR030-02`. A subclass of an immutable
+#: scalar is not immutable: `class Smuggler(int): ...` satisfies
+#: `isinstance(x, int)` while carrying a list the caller still owns, and
+#: passing it through would store that list by reference through a type check
+#: that looked airtight.
+#:
+#: `Enum` is deliberately absent for the same reason, one level up: an Enum
+#: member's `value` can be a list, and every member has an instance
+#: dictionary that arbitrary attributes can hang off. No Enum is blanket-safe,
+#: and narrowing this to specific authorized Enum types is not PR A's call.
+#:
+#: `Money`, `Probability` and `RunPolicy` are here because their exact types
+#: are frozen slotted values in this repository — a claim about their
+#: construction, not about what they represent.
+_IMMUTABLE_EXACT_TYPES = frozenset({
     type(None), bool, int, float, complex, str, bytes, Decimal,
-    Money, Probability, RunPolicy, Enum,
-)
+    Money, Probability, RunPolicy,
+})
+
+#: Container types converted to immutable equivalents, also matched exactly.
+#: `MappingProxyType`, `tuple` and `frozenset` are rebuilt rather than passed
+#: through: a proxy can wrap a dict the caller still holds, and a subclass of
+#: any of them can carry mutable attributes.
+_FROZEN_AS_MAPPING = (dict, MappingProxyType)
+_FROZEN_AS_TUPLE = (list, tuple)
+_FROZEN_AS_FROZENSET = (set, frozenset)
 
 
 def _frozen(value: Any, _path: frozenset[int] = frozenset()) -> Any:
     """Return an immutable equivalent of `value`, or refuse it.
 
-    Structural only. Mappings, sequences and sets become immutable equivalents
-    with their members frozen the same way; already-immutable atoms pass
-    through; **anything else is refused rather than aliased.**
+    Structural only, and matched on **exact type** throughout. Mappings,
+    sequences and sets become immutable equivalents with their members frozen
+    the same way; the known immutable scalars pass through; **anything else is
+    refused rather than aliased.**
+
+    Matching exactly also closes a quieter hole: a `str` subclass is a
+    `Sequence`, so an `isinstance` rule would convert `"abc"` into
+    `("a", "b", "c")` and record that as the caller's state.
 
     Cycles are refused deterministically rather than recursed into — a caller
     handing in self-referential state would otherwise either hang the run or
     produce a record that contains itself, which is the defect §3.3 exists to
     prevent.
     """
-    if isinstance(value, _IMMUTABLE_ATOMS):
+    kind = type(value)
+    if kind in _IMMUTABLE_EXACT_TYPES:
         return value
 
     if id(value) in _path:
@@ -107,20 +133,22 @@ def _frozen(value: Any, _path: frozenset[int] = frozenset()) -> Any:
         )
     deeper = _path | {id(value)}
 
-    if isinstance(value, Mapping):
+    if kind in _FROZEN_AS_MAPPING:
         return MappingProxyType(
             {_frozen(k, deeper): _frozen(v, deeper) for k, v in value.items()}
         )
-    if isinstance(value, (frozenset, Set)):
+    if kind in _FROZEN_AS_FROZENSET:
         return frozenset(_frozen(item, deeper) for item in value)
-    if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+    if kind in _FROZEN_AS_TUPLE:
         return tuple(_frozen(item, deeper) for item in value)
 
     raise TypeError(
-        f"task_state contains {type(value).__name__}, which cannot be frozen. "
-        "TASK-007 stores opaque state without interpreting it, but it may not "
-        "hold a live reference to something the caller can still change — "
-        "CODEX-PR030-02. Supply immutable values, or containers of them."
+        f"task_state contains {kind.__name__}, which cannot be frozen. TASK-007 "
+        "stores opaque state without interpreting it, but it may not hold a "
+        "live reference to something the caller can still change, and a "
+        "subclass of an immutable type is not immutable — CODEX-PR030-02. "
+        "Supply exactly immutable values, or dicts, lists, tuples, sets and "
+        "frozensets of them."
     )
 
 
@@ -267,10 +295,17 @@ class TransitionRecord:
     Defined here because `RunState.history` needs a member type. **No transition
     is produced by this step** — building these is the loop's job.
 
-    `execution` is deliberately untyped for now: the execution result belongs to
-    a later TASK-007 step, and inventing its shape here would be an abstraction
-    justified only by future work (`ARCHITECTURE.md` §6 item 7). It is `None` on
-    a STOP iteration in any case, per §3.3.
+    **`execution` is a reserved placeholder and must be `None` in PR A** —
+    `CODEX-PR030-01`. The field exists so the shape of a transition is settled;
+    the *authorized execution result type arrives with PR B*.
+
+    Accepting anything else was the last live alias in the module: a mutable
+    payload here is a caller-owned object inside an audit record, and a
+    `RunState` here puts a history inside a history. Refusing outright is the
+    smallest safe contract, because PR A implements no execution and no caller
+    has a payload to pass. Freezing an arbitrary payload instead would be
+    PR B's schema arriving early under a different name, which
+    `ARCHITECTURE.md` §6 item 7 forbids.
     """
 
     before: RunSnapshot
@@ -293,6 +328,13 @@ class TransitionRecord:
         if not isinstance(self.selection, Selection):
             raise TypeError(
                 f"selection must be a Selection, got {type(self.selection).__name__}."
+            )
+        if self.execution is not None:
+            raise ValueError(
+                f"execution must be None in PR A, got "
+                f"{type(self.execution).__name__}. It is a reserved placeholder; "
+                "the authorized execution result type arrives with TASK-007 "
+                "PR B — CODEX-PR030-01."
             )
 
 

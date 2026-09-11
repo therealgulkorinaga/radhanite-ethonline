@@ -132,10 +132,32 @@ refused, and **an object that cannot be frozen is refused rather than stored**.
 Refusal is decided from the object's type alone, so even a value that raises on
 every read is refused without being read.
 
-The obligation this places on callers is explicit: **supply immutable values, or
-containers of immutable values.** That is a narrower contract than "anything at
-all", and a deliberate one — auditability is the point of §3, and a record that
-can change after it is written is not a record.
+**Immutability is established by exact type, not by `isinstance`.** A subclass
+of an immutable scalar is not immutable: `class Smuggler(int)` satisfies
+`isinstance(x, int)` while carrying a list the caller still owns, so an
+`isinstance` rule stores that list by reference through a check that looked
+airtight. The same applies one level up to `Enum`: a member's `value` can be a
+list, and every member has an instance dictionary. **No `Enum` is blanket-safe**,
+and narrowing this to specific authorized Enum types is not PR A's decision.
+
+Exact matching closes a quieter hole too: a `str` subclass is a `Sequence`, so
+an `isinstance` rule would convert `"abc"` into `("a", "b", "c")` and record
+that as the caller's state.
+
+| Accepted, by exact type | |
+|---|---|
+| Passed through | `None`, `bool`, `int`, `float`, `complex`, `str`, `bytes`, `Decimal`, `Money`, `Probability`, `RunPolicy` |
+| Rebuilt immutable | `dict`/`mappingproxy` → read-only mapping over a fresh dict · `list`/`tuple` → tuple · `set`/`frozenset` → frozenset |
+| Refused | a cycle (`ValueError`); **everything else**, subclasses of the above included (`TypeError`) |
+
+Containers are rebuilt rather than passed through even when they are already
+immutable, because a `mappingproxy` can wrap a dict the caller still holds and
+a subclass of `tuple` or `frozenset` can carry mutable attributes.
+
+The obligation this places on callers is explicit: **supply exactly immutable
+values, or ordinary containers of them.** That is a narrower contract than
+"anything at all", and a deliberate one — auditability is the point of §3, and a
+record that can change after it is written is not a record.
 
 ### 3.2 Budget accounting
 
@@ -220,7 +242,7 @@ excludes `history`.
 |---|---|
 | `before` | Run-state snapshot, **excluding `history`** |
 | `selection` | The **complete** TASK-006 `Selection` |
-| `execution` | The execution result or failure record — absent on a STOP iteration |
+| `execution` | The execution result or failure record — absent on a STOP iteration. **Reserved in PR A: `None` until PR B introduces the authorized type** — §3.4 |
 | `after` | Run-state snapshot, **excluding `history`** |
 
 A snapshot carries every §3 field except `history`: `task_value`,
@@ -253,6 +275,19 @@ revision put them only in `begin_run` while exporting a directly constructible
 and one unsafe path is one unsafe path.
 
 **`task_state` is frozen, not aliased** — §3.1.1.
+
+**`TransitionRecord.execution` is a reserved placeholder and must be `None` in
+PR A.** The field exists so the shape of a transition is settled; **the
+authorized execution result type is introduced in PR B**, and is not designed
+here.
+
+Accepting an arbitrary payload was the last live alias in the module: a mutable
+payload is a caller-owned object inside an audit record, and a `RunState`
+payload puts a history inside a history — §3.3, defeated through a field rather
+than through a type. Refusing outright is the smallest safe contract, because
+PR A implements no execution and no caller has a payload to pass. Freezing an
+arbitrary payload instead would be PR B's schema arriving early under a
+different name (`ARCHITECTURE.md` §6 item 7).
 
 **Not built**: execution, the executor interface, execution results,
 committed-cost transitions, candidate consumption, step increments, task-state

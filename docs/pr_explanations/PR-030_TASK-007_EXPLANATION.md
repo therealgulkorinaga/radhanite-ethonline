@@ -19,7 +19,7 @@ model that quietly did any of them would be the loop wearing a different name.
 | File | |
 |---|---|
 | `radhanite/runstate.py` | **New.** The §3 state model |
-| `tests/test_runstate.py` | **New.** 75 tests |
+| `tests/test_runstate.py` | **New.** 102 tests |
 | `radhanite/__init__.py` | Exports |
 | `tasks/TASK-007_CAPABILITY_RUN_LOOP.md` | §3.1.1 opacity is not aliasing; §3.4 what PR A delivered; **§3.5 a retraction** |
 | `docs/reviews/PR-030_...`, `docs/pr_explanations/PR-030_...`, `docs/reviews/README.md` | Review prompt, this document, index row |
@@ -88,6 +88,21 @@ record an auditor actually reads. `TransitionRecord` checks that `before` and
 `RunState` would put a history inside a history, which is the recursion §3.3
 exists to prevent.
 
+### `TransitionRecord.execution` is reserved, and must be `None`
+
+The first correction typed `before`, `after` and `selection` and left
+`execution: Any = None` accepting anything. That was the last live alias in the
+module, and it reopened through a field everything the type checks had just
+closed: a mutable payload is a caller-owned object sitting inside an audit
+record, and a `RunState` payload puts a history inside a history.
+
+**PR A refuses any non-`None` payload**, immutable ones included. That is not
+excessive strictness — it is the absence of a decision. PR A implements no
+execution, no caller has a result to pass, and **the authorized execution result
+type is introduced in PR B**. Freezing an arbitrary payload instead would be
+PR B's schema arriving early under a different name, which `ARCHITECTURE.md` §6
+item 7 forbids. The field stays so the shape of a transition is settled.
+
 ### `task_state` is opaque, and opacity is not aliasing — `CODEX-PR030-02`
 
 The first revision stored `task_state` **by reference**, and argued §3.1
@@ -100,26 +115,48 @@ this task must not inspect. **That argument was wrong on both halves.**
   appears to say, and lets them insert a back-reference that makes the record
   recursive after the fact — defeating §3.3 from outside this module.
 
-So opaque state is **frozen structurally on the way in**:
+So opaque state is **frozen structurally on the way in**, matched on **exact
+type** throughout:
 
 | Input | Stored as |
 |---|---|
-| `None`, `bool`, `int`, `float`, `complex`, `str`, `bytes`, `Decimal`, `Enum` | unchanged |
+| `None`, `bool`, `int`, `float`, `complex`, `str`, `bytes`, `Decimal` | unchanged |
 | `Money`, `Probability`, `RunPolicy` | unchanged — this repository's own frozen values |
-| mapping | read-only mapping over a **fresh** dict, members frozen |
-| sequence (not `str`/`bytes`) | tuple, members frozen |
-| set | frozenset, members frozen |
+| `dict`, `mappingproxy` | read-only mapping over a **fresh** dict, members frozen |
+| `list`, `tuple` | tuple, members frozen |
+| `set`, `frozenset` | frozenset, members frozen |
 | a cycle | **`ValueError`** — refused deterministically, never recursed into |
-| anything else | **`TypeError`** — refused, never aliased |
+| **anything else, subclasses of the above included** | **`TypeError`** — refused, never aliased |
 
-The last row is the contract change, and it is deliberate: a caller may no
-longer hand in an arbitrary mutable object. Refusal is decided from the
-object's **type**, so the test that proves nothing inspects the state still
-holds — an object raising on `__getattr__`, `__len__`, `__iter__`, `__eq__` and
-`__hash__` is refused without any of those being called.
+**Exact type, not `isinstance`.** The first correction used `isinstance`, which
+trusts subclasses — and a subclass of an immutable scalar is not immutable:
 
-No float is introduced and nothing is serialized: freezing rebuilds containers
-and passes values through untouched, so `Decimal` stays `Decimal`.
+```python
+class Smuggler(int):
+    def __init__(self, *_):
+        self.baggage = []        # the caller keeps this
+```
+
+`Smuggler(1)` satisfies `isinstance(x, int)` and was stored unchanged, list and
+all, through a check that looked airtight. The same holds one level up for
+`Enum`: a member's `value` can be a list, and every member has an instance
+dictionary things can be attached to — so **no `Enum` is blanket-accepted**,
+this module's own included. Narrowing that to specific authorized Enum types is
+a decision, and not PR A's to make.
+
+Exact matching closes a quieter hole too. A `str` subclass **is** a `Sequence`,
+so the `isinstance` rule converted `"abc"` into `("a", "b", "c")` and recorded
+that as the caller's state — silent corruption rather than a refusal.
+
+Immutable containers are rebuilt rather than passed through for the same
+reason: a `mappingproxy` can wrap a dict the caller still holds, and a `tuple`
+or `frozenset` subclass can carry mutable attributes.
+
+Refusal is still decided from the object's **type**, so the test proving nothing
+inspects the state holds — an object raising on `__getattr__`, `__len__`,
+`__iter__`, `__eq__` and `__hash__` is refused without any of those being
+called. No float is introduced and nothing is serialized: freezing rebuilds
+containers and passes values through untouched, so `Decimal` stays `Decimal`.
 
 ### Snapshots cannot contain history
 
@@ -183,7 +220,7 @@ Ran 528 tests — FAILED (errors=1)
 
 An import failure proves *absence*. The mutations establish the rest.
 
-**Before the corrections** — the 29 new regression tests written first and run
+**Before the first corrections** — 29 regression tests written first and run
 against the rejected implementation:
 
 ```
@@ -192,20 +229,29 @@ Ran 75 tests in 0.009s
 FAILED (failures=25)
 ```
 
-All 25 in the four new classes — `DirectConstructionTests`,
-`TaskStateIsDetachedTests`, `SiblingRecordConstructionTests`, and the amended
-`OpaqueTaskStateTests`. Nothing else regressed, which is what shows the
-corrections are additive rather than a redesign.
+**Before the final corrections** — 27 further regression tests, run against the
+first-correction implementation:
+
+```
+$ PYTHONDONTWRITEBYTECODE=1 python3.12 -m unittest tests.test_runstate -q
+Ran 102 tests in 0.014s
+FAILED (failures=14)
+```
+
+Seven in `ExecutionPlaceholderTests`, six in `ExactTypeFreezeTests`, and one in
+`TransitiveImmutabilityAuditTests` — the one that ties the structural walk to
+the constructor. Nothing outside the new classes regressed in either round,
+which is what shows the corrections are additive rather than a redesign.
 
 **After:**
 
 ```
 $ python3.12 -m unittest discover -q
-Ran 602 tests in 0.16s
+Ran 629 tests in 0.15s
 OK
 ```
 
-**527 existing, unchanged, plus 75 new.**
+**527 existing, unchanged, plus 102 new.**
 
 ### Deliberate faults, all caught
 
@@ -225,8 +271,14 @@ the correction extended to:
 | Allow an invalid `RunStatus` | **1** |
 | Bypass `RunSnapshot` validation | **2** |
 | Let a transition hold a `RunState` where a snapshot belongs | **1** |
+| Allow a non-`None` mutable `execution` payload | **7** |
+| Allow a `RunState` as `execution` | **2** |
+| Revert exact-type atom matching to `isinstance` | **5** |
+| Accept arbitrary `Enum` members | **3** |
+| Accept a scalar subclass carrying a mutable payload | **4** |
 
-**9/9 killed.** Two of these took a second pass to earn:
+**14/14 killed**, all nine earlier faults re-run against the final code. Two of
+them took a second pass to earn:
 
 - *Allow inconsistent total spend* **survived** the first run. The unbalanced
   ledger cases already present were caught by the `total_spend <=
@@ -255,15 +307,22 @@ the snapshot (**4**), consumed IDs omitted from the snapshot (**1**).
 ## 12. Known limitations
 
 - **`task_state` now has a narrower contract than "anything at all".** Only
-  immutable values and containers of them are accepted; an arbitrary mutable
-  object is refused. That is a real constraint on callers, and it lands on a
-  producer that does not exist yet — the task-state updater (§5.3, §10) must be
-  designed to return immutable state. Recorded in TASK-007 §3.1.1 so it is a
-  known constraint rather than a surprise.
+  exactly immutable values and ordinary containers of them are accepted; an
+  arbitrary mutable object, and any subclass of an accepted type, is refused.
+  That is a real constraint on callers, and it lands on a producer that does not
+  exist yet — the task-state updater (§5.3, §10) must be designed to return
+  immutable state. Recorded in TASK-007 §3.1.1 so it is a known constraint
+  rather than a surprise.
+- **No `Enum` may appear in `task_state`**, including this module's own
+  `RunStatus`. Blanket-accepting `Enum` is unsafe and narrowing it to specific
+  authorized types is a decision PR A should not make alone. If a later task
+  needs one, it can authorize that exact type.
 - **Freezing rebuilds containers on every snapshot.** A snapshot holds a frozen
   equivalent of the run's state, equal to it but not the same object. Auditors
   compare by value, so this costs nothing but is worth knowing.
-- **`TransitionRecord.execution` is untyped**, pending the execution step.
+- **`TransitionRecord.execution` must be `None`.** It is a reserved
+  placeholder; the authorized execution result type arrives with PR B. Nothing
+  in PR A can populate it, so nothing in PR A is blocked by this.
 - **Nothing constructs a `TransitionRecord`.** `history` is always empty until
   the loop exists.
 - **No terminal classification.** A run at its ceiling reports `RUNNING`,

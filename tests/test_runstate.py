@@ -7,6 +7,8 @@ classification, no loop.
 import doctest
 import unittest
 from decimal import Decimal
+from enum import Enum
+from types import MappingProxyType
 
 from radhanite import runstate as runstate_module
 from radhanite.money import Money
@@ -626,3 +628,303 @@ class RecursiveWalkTests(unittest.TestCase):
         supplied["loop"] = snap
         reachable = list(self._reachable(snap))
         self.assertEqual(sum(1 for v in reachable if v is snap), 1)
+
+
+# ── CODEX-PR030-01, remaining: the execution escape hatch ──────────────────
+
+class ExecutionPlaceholderTests(unittest.TestCase):
+    """`execution` accepted anything, which reopened every hole beside it.
+
+    A mutable payload is a live alias inside history; a `RunState` payload puts
+    history inside history. PR A implements no execution and no caller needs a
+    payload, so the smallest safe contract is that there isn't one yet.
+    """
+
+    def _transition(self, **overrides):
+        snap = a_run().snapshot()
+        fields = {"before": snap, "selection": a_selection(), "after": snap}
+        fields.update(overrides)
+        return TransitionRecord(**fields)
+
+    def test_none_is_accepted(self) -> None:
+        self.assertIsNone(self._transition().execution)
+        self.assertIsNone(self._transition(execution=None).execution)
+
+    def test_a_mutable_payload_is_rejected(self) -> None:
+        for payload in ([], {}, {"cost": "0.40"}, ["committed"], set(), bytearray()):
+            with self.assertRaises(ValueError):
+                self._transition(execution=payload)
+
+    def test_a_run_state_as_execution_is_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            self._transition(execution=a_run())
+
+    def test_a_snapshot_as_execution_is_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            self._transition(execution=a_run().snapshot())
+
+    def test_a_transition_as_execution_is_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            self._transition(execution=self._transition())
+
+    def test_even_an_immutable_payload_is_rejected(self) -> None:
+        # Not "freeze whatever arrives" — PR A has no authorized execution
+        # result type at all, and inventing one here would be PR B's schema
+        # arriving early under a different name.
+        for payload in ("committed", 1, Money("0.40"), ("committed",)):
+            with self.assertRaises(ValueError):
+                self._transition(execution=payload)
+
+    def test_caller_mutation_cannot_reach_an_existing_history_record(self) -> None:
+        payload = {"committed_cost": "0.40"}
+        with self.assertRaises(ValueError):
+            self._transition(execution=payload)
+        payload["committed_cost"] = "999.00"
+        # Nothing retained it, so there is nothing for the mutation to reach.
+        run = a_run(consumed_candidate_ids=["x"])
+        run = RunState(**{
+            **{n: getattr(run, n) for n in RunState.__dataclass_fields__},
+            "history": (self._transition(),),
+        })
+        self.assertIsNone(run.history[0].execution)
+
+
+# ── CODEX-PR030-02, remaining: isinstance trusted subclasses ───────────────
+
+class _IntWithBaggage(int):
+    def __init__(self, *_):
+        self.baggage = []
+
+
+class _StrWithBaggage(str):
+    def __init__(self, *_):
+        self.baggage = []
+
+
+class _FloatWithBaggage(float):
+    def __init__(self, *_):
+        self.baggage = []
+
+
+class _BytesWithBaggage(bytes):
+    def __init__(self, *_):
+        self.baggage = []
+
+
+class _DecimalWithBaggage(Decimal):
+    def __init__(self, *_):
+        self.baggage = []
+
+
+class _MutableValued(Enum):
+    LEDGER = ["entry"]
+
+
+class _WithExtraAttribute(Enum):
+    A = "a"
+
+    def __init__(self, _value):
+        self.baggage = []
+
+
+class ExactTypeFreezeTests(unittest.TestCase):
+    """`isinstance` trusts subclasses, and a subclass can carry a mutable payload.
+
+    `_IntWithBaggage(1)` passes `isinstance(x, int)` and is stored unchanged —
+    along with the list hanging off it, which the caller still owns.
+    """
+
+    def test_a_scalar_subclass_carrying_a_mutable_payload_is_rejected(self) -> None:
+        for smuggler in (_IntWithBaggage(1), _StrWithBaggage("x"),
+                         _FloatWithBaggage(1.5), _BytesWithBaggage(b"x"),
+                         _DecimalWithBaggage("1.5")):
+            with self.assertRaises(TypeError):
+                a_run(task_state=smuggler)
+
+    def test_a_scalar_subclass_is_rejected_inside_a_container_too(self) -> None:
+        with self.assertRaises(TypeError):
+            a_run(task_state={"evidence": [_IntWithBaggage(1)]})
+
+    def test_an_enum_member_with_a_mutable_value_is_rejected(self) -> None:
+        with self.assertRaises(TypeError):
+            a_run(task_state=_MutableValued.LEDGER)
+
+    def test_an_enum_member_with_a_mutable_attribute_is_rejected(self) -> None:
+        with self.assertRaises(TypeError):
+            a_run(task_state=_WithExtraAttribute.A)
+
+    def test_no_enum_member_is_blanket_accepted(self) -> None:
+        # Including this module's own, which is safe — the rule is "no arbitrary
+        # Enum", and narrowing it to specific authorized types is PR B's call.
+        with self.assertRaises(TypeError):
+            a_run(task_state=RunStatus.RUNNING)
+
+    def test_exact_builtin_scalars_are_still_accepted(self) -> None:
+        for value in (None, True, False, 0, 42, -1, 1.5, 2j, "text", b"bytes",
+                      Decimal("1.5")):
+            self.assertEqual(a_run(task_state=value).task_state, value)
+
+    def test_exact_project_value_types_are_still_accepted(self) -> None:
+        for value in (Money("1.00"), Probability("0.5"),
+                      RunPolicy(max_capability_steps=3)):
+            self.assertEqual(a_run(task_state=value).task_state, value)
+
+    def test_a_project_value_subclass_is_not_trusted(self) -> None:
+        class _MoneyWithBaggage(Money):
+            pass
+
+        with self.assertRaises(TypeError):
+            a_run(task_state=_MoneyWithBaggage("1.00"))
+
+    def test_nested_ordinary_containers_still_freeze(self) -> None:
+        run = a_run(task_state={"a": [1, {"b": {2}}], "c": (3,), "d": frozenset({4})})
+        self.assertIsInstance(run.task_state["a"], tuple)
+        self.assertIsInstance(run.task_state["a"][1]["b"], frozenset)
+        self.assertIsInstance(run.task_state["c"], tuple)
+        self.assertIsInstance(run.task_state["d"], frozenset)
+
+    def test_a_string_subclass_is_not_silently_split_into_characters(self) -> None:
+        # A str subclass is a Sequence. Converting it would turn "abc" into
+        # ("a", "b", "c") and call that a faithful record.
+        with self.assertRaises(TypeError):
+            a_run(task_state=_StrWithBaggage("abc"))
+
+    def test_cyclic_input_still_fails_deterministically(self) -> None:
+        cyclic = {"evidence": []}
+        cyclic["evidence"].append(cyclic)
+        for _ in range(3):
+            with self.assertRaises(ValueError):
+                a_run(task_state=cyclic)
+
+    def test_a_frozen_state_can_be_refrozen(self) -> None:
+        # `snapshot()` re-runs the freeze over already-frozen state, so the
+        # exact-type rule has to admit its own output.
+        run = a_run(task_state={"a": [1], "b": {2}, "c": "s"})
+        self.assertEqual(run.snapshot().task_state, run.task_state)
+
+
+class TransitiveImmutabilityAuditTests(unittest.TestCase):
+    """One walk over everything reachable, rather than a rule per field."""
+
+    _SAFE_LEAVES = (
+        type(None), bool, int, float, complex, str, bytes, Decimal,
+        Money, Probability, RunPolicy, RunStatus, SelectionOutcome,
+    )
+    _MUTABLE = (list, dict, set, bytearray)
+
+    def _audit(self, value, seen=None, path="root"):
+        """Yield (path, complaint) for everything reachable that is not safe."""
+        seen = set() if seen is None else seen
+        if id(value) in seen:
+            yield path, f"cycle back to a {type(value).__name__}"
+            return
+        seen = seen | {id(value)}
+
+        if isinstance(value, self._MUTABLE):
+            yield path, f"mutable {type(value).__name__}"
+            return
+        if type(value) in self._SAFE_LEAVES:
+            return
+        if hasattr(value, "__dict__"):
+            yield path, f"{type(value).__name__} carries a mutable __dict__"
+            return
+
+        if hasattr(value, "__dataclass_fields__"):
+            for name in value.__dataclass_fields__:
+                yield from self._audit(getattr(value, name), seen, f"{path}.{name}")
+        elif isinstance(value, (tuple, frozenset)):
+            for index, item in enumerate(value):
+                yield from self._audit(item, seen, f"{path}[{index}]")
+        elif isinstance(value, MappingProxyType):
+            for key, item in value.items():
+                yield from self._audit(key, seen, f"{path}.key({key!r})")
+                yield from self._audit(item, seen, f"{path}[{key!r}]")
+        else:
+            yield path, f"unaudited {type(value).__name__}"
+
+    def _run_with_history(self):
+        run = a_run(task_state={"evidence": [{"claim": "a"}], "n": {1, 2}})
+        snap = run.snapshot()
+        record = TransitionRecord(before=snap, selection=a_selection(), after=snap)
+        return RunState(**{
+            **{n: getattr(run, n) for n in RunState.__dataclass_fields__},
+            "history": (record,),
+        })
+
+    def test_nothing_mutable_is_reachable_from_a_run(self) -> None:
+        self.assertEqual(list(self._audit(self._run_with_history())), [])
+
+    def test_nothing_mutable_is_reachable_from_a_snapshot(self) -> None:
+        self.assertEqual(list(self._audit(self._run_with_history().snapshot())), [])
+
+    def test_no_run_state_is_reachable_from_history(self) -> None:
+        run = self._run_with_history()
+        for value in self._everything(run.history):
+            self.assertNotIsInstance(value, RunState)
+
+    def test_no_cycle_is_reachable(self) -> None:
+        run = self._run_with_history()
+        complaints = [c for _, c in self._audit(run) if "cycle" in c]
+        self.assertEqual(complaints, [])
+
+    def test_no_mutable_execution_payload_is_reachable(self) -> None:
+        run = self._run_with_history()
+        for record in run.history:
+            self.assertIsNone(record.execution)
+        self.assertEqual(
+            [p for p, _ in self._audit(run) if ".execution" in p], []
+        )
+
+    def test_the_shapes_the_audit_forbids_cannot_be_constructed(self) -> None:
+        # The walk proves a *valid* run is clean. This proves the invalid ones
+        # never get built, which is the half a walk over good data cannot show.
+        snap = a_run().snapshot()
+        with self.assertRaises(ValueError):
+            TransitionRecord(before=snap, selection=a_selection(), after=snap,
+                             execution={"committed": ["0.40"]})
+        with self.assertRaises(ValueError):
+            TransitionRecord(before=snap, selection=a_selection(), after=snap,
+                             execution=a_run())
+        with self.assertRaises(TypeError):
+            a_run(task_state={"smuggled": _IntWithBaggage(1)})
+
+    def test_the_audit_would_catch_an_unvalidated_record(self) -> None:
+        # Built behind the constructor's back, so the walk is tested against the
+        # defect itself rather than against the guard that now prevents it.
+        snap = a_run().snapshot()
+        smuggled = TransitionRecord.__new__(TransitionRecord)
+        for name, value in (("before", snap), ("selection", a_selection()),
+                            ("after", snap), ("execution", {"live": ["alias"]})):
+            object.__setattr__(smuggled, name, value)
+        complaints = list(self._audit(smuggled))
+        self.assertTrue(complaints)
+        self.assertTrue(any(".execution" in path for path, _ in complaints))
+
+    def test_the_audit_catches_what_it_claims_to(self) -> None:
+        # The walker is a test fixture, so it needs its own proof: point it at
+        # things that ARE unsafe and confirm it complains.
+        mutable = ["live"]
+        self.assertTrue(list(self._audit(mutable)))
+        self.assertTrue(list(self._audit({"k": mutable})))
+        self.assertTrue(list(self._audit((1, mutable))))
+        self.assertTrue(list(self._audit(_IntWithBaggage(1))))
+        cyclic = []
+        cyclic.append(cyclic)
+        self.assertTrue(list(self._audit((cyclic,))))
+
+    def _everything(self, value, seen=None):
+        seen = set() if seen is None else seen
+        if id(value) in seen:
+            return
+        seen.add(id(value))
+        yield value
+        if hasattr(value, "__dataclass_fields__"):
+            for name in value.__dataclass_fields__:
+                yield from self._everything(getattr(value, name), seen)
+        elif isinstance(value, (tuple, list, frozenset, set)):
+            for item in value:
+                yield from self._everything(item, seen)
+        elif hasattr(value, "items"):
+            for key, item in value.items():
+                yield from self._everything(key, seen)
+                yield from self._everything(item, seen)

@@ -198,18 +198,32 @@ Authorized by the human product owner, scope limited strictly to the two
 findings. Implemented on the same branch and pushed to the same pull request;
 **§7.5 — the corrections are themselves subject to review.**
 
+Corrected in **two rounds**. The first round closed each finding at the level it
+was raised; the product owner then identified that both remained open one level
+down, and authorized a second round.
+
+### Round 1 — `ce17ec3`
+
 | Finding | Resolution |
 |---|---|
 | `CODEX-PR030-01` | Invariants moved into `__post_init__` on `RunState`, `RunSnapshot` and `TransitionRecord`, through one shared `_normalise` implementation. `begin_run()` retains only the derivation of `total_spend` and delegates everything else |
 | `CODEX-PR030-02` | `task_state` is frozen structurally at construction: immutable values pass through, mappings/sequences/sets become immutable equivalents, cycles are refused with `ValueError`, and anything unfreezable is refused with `TypeError` rather than aliased |
+
+### Round 2 — the same two findings, one level down
+
+| Finding | What round 1 left open | Resolution |
+|---|---|---|
+| `CODEX-PR030-01` | `TransitionRecord.execution` still accepted **anything**, reopening through a field what the type checks had just closed: a mutable payload is a caller-owned object inside an audit record, and a `RunState` payload puts a history inside a history | **`execution` must be `None` in PR A.** A reserved placeholder; the authorized execution result type arrives with PR B. Refusing outright is smaller and less speculative than inventing a schema to freeze |
+| `CODEX-PR030-02` | Atoms were matched with `isinstance`, which trusts subclasses — `class Smuggler(int)` carrying a list passed the check and was stored by reference, list and all. `Enum` was blanket-accepted, and a member's `value` can be mutable. A `str` subclass is a `Sequence`, so `"abc"` was silently recorded as `("a", "b", "c")` | **Exact-type matching throughout.** Only exact `None`/`bool`/`int`/`float`/`complex`/`str`/`bytes`/`Decimal`/`Money`/`Probability`/`RunPolicy` pass through; `dict`/`mappingproxy`, `list`/`tuple`, `set`/`frozenset` are rebuilt immutable; **no `Enum` is accepted**; everything else, subclasses included, is refused |
 
 Also corrected: TASK-007 §3.5's claimed ambiguity is **retracted** and replaced
 with §3.1.1, "Opacity is not aliasing". The one question that genuinely remains
 open is narrower — the task that will *produce* `task_state` does not exist yet
 and must produce immutable state.
 
-**Verification:** 29 regression tests written first, failing 25/75 against the
-rejected implementation; 602 tests pass after; 9 deliberate faults introduced
-one at a time, all 9 caught. Two of the nine survived a first pass and are
+**Verification:** 56 regression tests written first across the two rounds —
+failing 25/75 against the rejected implementation, then 14/102 against the
+round-1 implementation. **629 tests pass after.** 14 deliberate faults
+introduced one at a time, **all 14 caught**. Two survived a first pass and are
 recorded, with the test weaknesses they exposed, in
 `docs/pr_explanations/PR-030_TASK-007_EXPLANATION.md` §10.
