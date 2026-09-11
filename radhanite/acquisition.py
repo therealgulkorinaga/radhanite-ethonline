@@ -131,9 +131,89 @@ class CapabilityCatalog:
     TASK-007 §5.2 hands an executor the candidate TASK-006 selected. The
     executor needs the descriptor behind it, and `Candidate` deliberately cannot
     carry one — so the mapping lives here, owned by the layer that made it.
+
+    **Every construction path validates.** An earlier revision enforced the
+    invariants in `acquire` and nothing in the constructor, so a caller could
+    build a catalogue whose lookup returned a descriptor contradicting its own
+    candidate. A type with one safe route and one unsafe route has an unsafe
+    route, and the safe one is decoration — `CODEX-PR029-01`.
+
+    The invariant the checks exist to guarantee:
+
+        descriptor_for(c.candidate_id) can never return a descriptor
+        inconsistent with c
+
+    >>> d = CapabilityDescriptor("a", "A", Money("0.10"), "ref")
+    >>> c = normalize(d, expected_post_action_success_probability=Probability("0.6"))
+    >>> CapabilityCatalog(entries=[(c, d)]).descriptor_for("a").name
+    'A'
     """
 
     entries: tuple[tuple[Candidate, CapabilityDescriptor], ...]
+
+    def __post_init__(self) -> None:
+        supplied = self.entries
+        if not isinstance(supplied, Sequence) or isinstance(supplied, (str, bytes)):
+            raise TypeError(
+                "entries must be an ordered sequence of (candidate, descriptor) "
+                f"pairs, not {type(supplied).__name__}. Selection is order-"
+                "independent, but the run record is not."
+            )
+
+        frozen = tuple(supplied)
+
+        for position, entry in enumerate(frozen):
+            if not isinstance(entry, tuple) or len(entry) != 2:
+                raise TypeError(
+                    f"entries[{position}] must be a (candidate, descriptor) pair."
+                )
+            candidate, descriptor = entry
+            if not isinstance(candidate, Candidate):
+                raise TypeError(
+                    f"entries[{position}][0] must be a Candidate, got "
+                    f"{type(candidate).__name__}."
+                )
+            if not isinstance(descriptor, CapabilityDescriptor):
+                raise TypeError(
+                    f"entries[{position}][1] must be a CapabilityDescriptor, got "
+                    f"{type(descriptor).__name__}."
+                )
+            if candidate.candidate_id != descriptor.descriptor_id:
+                # The identity rule in `normalize` is that they are the same.
+                # A pair that disagrees would make the lookup return a
+                # descriptor for something else entirely.
+                raise ValueError(
+                    f"entries[{position}] pairs candidate "
+                    f"{candidate.candidate_id!r} with descriptor "
+                    f"{descriptor.descriptor_id!r}. They must be the same "
+                    "identifier — TASK-008's identity rule."
+                )
+            if candidate.cost != descriptor.cost:
+                # The decision is made against the candidate's cost and the
+                # money is committed against the descriptor's. A mismatch means
+                # the run would buy at a price it never weighed.
+                raise ValueError(
+                    f"entries[{position}] ({candidate.candidate_id!r}) prices the "
+                    f"candidate at {candidate.cost} and the descriptor at "
+                    f"{descriptor.cost}. They must be identical, or the run "
+                    "would buy at a price the economics never saw."
+                )
+
+        seen: dict[str, int] = {}
+        for position, (candidate, _) in enumerate(frozen):
+            first = seen.get(candidate.candidate_id)
+            if first is not None:
+                raise ValueError(
+                    f"Duplicate capability identifier {candidate.candidate_id!r} "
+                    f"at positions {first} and {position}. Identifiers must be "
+                    "unique within one offer — TASK-006 §2.2."
+                )
+            seen[candidate.candidate_id] = position
+
+        # Detach from whatever the caller handed in. A frozen dataclass stops
+        # the field being reassigned; it does not stop a list inside it being
+        # appended to by anyone still holding it.
+        object.__setattr__(self, "entries", frozen)
 
     @property
     def candidates(self) -> tuple[Candidate, ...]:
@@ -228,7 +308,6 @@ def acquire(
         )
 
     entries: list[tuple[Candidate, CapabilityDescriptor]] = []
-    seen: dict[str, int] = {}
 
     for position, offer in enumerate(offers):
         if not isinstance(offer, tuple) or len(offer) != 2:
@@ -236,19 +315,11 @@ def acquire(
                 f"offers[{position}] must be a (descriptor, probability) pair."
             )
         descriptor, probability = offer
+        entries.append((
+            normalize(descriptor, expected_post_action_success_probability=probability),
+            descriptor,
+        ))
 
-        candidate = normalize(
-            descriptor, expected_post_action_success_probability=probability
-        )
-
-        first = seen.get(candidate.candidate_id)
-        if first is not None:
-            raise ValueError(
-                f"Duplicate capability identifier {candidate.candidate_id!r} at "
-                f"positions {first} and {position}. Identifiers must be unique "
-                "within one offer — TASK-006 §2.2."
-            )
-        seen[candidate.candidate_id] = position
-        entries.append((candidate, descriptor))
-
-    return CapabilityCatalog(entries=tuple(entries))
+    # Duplicates, pairing and freezing are the catalogue's own checks. Repeating
+    # them here would be a second place for them to drift out of agreement.
+    return CapabilityCatalog(entries=entries)

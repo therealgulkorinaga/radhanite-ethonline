@@ -242,6 +242,108 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(acquire(an_offer()).candidates, acquire(an_offer()).candidates)
 
 
+class DirectCatalogConstructionTests(unittest.TestCase):
+    """CODEX-PR029-01 — one validated path, not two paths of differing safety.
+
+    `acquire()` enforced the invariants; the public constructor enforced
+    nothing, so a caller could build a catalogue whose lookup returned a
+    descriptor inconsistent with its candidate. A type with one safe route and
+    one unsafe route has an unsafe route.
+    """
+
+    def _pair(self, identifier="a", cost=Money("0.10")):
+        descriptor = a_descriptor(descriptor_id=identifier, cost=cost)
+        candidate = normalize(
+            descriptor, expected_post_action_success_probability=Probability("0.80")
+        )
+        return candidate, descriptor
+
+    def test_a_valid_direct_construction_is_accepted(self) -> None:
+        catalog = CapabilityCatalog(entries=[self._pair()])
+        self.assertEqual(len(catalog.candidates), 1)
+        self.assertEqual(catalog.descriptor_for("a").descriptor_id, "a")
+
+    def test_entries_are_frozen_even_when_a_list_is_passed(self) -> None:
+        catalog = CapabilityCatalog(entries=[self._pair()])
+        self.assertIsInstance(catalog.entries, tuple)
+        with self.assertRaises(AttributeError):
+            catalog.entries.append(None)
+
+    def test_mutating_the_original_list_afterwards_changes_nothing(self) -> None:
+        supplied = [self._pair("a")]
+        catalog = CapabilityCatalog(entries=supplied)
+        supplied.append(self._pair("b"))
+        self.assertEqual(len(catalog.candidates), 1)
+        with self.assertRaises(KeyError):
+            catalog.descriptor_for("b")
+
+    def test_duplicate_candidate_ids_are_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            CapabilityCatalog(entries=[self._pair("a"), self._pair("a")])
+
+    def test_the_duplicate_refusal_names_both_positions(self) -> None:
+        with self.assertRaises(ValueError) as raised:
+            CapabilityCatalog(
+                entries=[self._pair("a"), self._pair("b"), self._pair("a")]
+            )
+        self.assertIn("positions 0 and 2", str(raised.exception))
+
+    def test_an_identifier_mismatch_is_rejected(self) -> None:
+        candidate, descriptor = self._pair("a")
+        other = a_descriptor(descriptor_id="different", cost=candidate.cost)
+        with self.assertRaises(ValueError):
+            CapabilityCatalog(entries=[(candidate, other)])
+
+    def test_a_cost_mismatch_is_rejected(self) -> None:
+        candidate, _ = self._pair("a", Money("0.10"))
+        dearer = a_descriptor(descriptor_id="a", cost=Money("9.99"))
+        with self.assertRaises(ValueError):
+            CapabilityCatalog(entries=[(candidate, dearer)])
+
+    def test_a_malformed_entry_is_rejected(self) -> None:
+        candidate, descriptor = self._pair()
+        for malformed in (
+            [candidate],
+            [(candidate,)],
+            [(candidate, descriptor, descriptor)],
+            [(descriptor, candidate)],
+            ["not-a-pair"],
+            [(None, None)],
+        ):
+            with self.subTest(entries=malformed):
+                with self.assertRaises((TypeError, ValueError)):
+                    CapabilityCatalog(entries=malformed)
+
+    def test_an_unordered_collection_of_entries_is_rejected(self) -> None:
+        with self.assertRaises(TypeError):
+            CapabilityCatalog(entries={self._pair()})
+
+    def test_an_empty_catalog_is_valid(self) -> None:
+        self.assertEqual(CapabilityCatalog(entries=[]).candidates, ())
+
+    def test_lookup_can_never_contradict_its_candidate(self) -> None:
+        # The property the invariants exist to guarantee.
+        catalog = CapabilityCatalog(entries=[self._pair("a"), self._pair("b", Money("2.00"))])
+        for candidate in catalog.candidates:
+            descriptor = catalog.descriptor_for(candidate.candidate_id)
+            self.assertEqual(candidate.candidate_id, descriptor.descriptor_id)
+            self.assertEqual(candidate.cost, descriptor.cost)
+
+    def test_unknown_lookup_still_fails_deterministically(self) -> None:
+        catalog = CapabilityCatalog(entries=[self._pair("a")])
+        with self.assertRaises(KeyError):
+            catalog.descriptor_for("b")
+
+    def test_acquire_still_behaves_exactly_as_before(self) -> None:
+        catalog = acquire(an_offer())
+        self.assertEqual(len(catalog.candidates), 1)
+        self.assertEqual(
+            catalog.descriptor_for("second-opinion-001").source_reference,
+            "opaque-handle-abc",
+        )
+        self.assertIsInstance(catalog.entries, tuple)
+
+
 class DoesNothingElseTests(unittest.TestCase):
     def test_it_selects_nothing(self) -> None:
         exported = set(vars(acquisition_module))

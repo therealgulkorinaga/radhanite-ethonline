@@ -4,7 +4,7 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `tasks/TASK-008_CAPABILITY_ACQUISITION.md`, `tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md`, `docs/ARCHITECTURE.md`, `docs/AI_BUILD_GOVERNANCE.md`
 **Date issued:** 2026-09-11
-**Outcome:** _pending — review not yet run_
+**Outcome:** **Approved with corrections** — `CODEX-PR029-01`, corrected
 
 ---
 
@@ -128,12 +128,52 @@ End with exactly ONE outcome, per §7.2:
 
 ## 2. Findings returned
 
-_Pending. Codex has not yet reviewed this pull request._
+**The reviewer's verbatim response was not supplied** to the agent writing this
+record. What follows is **as relayed by the human product owner**. §0 is
+unaffected: the prompt in §1 was committed before the review ran.
+
+### `CODEX-PR029-01` — the catalogue had two construction paths, one unsafe
+
+**File:** `radhanite/acquisition.py` — `CapabilityCatalog`
+**Departs from:** TASK-008's deterministic lookup contract
+
+`CapabilityCatalog` is publicly constructible and accepted arbitrary entries
+without enforcing the invariants `acquire()` enforces. A caller could construct
+mutable catalogue state, duplicate candidate identifiers, a candidate paired
+with a mismatched descriptor identifier, or a candidate whose cost disagreed
+with its descriptor's.
+
+That breaks the deterministic, immutable candidate → descriptor lookup the type
+exists to provide.
+
+**Required correction:** make every valid construction path safe. Either the
+constructor validates and freezes its own input, or direct construction becomes
+private behind a single validated factory — **not one safe `acquire()` path and
+one unsafe public constructor.**
+
+The prompt's Part D item 12 asked about exactly this, and the answer was that
+the catalogue was mutable and unvalidated through its public constructor.
 
 ## 3. Outcome
 
-_Pending._
+**Approved with corrections** — `CODEX-PR029-01`.
+
+The known-price invariant, the identity rule, the two-type separation and
+`Candidate`'s neutrality were not faulted.
 
 ## 4. Corrections
 
-_None yet._
+Public construction kept; **the constructor validates**. One type, one set of
+checks, reachable however a caller arrives. It refuses non-sequences and
+malformed entries, requires the identifier and the cost to match between
+candidate and descriptor, refuses duplicates naming both positions, and detaches
+from caller-owned input by storing a tuple.
+
+`acquire()` now delegates rather than repeating the checks — two places
+enforcing one rule is two places for it to drift.
+
+Thirteen regression tests, written first and failing against the uncorrected
+implementation. Five mutations, all caught.
+
+**Corrections are themselves subject to review** (`AI_BUILD_GOVERNANCE.md`
+§7.5). This corrective commit has not been reviewed.

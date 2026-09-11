@@ -86,6 +86,9 @@ capability type.
 An unknown identifier raises `KeyError` rather than returning something
 plausible: a selection can only be executed against the catalogue it came from.
 
+**Every construction path validates** — see §14a. The constructor enforces the
+invariants, `acquire` delegates to it, and there is no second route.
+
 ## 6. What goes into the system
 
 Descriptors from some source, each with a declared expected post-action
@@ -131,11 +134,12 @@ mutations below establish that.
 
 ```
 $ python3.12 -m unittest discover -q
-Ran 514 tests in 0.14s
+Ran 527 tests in 0.14s
 OK
 ```
 
-**476 existing, unchanged, plus 38 new.**
+**476 existing, unchanged, plus 51 new** — 38 with the original work, 13 more
+with the correction in §14a.
 
 ### Deliberate faults, all caught
 
@@ -194,6 +198,77 @@ byte-identical to `main` apart from `__init__.py`'s exports.
 ## 14. Deferred to future tasks
 
 TASK-009 through TASK-014. TASK-008 §6.1.
+
+## 14a. Correction after review — `CODEX-PR029-01`
+
+### The finding
+
+`CapabilityCatalog` was publicly constructible and **validated nothing**.
+`acquire()` enforced the invariants; the constructor enforced none of them, so a
+caller could build a catalogue with a mutable backing list, duplicate
+identifiers, or — worst — a candidate paired with a descriptor for something
+else.
+
+That breaks the property the type exists for:
+
+> `descriptor_for(c.candidate_id)` can never return a descriptor inconsistent
+> with `c`.
+
+**A type with one safe route and one unsafe route has an unsafe route**, and the
+safe one is decoration.
+
+### Constructor policy adopted
+
+**Public construction is kept, and the constructor validates.** Not a private
+type with a factory — one type, one set of checks, reachable however you arrive.
+
+On every construction, `CapabilityCatalog`:
+
+- refuses anything that is not an ordered sequence;
+- refuses a malformed entry, or one whose members are the wrong types or in the
+  wrong order;
+- requires `candidate.candidate_id == descriptor.descriptor_id`, which is
+  TASK-008's identity rule;
+- requires `candidate.cost == descriptor.cost` **exactly** — a mismatch means
+  the run would buy at a price the economics never weighed;
+- refuses duplicate identifiers, naming both positions;
+- **detaches from the caller's input**, storing a tuple. A frozen dataclass
+  stops the field being reassigned; it does not stop a list inside it being
+  appended to by whoever still holds it.
+
+`acquire()` now builds pairs and **delegates**. Its own duplicate check was
+removed rather than kept alongside the constructor's — two places enforcing one
+rule is two places for it to drift.
+
+### Failing state before the correction
+
+Written first, run against the code as it stood:
+
+```
+Ran 51 tests — FAILED (failures=13)
+```
+
+**13 failures across 8 test methods** — every mutability, duplicate, mismatch
+and malformed-entry case, all through the public constructor.
+
+### Deliberate faults, all caught
+
+Bytecode writing disabled.
+
+| Fault introduced | Result |
+|---|---|
+| Store the caller's mutable list directly | **4 failures** |
+| Remove duplicate-ID validation | **3 failures** |
+| Allow an identifier mismatch | **1 failure** |
+| Allow a cost mismatch | **1 failure** |
+| Return the wrong descriptor from `descriptor_for` | **4 failures** |
+
+### Unchanged
+
+`Candidate`, `CapabilityDescriptor` semantics, `normalize`, the known-price
+invariant, benchmark-supplied probability handling, TASK-006, TASK-007, and the
+dependency count of zero. No runtime scope was added — the correction makes an
+existing boundary safe rather than widening it.
 
 ## 15. How to explain this to a judge
 
