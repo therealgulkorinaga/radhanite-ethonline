@@ -274,6 +274,25 @@ revision put them only in `begin_run` while exporting a directly constructible
 `RunState`; `CODEX-PR030-01` rejected that, on the grounds that one safe path
 and one unsafe path is one unsafe path.
 
+**Anything retained is matched by exact type, never by `isinstance`.** Every
+record here is frozen, but a frozen *subclass* may add a field holding a list —
+and a frozen reference to a list is not an immutable list. A subclass accepted
+as a history member is caller-owned mutable state inside an audit record: the
+defect §3.1.1 closed for `task_state`, arriving through the type system rather
+than past it. The same holds one level down, where a `str` subclass makes a
+perfectly good candidate identifier and a perfectly good place to keep mutable
+state.
+
+| Matched exactly | `Money`, `Probability`, `RunPolicy`, `RunStatus`, `RunSnapshot`, `TransitionRecord`, `Selection`, `str` identifiers, `int` step counts |
+|---|---|
+| **Matched by `isinstance`** | **the input containers only** — a `history` sequence or a `consumed_candidate_ids` collection is read once and rebuilt as a tuple, never retained, so a subclass of it changes nothing |
+
+Subclasses are **refused, not inspected**. Deciding which ones happen to be
+safe would mean walking their fields at construction and would still be wrong
+the moment one of them grew a field. Matching `int` exactly also subsumes the
+old `bool` special case: `True` is an `int` by inheritance, and is no longer a
+count of one.
+
 **`task_state` is frozen, not aliased** — §3.1.1.
 
 **`TransitionRecord.execution` is a reserved placeholder and must be `None` in

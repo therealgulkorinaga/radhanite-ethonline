@@ -198,9 +198,11 @@ Authorized by the human product owner, scope limited strictly to the two
 findings. Implemented on the same branch and pushed to the same pull request;
 **§7.5 — the corrections are themselves subject to review.**
 
-Corrected in **two rounds**. The first round closed each finding at the level it
-was raised; the product owner then identified that both remained open one level
-down, and authorized a second round.
+Corrected in **three rounds**. Each round closed the findings at the level they
+were raised; the product owner then identified that they remained open one level
+further down, and authorized the next. The pattern is worth naming: each round
+fixed a *rule*, and the round after found the rule being applied through a check
+that trusted subclasses.
 
 ### Round 1 — `ce17ec3`
 
@@ -216,14 +218,40 @@ down, and authorized a second round.
 | `CODEX-PR030-01` | `TransitionRecord.execution` still accepted **anything**, reopening through a field what the type checks had just closed: a mutable payload is a caller-owned object inside an audit record, and a `RunState` payload puts a history inside a history | **`execution` must be `None` in PR A.** A reserved placeholder; the authorized execution result type arrives with PR B. Refusing outright is smaller and less speculative than inventing a schema to freeze |
 | `CODEX-PR030-02` | Atoms were matched with `isinstance`, which trusts subclasses — `class Smuggler(int)` carrying a list passed the check and was stored by reference, list and all. `Enum` was blanket-accepted, and a member's `value` can be mutable. A `str` subclass is a `Sequence`, so `"abc"` was silently recorded as `("a", "b", "c")` | **Exact-type matching throughout.** Only exact `None`/`bool`/`int`/`float`/`complex`/`str`/`bytes`/`Decimal`/`Money`/`Probability`/`RunPolicy` pass through; `dict`/`mappingproxy`, `list`/`tuple`, `set`/`frozenset` are rebuilt immutable; **no `Enum` is accepted**; everything else, subclasses included, is refused |
 
+### Round 3 — `CODEX-PR030-01`, one level further down
+
+Round 2 applied exact-type matching to opaque `task_state` and left the audit
+records themselves on `isinstance`. A frozen record's subclass is not immutable:
+
+```python
+@dataclass(frozen=True)
+class _TransitionWithBaggage(TransitionRecord):
+    baggage: list = field(default_factory=list)   # frozen reference, live list
+```
+
+Accepted as a history member, that list is caller-owned mutable state inside an
+audit record. Separately, `isinstance(x, str)` accepted a `str` subclass as a
+consumed candidate identifier, and a `str` subclass is a perfectly good place to
+keep one.
+
+| Resolution | |
+|---|---|
+| Matched exactly | `Money`, `Probability`, `RunPolicy`, `RunStatus`, `RunSnapshot`, `TransitionRecord`, `Selection`, `str` identifiers, `int` step counts — through one shared `_exactly()` helper |
+| Left as `isinstance` | **the input containers only** — a `history` sequence or `consumed_candidate_ids` collection is read once and rebuilt as a tuple, never retained, so a subclass of it changes nothing |
+| Subclasses | **refused, not inspected.** Deciding which are safe would mean walking their fields at construction, and would still be wrong the moment one grew a field |
+
+Matching `int` exactly subsumes the old `bool` special case: `True` is an `int`
+by inheritance, so it is now excluded by the general rule rather than a clause
+of its own.
+
 Also corrected: TASK-007 §3.5's claimed ambiguity is **retracted** and replaced
 with §3.1.1, "Opacity is not aliasing". The one question that genuinely remains
 open is narrower — the task that will *produce* `task_state` does not exist yet
 and must produce immutable state.
 
-**Verification:** 56 regression tests written first across the two rounds —
-failing 25/75 against the rejected implementation, then 14/102 against the
-round-1 implementation. **629 tests pass after.** 14 deliberate faults
-introduced one at a time, **all 14 caught**. Two survived a first pass and are
-recorded, with the test weaknesses they exposed, in
+**Verification:** 79 regression tests written first across the three rounds —
+failing 25/75 against the rejected implementation, 14/102 against round 1, and
+9/125 against round 2. **652 tests pass after.** 18 deliberate faults introduced
+one at a time, **all 18 caught**. Two survived a first pass and are recorded,
+with the test weaknesses they exposed, in
 `docs/pr_explanations/PR-030_TASK-007_EXPLANATION.md` §10.

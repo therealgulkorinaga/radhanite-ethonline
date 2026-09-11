@@ -19,7 +19,7 @@ model that quietly did any of them would be the loop wearing a different name.
 | File | |
 |---|---|
 | `radhanite/runstate.py` | **New.** The §3 state model |
-| `tests/test_runstate.py` | **New.** 102 tests |
+| `tests/test_runstate.py` | **New.** 125 tests |
 | `radhanite/__init__.py` | Exports |
 | `tasks/TASK-007_CAPABILITY_RUN_LOOP.md` | §3.1.1 opacity is not aliasing; §3.4 what PR A delivered; **§3.5 a retraction** |
 | `docs/reviews/PR-030_...`, `docs/pr_explanations/PR-030_...`, `docs/reviews/README.md` | Review prompt, this document, index row |
@@ -87,6 +87,36 @@ record an auditor actually reads. `TransitionRecord` checks that `before` and
 `after` are snapshots and `selection` is a `Selection`: a transition holding a
 `RunState` would put a history inside a history, which is the recursion §3.3
 exists to prevent.
+
+### Anything retained is matched by exact type
+
+The first two rounds typed the record members with `isinstance`, which trusts
+subclasses — and a frozen record's subclass is not immutable:
+
+```python
+@dataclass(frozen=True)
+class _TransitionWithBaggage(TransitionRecord):
+    baggage: list = field(default_factory=list)   # frozen reference, live list
+```
+
+Accepted as a history member, that list is caller-owned mutable state inside an
+audit record — exactly what the `task_state` freeze closed, arriving through the
+type system rather than past it. One level down, `isinstance(x, str)` accepted a
+`str` subclass as a consumed candidate identifier, and a `str` subclass is a
+perfectly good place to keep a list.
+
+| Matched exactly | `Money`, `Probability`, `RunPolicy`, `RunStatus`, `RunSnapshot`, `TransitionRecord`, `Selection`, `str` identifiers, `int` step counts |
+|---|---|
+| **Left as `isinstance`** | **the input containers only** — a `history` sequence or a `consumed_candidate_ids` collection is read once and rebuilt as a tuple, never retained, so a subclass of it changes nothing |
+
+One shared `_exactly(value, expected, label)` helper does all of it, so the rule
+is stated once. Subclasses are **refused, not inspected**: deciding which ones
+happen to be safe would mean walking their fields at construction, and would
+still be wrong the moment one grew a field.
+
+Matching `int` exactly also subsumes the old `bool` special case — `True` is an
+`int` by inheritance, so it is excluded by the same rule rather than by a
+clause of its own.
 
 ### `TransitionRecord.execution` is reserved, and must be `None`
 
@@ -229,8 +259,8 @@ Ran 75 tests in 0.009s
 FAILED (failures=25)
 ```
 
-**Before the final corrections** — 27 further regression tests, run against the
-first-correction implementation:
+**Before round 2** — 27 further regression tests, run against the round-1
+implementation:
 
 ```
 $ PYTHONDONTWRITEBYTECODE=1 python3.12 -m unittest tests.test_runstate -q
@@ -240,18 +270,31 @@ FAILED (failures=14)
 
 Seven in `ExecutionPlaceholderTests`, six in `ExactTypeFreezeTests`, and one in
 `TransitiveImmutabilityAuditTests` — the one that ties the structural walk to
-the constructor. Nothing outside the new classes regressed in either round,
-which is what shows the corrections are additive rather than a redesign.
+the constructor.
+
+**Before round 3** — 23 further regression tests, run against the round-2
+implementation:
+
+```
+$ PYTHONDONTWRITEBYTECODE=1 python3.12 -m unittest tests.test_runstate -q
+Ran 125 tests in 0.015s
+FAILED (failures=9)
+```
+
+Five in `ExactAuditMemberTests`, three in `ExactConsumedIdentifierTests`, one in
+`SubclassInjectionAuditTests`. Nothing outside the new classes regressed in any
+of the three rounds, which is what shows the corrections are additive rather
+than a redesign.
 
 **After:**
 
 ```
 $ python3.12 -m unittest discover -q
-Ran 629 tests in 0.15s
+Ran 652 tests in 0.16s
 OK
 ```
 
-**527 existing, unchanged, plus 102 new.**
+**527 existing, unchanged, plus 125 new.**
 
 ### Deliberate faults, all caught
 
@@ -275,10 +318,14 @@ the correction extended to:
 | Allow a `RunState` as `execution` | **2** |
 | Revert exact-type atom matching to `isinstance` | **5** |
 | Accept arbitrary `Enum` members | **3** |
-| Accept a scalar subclass carrying a mutable payload | **4** |
+| Accept a scalar subclass carrying a mutable payload | **5** |
+| Revert consumed-ID validation to `isinstance(str)` | **5** |
+| Allow a `TransitionRecord` subclass into history | **3** |
+| Allow a `RunSnapshot` subclass into a transition | **3** |
+| Allow a `Selection` subclass into a transition | **3** |
 
-**14/14 killed**, all nine earlier faults re-run against the final code. Two of
-them took a second pass to earn:
+**18/18 killed**, every earlier fault re-run against the final code. Two of them
+took a second pass to earn:
 
 - *Allow inconsistent total spend* **survived** the first run. The unbalanced
   ledger cases already present were caught by the `total_spend <=
@@ -313,6 +360,10 @@ the snapshot (**4**), consumed IDs omitted from the snapshot (**1**).
   exist yet — the task-state updater (§5.3, §10) must be designed to return
   immutable state. Recorded in TASK-007 §3.1.1 so it is a known constraint
   rather than a surprise.
+- **No subclass of a record type is accepted anywhere**, even a demonstrably
+  harmless one. A caller who genuinely needs to extend a record has to propose
+  the field, which is the intended outcome: audit-record shape is a
+  specification decision, not a caller's.
 - **No `Enum` may appear in `task_state`**, including this module's own
   `RunStatus`. Blanket-accepting `Enum` is unsafe and narrowing it to specific
   authorized types is a decision PR A should not make alone. If a later task

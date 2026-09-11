@@ -4,6 +4,7 @@ TASK-007 §3. This is the state model only — no execution, no transitions, no
 classification, no loop.
 """
 
+import dataclasses
 import doctest
 import unittest
 from decimal import Decimal
@@ -928,3 +929,187 @@ class TransitiveImmutabilityAuditTests(unittest.TestCase):
             for key, item in value.items():
                 yield from self._everything(key, seen)
                 yield from self._everything(item, seen)
+
+
+# ── CODEX-PR030-01, remaining: subclasses smuggled into audit records ──────
+
+@dataclasses.dataclass(frozen=True)
+class _SnapshotWithBaggage(RunSnapshot):
+    baggage: list = dataclasses.field(default_factory=list)
+
+
+@dataclasses.dataclass(frozen=True)
+class _TransitionWithBaggage(TransitionRecord):
+    baggage: list = dataclasses.field(default_factory=list)
+
+
+@dataclasses.dataclass(frozen=True)
+class _SelectionWithBaggage(Selection):
+    baggage: list = dataclasses.field(default_factory=list)
+
+
+@dataclasses.dataclass(frozen=True)
+class _MoneyWithBaggage(Money):
+    baggage: list = dataclasses.field(default_factory=list)
+
+
+class _StrIdentifier(str):
+    """A candidate identifier that is also a place to keep mutable state."""
+
+    def __init__(self, *_):
+        self.baggage = []
+
+
+class ExactAuditMemberTests(unittest.TestCase):
+    """`isinstance` trusted subclasses of the frozen records themselves.
+
+    A frozen dataclass subclass may add a field holding a list. The reference
+    is frozen; the list is not. Accepted as a history member, it becomes
+    caller-owned mutable state inside an audit record — the same defect as an
+    aliased `task_state`, arriving through the type system instead of past it.
+    """
+
+    def _snapshot_fields(self, snap):
+        return {n: getattr(snap, n) for n in RunSnapshot.__dataclass_fields__}
+
+    def test_a_transition_subclass_is_refused_as_a_history_member(self) -> None:
+        snap = a_run().snapshot()
+        smuggler = _TransitionWithBaggage(
+            before=snap, selection=a_selection(), after=snap
+        )
+        run = a_run()
+        with self.assertRaises(TypeError):
+            RunState(**{
+                **{n: getattr(run, n) for n in RunState.__dataclass_fields__},
+                "history": (smuggler,),
+            })
+
+    def test_a_snapshot_subclass_is_refused_inside_a_transition(self) -> None:
+        snap = a_run().snapshot()
+        smuggler = _SnapshotWithBaggage(**self._snapshot_fields(snap))
+        for position in ("before", "after"):
+            fields = {"before": snap, "selection": a_selection(), "after": snap}
+            fields[position] = smuggler
+            with self.assertRaises(TypeError):
+                TransitionRecord(**fields)
+
+    def test_a_selection_subclass_is_refused_inside_a_transition(self) -> None:
+        snap = a_run().snapshot()
+        real = a_selection()
+        smuggler = _SelectionWithBaggage(
+            **{n: getattr(real, n) for n in Selection.__dataclass_fields__}
+        )
+        with self.assertRaises(TypeError):
+            TransitionRecord(before=snap, selection=smuggler, after=snap)
+
+    def test_a_money_subclass_is_refused_as_an_amount(self) -> None:
+        for field_name in ("task_value", "initial_budget", "remaining_budget"):
+            with self.assertRaises(TypeError):
+                a_run(**{field_name: _MoneyWithBaggage("1.00")})
+
+    def test_the_exact_types_are_still_accepted(self) -> None:
+        # The correction must cost nothing that currently works.
+        snap = a_run().snapshot()
+        record = TransitionRecord(before=snap, selection=a_selection(), after=snap)
+        run = a_run()
+        rebuilt = RunState(**{
+            **{n: getattr(run, n) for n in RunState.__dataclass_fields__},
+            "history": (record,),
+        })
+        self.assertEqual(rebuilt.history, (record,))
+        self.assertIs(type(rebuilt.history[0]), TransitionRecord)
+
+    def test_no_subclass_baggage_is_reachable_from_history(self) -> None:
+        # The positive statement behind the three refusals above.
+        snap = a_run().snapshot()
+        smuggler = _TransitionWithBaggage(
+            before=snap, selection=a_selection(), after=snap
+        )
+        smuggler.baggage.append("mutable")
+        run = a_run()
+        with self.assertRaises(TypeError):
+            RunState(**{
+                **{n: getattr(run, n) for n in RunState.__dataclass_fields__},
+                "history": (smuggler,),
+            })
+        self.assertEqual(a_run().history, ())
+
+
+class ExactConsumedIdentifierTests(unittest.TestCase):
+    """`isinstance(x, str)` accepts a str subclass, which can hold state."""
+
+    def test_a_plain_identifier_is_accepted(self) -> None:
+        run = a_run(consumed_candidate_ids=["standard-review-001"])
+        self.assertEqual(run.consumed_candidate_ids, ("standard-review-001",))
+        self.assertIs(type(run.consumed_candidate_ids[0]), str)
+
+    def test_a_stateful_str_subclass_is_refused(self) -> None:
+        with self.assertRaises(TypeError):
+            a_run(consumed_candidate_ids=[_StrIdentifier("quick-check-001")])
+
+    def test_a_subclass_is_refused_even_alongside_plain_identifiers(self) -> None:
+        with self.assertRaises(TypeError):
+            a_run(consumed_candidate_ids=["a", _StrIdentifier("b"), "c"])
+
+    def test_mutating_the_subclass_cannot_reach_a_recorded_identifier(self) -> None:
+        smuggler = _StrIdentifier("quick-check-001")
+        with self.assertRaises(TypeError):
+            a_run(consumed_candidate_ids=[smuggler])
+        smuggler.baggage.append("tampered")
+        # Nothing retained it; the run that does record that identifier records
+        # a plain string equal to it and shares nothing with it.
+        run = a_run(consumed_candidate_ids=["quick-check-001"])
+        self.assertEqual(run.consumed_candidate_ids, ("quick-check-001",))
+        self.assertIsNot(run.consumed_candidate_ids[0], smuggler)
+
+    def test_sorting_and_deduplication_are_unchanged(self) -> None:
+        self.assertEqual(
+            a_run(consumed_candidate_ids=["b", "a", "a", "c"]).consumed_candidate_ids,
+            ("a", "b", "c"),
+        )
+        self.assertEqual(
+            a_run(consumed_candidate_ids={"z", "y"}).consumed_candidate_ids,
+            ("y", "z"),
+        )
+
+    def test_a_bare_string_is_still_refused_as_the_collection(self) -> None:
+        with self.assertRaises(TypeError):
+            a_run(consumed_candidate_ids="abc")
+
+
+class SubclassInjectionAuditTests(TransitiveImmutabilityAuditTests):
+    """Item 4 — the walker re-run against subclass injection specifically."""
+
+    def test_the_constructors_reject_every_subclass_injection(self) -> None:
+        snap = a_run().snapshot()
+        real = a_selection()
+        with self.assertRaises(TypeError):
+            TransitionRecord(
+                before=_SnapshotWithBaggage(**self._snapshot_fields(snap)),
+                selection=real, after=snap,
+            )
+        with self.assertRaises(TypeError):
+            TransitionRecord(
+                before=snap,
+                selection=_SelectionWithBaggage(
+                    **{n: getattr(real, n) for n in Selection.__dataclass_fields__}
+                ),
+                after=snap,
+            )
+        with self.assertRaises(TypeError):
+            a_run(consumed_candidate_ids=[_StrIdentifier("x")])
+
+    def test_the_walker_still_catches_a_subclass_built_behind_the_api(self) -> None:
+        snap = a_run().snapshot()
+        smuggler = _TransitionWithBaggage(
+            before=snap, selection=a_selection(), after=snap
+        )
+        smuggler.baggage.append("mutable")
+        complaints = list(self._audit(smuggler))
+        self.assertTrue(complaints)
+
+    def test_valid_history_is_still_clean(self) -> None:
+        self.assertEqual(list(self._audit(self._run_with_history())), [])
+
+    def _snapshot_fields(self, snap):
+        return {n: getattr(snap, n) for n in RunSnapshot.__dataclass_fields__}

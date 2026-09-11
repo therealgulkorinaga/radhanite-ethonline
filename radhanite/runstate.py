@@ -7,6 +7,13 @@ of them would be the loop wearing a different name.
 
 Three things this module is careful about.
 
+**Types are matched exactly, never by `isinstance` — §3.4.** Every record here
+is frozen, but a *subclass* of a frozen record can add a field holding a list,
+and a frozen reference to a list is not an immutable list. The same is true one
+level down: a `str` subclass makes a fine identifier and a fine place to keep
+mutable state. Anything this module **retains** is therefore matched by exact
+type. Containers it merely reads and rebuilds are not.
+
 **`task_state` is opaque, and opacity is not aliasing — §3.1.** TASK-007 never
 interprets what the state *means*. It does **not** follow that TASK-007 may hold
 a live reference to a mutable object the caller still owns: an earlier revision
@@ -152,24 +159,44 @@ def _frozen(value: Any, _path: frozenset[int] = frozenset()) -> Any:
     )
 
 
+def _exactly(value: Any, expected: type, label: str) -> Any:
+    """Require `value` to be *exactly* `expected`, not merely an instance of it.
+
+    `CODEX-PR030-01`. Every record here is a frozen slotted dataclass, but a
+    subclass of one need not be: it can add a field holding a list, and a frozen
+    reference to a list is not an immutable list. Accepted into an audit record,
+    that list is caller-owned mutable state inside history — the defect the
+    `task_state` freeze closed, arriving through the type system rather than
+    past it.
+
+    Subclasses are refused rather than inspected. Deciding *which* subclasses
+    happen to be safe would mean walking their fields at construction time and
+    would still be wrong the moment one of them grew a field.
+    """
+    if type(value) is not expected:
+        raise TypeError(
+            f"{label} must be exactly a {expected.__name__}, got "
+            f"{type(value).__name__}. A subclass may add mutable fields that "
+            "escape this model, so subclasses are refused — CODEX-PR030-01."
+        )
+    return value
+
+
 def _checked_status(status: Any) -> RunStatus:
-    if not isinstance(status, RunStatus):
-        raise TypeError(f"status must be a RunStatus, got {type(status).__name__}.")
-    return status
+    return _exactly(status, RunStatus, "status")
 
 
 def _checked_history(history: Any) -> tuple[TransitionRecord, ...]:
+    # `isinstance` is right for the *container*: it is never retained, only
+    # read once and rebuilt as a tuple, so a subclass of it changes nothing.
+    # The members are retained, which is why they are matched exactly.
     if not isinstance(history, Sequence) or isinstance(history, (str, bytes)):
         raise TypeError(
             f"history must be an ordered sequence, got {type(history).__name__}."
         )
     frozen = tuple(history)
     for position, record in enumerate(frozen):
-        if not isinstance(record, TransitionRecord):
-            raise TypeError(
-                f"history[{position}] must be a TransitionRecord, got "
-                f"{type(record).__name__}."
-            )
+        _exactly(record, TransitionRecord, f"history[{position}]")
     return frozen
 
 
@@ -200,15 +227,11 @@ def _normalise(record: Any) -> None:
     frozen: the field is being *established*, not changed afterwards.
     """
     for label in ("task_value", "initial_budget", "remaining_budget", "total_spend"):
-        amount = getattr(record, label)
-        if not isinstance(amount, Money):
-            raise TypeError(
-                f"{label} must be a Money amount, got {type(amount).__name__}."
-            )
-    if not isinstance(record.policy, RunPolicy):
-        raise TypeError("policy must be a RunPolicy; the ceiling is run policy.")
-    if not isinstance(record.current_success_probability, Probability):
-        raise TypeError("current_success_probability must be a Probability.")
+        _exactly(getattr(record, label), Money, label)
+    _exactly(record.policy, RunPolicy, "policy")
+    _exactly(
+        record.current_success_probability, Probability, "current_success_probability"
+    )
 
     if record.initial_budget.is_negative:
         raise ValueError(
@@ -318,17 +341,10 @@ class TransitionRecord:
         # snapshot belongs would put a history inside a history, which is the
         # recursion §3.3 exists to prevent.
         for label in ("before", "after"):
-            value = getattr(self, label)
-            if not isinstance(value, RunSnapshot):
-                raise TypeError(
-                    f"{label} must be a RunSnapshot, got {type(value).__name__}. "
-                    "A transition records snapshots so that history never "
-                    "contains history — TASK-007 §3.3."
-                )
-        if not isinstance(self.selection, Selection):
-            raise TypeError(
-                f"selection must be a Selection, got {type(self.selection).__name__}."
-            )
+            # Exact: a RunState here would put a history inside a history, and a
+            # RunSnapshot *subclass* would put a mutable field there.
+            _exactly(getattr(self, label), RunSnapshot, label)
+        _exactly(self.selection, Selection, "selection")
         if self.execution is not None:
             raise ValueError(
                 f"execution must be None in PR A, got "
@@ -448,11 +464,7 @@ def begin_run(
         ("initial_budget", initial_budget),
         ("remaining_budget", remaining_budget),
     ):
-        if not isinstance(amount, Money):
-            raise TypeError(
-                f"{label} must be a Money amount, got {type(amount).__name__}; "
-                "total_spend is derived from it."
-            )
+        _exactly(amount, Money, f"{label} (total_spend is derived from it)")
 
     total_spend = initial_budget - remaining_budget
 
@@ -492,19 +504,18 @@ def _checked_consumed(consumed_candidate_ids: Collection[str]) -> tuple[str, ...
             f"{type(consumed_candidate_ids).__name__}."
         )
     for consumed_id in consumed_candidate_ids:
-        if not isinstance(consumed_id, str):
-            raise TypeError(
-                "consumed_candidate_ids must contain identifiers, found "
-                f"{type(consumed_id).__name__}."
-            )
+        # Exact `str`, not "string-like": a str subclass is a perfectly good
+        # place to keep a list, and the identifier is retained in the record.
+        _exactly(consumed_id, str, "each consumed candidate identifier")
     return tuple(sorted(set(consumed_candidate_ids)))
 
 
 def _checked_count(value: int) -> int:
-    if isinstance(value, bool) or not isinstance(value, int):
-        # bool subclasses int, so True would otherwise pass as a count of one.
+    if type(value) is not int:
+        # Exact, which is also what excludes bool: `True` is an `int` by
+        # inheritance and would otherwise pass as a count of one.
         raise TypeError(
-            f"capability_step_count must be a whole number, got "
+            f"capability_step_count must be exactly a whole number, got "
             f"{type(value).__name__}."
         )
     if value < 0:
