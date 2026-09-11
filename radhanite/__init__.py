@@ -21,6 +21,8 @@ Implemented so far:
 - ``radhanite.selection`` — choosing one capability from an offer, or stopping
   (TASK-006 §2.4, §2.5)
 - ``radhanite.policy`` — the ceiling a run states for itself (TASK-006 §2.2a)
+- ``radhanite.acquisition`` — external capabilities become provider-neutral
+  candidates (TASK-008)
 
 TASK-001 is complete. TASK-006 — choosing among candidate capabilities rather
 than escalating through two fixed tiers — is authorized and partially built: the
@@ -39,6 +41,12 @@ economically justified.
 See docs/PREREQ-001_PRODUCT_DEFINITION.md for the product definition.
 """
 
+from radhanite.acquisition import (
+    CapabilityCatalog,
+    CapabilityDescriptor,
+    acquire,
+    normalize,
+)
 from radhanite.capability import DECLARED_CANDIDATES, Candidate, validate_candidates
 from radhanite.eligibility import Assessment, Ineligibility, assess
 from radhanite.escalation import Decision, EscalationDecision, FailedCondition, decide
@@ -60,6 +68,8 @@ __all__ = [
     "DECLARED_STRATEGIES",
     "Assessment",
     "Attempt",
+    "CapabilityCatalog",
+    "CapabilityDescriptor",
     "Candidate",
     "Decision",
     "EscalationDecision",
@@ -80,9 +90,11 @@ __all__ = [
     "Task",
     "Verdict",
     "__version__",
+    "acquire",
     "assess",
     "decide",
     "evaluate",
+    "normalize",
     "run",
     "select",
     "select_capability",
