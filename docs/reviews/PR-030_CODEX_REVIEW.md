@@ -4,7 +4,7 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `tasks/TASK-007_CAPABILITY_RUN_LOOP.md`, `tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md`, `docs/ARCHITECTURE.md`, `docs/AI_BUILD_GOVERNANCE.md`
 **Date issued:** 2026-09-11
-**Outcome:** _pending — review not yet run_
+**Outcome:** **Rejected** — 2 findings, both corrected (`CODEX-PR030-01`, `CODEX-PR030-02`)
 
 ---
 
@@ -127,12 +127,89 @@ End with exactly ONE outcome, per §7.2:
 
 ## 2. Findings returned
 
-_Pending. Codex has not yet reviewed this pull request._
+> **Disclosure — these findings are recorded as relayed by the human product
+> owner in the correction authorization, not transcribed verbatim from Codex's
+> response.** The identifiers, the defects and the required remedies are
+> Codex's; the wording below is the product owner's restatement of them. No
+> verbatim Codex text was available to this record.
+
+### `CODEX-PR030-01` — one safe construction path and one unsafe one
+
+`radhanite/runstate.py`. `RunState` is publicly exported and directly
+constructible, but the invariants live only in `begin_run()`. Direct
+construction therefore bypasses:
+
+- the accounting bounds,
+- the ledger identity `total_spend + remaining_budget == initial_budget`,
+- step-count validation,
+- consumed-ID immutability,
+- history immutability,
+- valid-status constraints.
+
+**Required:** every valid public construction path enforces the same
+invariants, through the same implementation.
+
+> "Do not keep one safe `begin_run()` path and one unsafe direct-construction
+> path."
+
+**Departs from:** TASK-007 §4 invariants 1, 2, 7, 13 — which are stated as
+properties of the *state*, not of one factory function.
+
+### `CODEX-PR030-02` — opaque `task_state` retained as a mutable alias
+
+`radhanite/runstate.py`. Storing `task_state` by reference violates
+auditability: mutating the original object changes previously created states and
+snapshots, and a caller can insert a back-reference into it and make the audit
+structure recursively self-containing.
+
+> "Opacity means TASK-007 must not interpret domain/business meaning. It does
+> not mean TASK-007 may retain mutable aliases."
+
+**This refutes the reasoning PR-030 recorded in TASK-007 §3.5**, which treated
+storage-by-reference as entailed by opacity and the rest as an open product
+question. It was neither entailed nor open.
+
+**Required:** one enforced, generic immutable boundary for `task_state`, such
+that neither a `RunState` nor a `RunSnapshot` exposes a live mutable alias, a
+previously created record stays historically stable, a caller cannot create a
+recursive back-reference into an existing record, and TASK-007 still interprets
+no domain meaning.
+
+**Departs from:** TASK-007 §3.3 and §4 invariant 13 — a non-recursive history
+from which every transition is reconstructable.
+
+### Additional requirement — snapshot non-recursion tests
+
+The existing structural tests relied on field names and immediate field types.
+A recursive structural walk was required, proving no `RunState`, `RunSnapshot`,
+`TransitionRecord` or self-reference is reachable from stored state — and it had
+to **fail** against the by-reference implementation.
 
 ## 3. Outcome
 
-_Pending._
+**Rejected.**
+
+Departed from TASK-007 §3.3, §4 invariant 13, and the §4 invariants generally,
+which constrain the state rather than one construction function.
 
 ## 4. Corrections
 
-_None yet._
+Authorized by the human product owner, scope limited strictly to the two
+findings. Implemented on the same branch and pushed to the same pull request;
+**§7.5 — the corrections are themselves subject to review.**
+
+| Finding | Resolution |
+|---|---|
+| `CODEX-PR030-01` | Invariants moved into `__post_init__` on `RunState`, `RunSnapshot` and `TransitionRecord`, through one shared `_normalise` implementation. `begin_run()` retains only the derivation of `total_spend` and delegates everything else |
+| `CODEX-PR030-02` | `task_state` is frozen structurally at construction: immutable values pass through, mappings/sequences/sets become immutable equivalents, cycles are refused with `ValueError`, and anything unfreezable is refused with `TypeError` rather than aliased |
+
+Also corrected: TASK-007 §3.5's claimed ambiguity is **retracted** and replaced
+with §3.1.1, "Opacity is not aliasing". The one question that genuinely remains
+open is narrower — the task that will *produce* `task_state` does not exist yet
+and must produce immutable state.
+
+**Verification:** 29 regression tests written first, failing 25/75 against the
+rejected implementation; 602 tests pass after; 9 deliberate faults introduced
+one at a time, all 9 caught. Two of the nine survived a first pass and are
+recorded, with the test weaknesses they exposed, in
+`docs/pr_explanations/PR-030_TASK-007_EXPLANATION.md` §10.

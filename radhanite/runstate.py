@@ -7,12 +7,17 @@ of them would be the loop wearing a different name.
 
 Three things this module is careful about.
 
-**`task_state` is opaque — §3.1.** TASK-007 *stores and passes* it and **never
-reads inside it**. It is held **by reference**, which is the only contract
-consistent with that prohibition: copying or freezing an arbitrary object means
-inspecting it, and deep-copying one would break the perfectly reasonable states
-that cannot be copied. The consequence is stated plainly in `RunState` rather
-than left for someone to discover.
+**`task_state` is opaque, and opacity is not aliasing — §3.1.** TASK-007 never
+interprets what the state *means*. It does **not** follow that TASK-007 may hold
+a live reference to a mutable object the caller still owns: an earlier revision
+concluded that it did, and `CODEX-PR030-02` corrected it. Retaining an alias
+means a caller can change what an already-written audit record appears to say,
+and can inject a back-reference that makes the record recursive after the fact.
+
+So opaque state is **frozen structurally on the way in** — containers become
+immutable equivalents, cycles are refused, and anything that cannot be frozen is
+refused rather than aliased. Freezing reads *shape*, never meaning: no key,
+value or attribute is interpreted, and no domain concept appears here.
 
 **The ledger is bounded at both ends — §3.2.1.** `Money` represents negative
 amounts, so `total_spend + remaining_budget == initial_budget` is not sufficient
@@ -27,9 +32,11 @@ difference rather than starting at zero.
 
 from __future__ import annotations
 
-from collections.abc import Collection
-from dataclasses import dataclass, field
+from collections.abc import Collection, Mapping, Sequence, Set
+from dataclasses import dataclass
+from decimal import Decimal
 from enum import Enum
+from types import MappingProxyType
 from typing import Any
 
 from radhanite._immutable import refuse_rehydration
@@ -67,6 +74,161 @@ class RunStatus(Enum):
         return self is not RunStatus.RUNNING
 
 
+#: Values that are already immutable and pass through `_frozen` untouched.
+#: Deliberately structural — a type, never a meaning. `Money`, `Probability` and
+#: `RunPolicy` are here because they are this repository's own frozen values,
+#: not because of anything they represent.
+_IMMUTABLE_ATOMS = (
+    type(None), bool, int, float, complex, str, bytes, Decimal,
+    Money, Probability, RunPolicy, Enum,
+)
+
+
+def _frozen(value: Any, _path: frozenset[int] = frozenset()) -> Any:
+    """Return an immutable equivalent of `value`, or refuse it.
+
+    Structural only. Mappings, sequences and sets become immutable equivalents
+    with their members frozen the same way; already-immutable atoms pass
+    through; **anything else is refused rather than aliased.**
+
+    Cycles are refused deterministically rather than recursed into — a caller
+    handing in self-referential state would otherwise either hang the run or
+    produce a record that contains itself, which is the defect §3.3 exists to
+    prevent.
+    """
+    if isinstance(value, _IMMUTABLE_ATOMS):
+        return value
+
+    if id(value) in _path:
+        raise ValueError(
+            "task_state contains a cycle. Opaque state is frozen on the way in, "
+            "and a self-referential structure cannot be frozen into an "
+            "auditable record — TASK-007 §3.3."
+        )
+    deeper = _path | {id(value)}
+
+    if isinstance(value, Mapping):
+        return MappingProxyType(
+            {_frozen(k, deeper): _frozen(v, deeper) for k, v in value.items()}
+        )
+    if isinstance(value, (frozenset, Set)):
+        return frozenset(_frozen(item, deeper) for item in value)
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+        return tuple(_frozen(item, deeper) for item in value)
+
+    raise TypeError(
+        f"task_state contains {type(value).__name__}, which cannot be frozen. "
+        "TASK-007 stores opaque state without interpreting it, but it may not "
+        "hold a live reference to something the caller can still change — "
+        "CODEX-PR030-02. Supply immutable values, or containers of them."
+    )
+
+
+def _checked_status(status: Any) -> RunStatus:
+    if not isinstance(status, RunStatus):
+        raise TypeError(f"status must be a RunStatus, got {type(status).__name__}.")
+    return status
+
+
+def _checked_history(history: Any) -> tuple[TransitionRecord, ...]:
+    if not isinstance(history, Sequence) or isinstance(history, (str, bytes)):
+        raise TypeError(
+            f"history must be an ordered sequence, got {type(history).__name__}."
+        )
+    frozen = tuple(history)
+    for position, record in enumerate(frozen):
+        if not isinstance(record, TransitionRecord):
+            raise TypeError(
+                f"history[{position}] must be a TransitionRecord, got "
+                f"{type(record).__name__}."
+            )
+    return frozen
+
+
+#: The ten §3 fields a run and a snapshot both carry, in specification order.
+_SHARED_FIELDS = (
+    "task_value",
+    "initial_budget",
+    "policy",
+    "task_state",
+    "current_success_probability",
+    "remaining_budget",
+    "total_spend",
+    "consumed_candidate_ids",
+    "capability_step_count",
+    "status",
+)
+
+
+def _normalise(record: Any) -> None:
+    """Check and normalize the ten shared fields, in place, at construction.
+
+    Called from `__post_init__`, so **there is no way to build one of these
+    records that skips it** — `CODEX-PR030-01`. `begin_run` is a convenience
+    that derives `total_spend`; it is not the only validated path, because a
+    validated path that can be sidestepped validates nothing.
+
+    Normalization writes through `object.__setattr__` because the record is
+    frozen: the field is being *established*, not changed afterwards.
+    """
+    for label in ("task_value", "initial_budget", "remaining_budget", "total_spend"):
+        amount = getattr(record, label)
+        if not isinstance(amount, Money):
+            raise TypeError(
+                f"{label} must be a Money amount, got {type(amount).__name__}."
+            )
+    if not isinstance(record.policy, RunPolicy):
+        raise TypeError("policy must be a RunPolicy; the ceiling is run policy.")
+    if not isinstance(record.current_success_probability, Probability):
+        raise TypeError("current_success_probability must be a Probability.")
+
+    if record.initial_budget.is_negative:
+        raise ValueError(
+            f"initial_budget cannot be negative, got {record.initial_budget}."
+        )
+    if record.remaining_budget.is_negative:
+        raise ValueError(
+            f"remaining_budget cannot be negative, got {record.remaining_budget}. "
+            "The budget ceiling has already been breached."
+        )
+    if record.total_spend.is_negative:
+        raise ValueError(
+            f"total_spend cannot be negative, got {record.total_spend}. A run "
+            "cannot un-spend money."
+        )
+    if record.remaining_budget > record.initial_budget:
+        # §3.2.1. Without this the identity below still holds while total_spend
+        # comes out negative, which is not a coherent ledger.
+        raise ValueError(
+            f"remaining_budget {record.remaining_budget} exceeds initial_budget "
+            f"{record.initial_budget}. A run cannot hold more than it was given."
+        )
+    if record.total_spend > record.initial_budget:
+        raise ValueError(
+            f"total_spend {record.total_spend} exceeds initial_budget "
+            f"{record.initial_budget}."
+        )
+    if record.total_spend + record.remaining_budget != record.initial_budget:
+        # §3.2. The ledger is an identity, not two independent numbers that
+        # happen to be written down next to each other.
+        raise ValueError(
+            f"the ledger does not balance: total_spend {record.total_spend} + "
+            f"remaining_budget {record.remaining_budget} != initial_budget "
+            f"{record.initial_budget}."
+        )
+
+    object.__setattr__(record, "status", _checked_status(record.status))
+    object.__setattr__(
+        record, "capability_step_count", _checked_count(record.capability_step_count)
+    )
+    object.__setattr__(
+        record,
+        "consumed_candidate_ids",
+        _checked_consumed(record.consumed_candidate_ids),
+    )
+    object.__setattr__(record, "task_state", _frozen(record.task_state))
+
+
 @refuse_rehydration
 @dataclass(frozen=True, slots=True)
 class RunSnapshot:
@@ -88,6 +250,14 @@ class RunSnapshot:
     capability_step_count: int
     status: RunStatus
 
+    def __post_init__(self) -> None:
+        # A snapshot is normally taken from a run that has already been
+        # validated, so this repeats work. It is here because a snapshot is
+        # public and directly constructible, and the record that gets *audited*
+        # is the one that must not be able to hold an aliased task_state or an
+        # incoherent ledger.
+        _normalise(self)
+
 
 @refuse_rehydration
 @dataclass(frozen=True, slots=True)
@@ -108,6 +278,23 @@ class TransitionRecord:
     after: RunSnapshot
     execution: Any = None
 
+    def __post_init__(self) -> None:
+        # Structural, not economic. A record holding a `RunState` where a
+        # snapshot belongs would put a history inside a history, which is the
+        # recursion §3.3 exists to prevent.
+        for label in ("before", "after"):
+            value = getattr(self, label)
+            if not isinstance(value, RunSnapshot):
+                raise TypeError(
+                    f"{label} must be a RunSnapshot, got {type(value).__name__}. "
+                    "A transition records snapshots so that history never "
+                    "contains history — TASK-007 §3.3."
+                )
+        if not isinstance(self.selection, Selection):
+            raise TypeError(
+                f"selection must be a Selection, got {type(self.selection).__name__}."
+            )
+
 
 @refuse_rehydration
 @dataclass(frozen=True, slots=True)
@@ -117,11 +304,15 @@ class RunState:
     Immutable per transition: an iteration produces a **new** state rather than
     mutating this one.
 
-    **`task_state` is held by reference and never inspected.** A caller that
-    mutates the object it handed in will therefore change what every snapshot
-    appears to have recorded. The specification requires opacity, and opacity
-    and defensive copying are mutually exclusive — so the obligation sits with
-    the caller: **supply state that does not change underneath the run.**
+    **Every construction is validated — `CODEX-PR030-01`.** `begin_run` is a
+    convenience that derives `total_spend` from the budgets; it is not a
+    privileged entrance. The invariants live in `__post_init__`, so calling
+    `RunState(...)` directly enforces exactly the same ones.
+
+    **`task_state` is opaque but not aliased — `CODEX-PR030-02`.** It is frozen
+    structurally on the way in and never interpreted. A caller may therefore
+    hand in anything immutable, or any container of immutable things; a mutable
+    object the caller keeps hold of is **refused**, not stored.
 
     >>> run = begin_run(
     ...     task_value=Money("50000.00"),
@@ -146,6 +337,10 @@ class RunState:
     capability_step_count: int
     status: RunStatus
     history: tuple[TransitionRecord, ...] = ()
+
+    def __post_init__(self) -> None:
+        _normalise(self)
+        object.__setattr__(self, "history", _checked_history(self.history))
 
     @property
     def max_capability_steps(self) -> int:
@@ -190,6 +385,10 @@ def begin_run(
     `total_spend` is **derived**, never supplied — §3.2. A caller cannot state a
     spend that disagrees with the budget it also states.
 
+    This is the *convenient* path, not the *safe* one: `RunState` validates
+    itself, so constructing one directly is equally safe and merely requires
+    stating the spend. `CODEX-PR030-01`.
+
     >>> run = begin_run(
     ...     task_value=Money("100.00"), initial_budget=Money("10.00"),
     ...     remaining_budget=Money("10.00"), policy=RunPolicy(max_capability_steps=2),
@@ -198,33 +397,20 @@ def begin_run(
     >>> str(run.total_spend)
     '$0.00'
     """
+    # The only check here, because `total_spend` is derived by subtraction and
+    # the subtraction has to happen before `RunState` can see the result.
+    # Everything else — bounds, the ledger identity, the step count, the
+    # status, the consumed identifiers, the opaque state — is enforced by
+    # `RunState.__post_init__`, which no caller can skip.
     for label, amount in (
-        ("task_value", task_value),
         ("initial_budget", initial_budget),
         ("remaining_budget", remaining_budget),
     ):
         if not isinstance(amount, Money):
-            raise TypeError(f"{label} must be a Money amount.")
-
-    if not isinstance(policy, RunPolicy):
-        raise TypeError("policy must be a RunPolicy; the ceiling is run policy.")
-    if not isinstance(current_success_probability, Probability):
-        raise TypeError("current_success_probability must be a Probability.")
-
-    if initial_budget.is_negative:
-        raise ValueError(f"initial_budget cannot be negative, got {initial_budget}.")
-    if remaining_budget.is_negative:
-        raise ValueError(
-            f"remaining_budget cannot be negative, got {remaining_budget}. The "
-            "budget ceiling has already been breached."
-        )
-    if remaining_budget > initial_budget:
-        # §3.2.1. Without this the identity below still holds while total_spend
-        # comes out negative, which is not a coherent ledger.
-        raise ValueError(
-            f"remaining_budget {remaining_budget} exceeds initial_budget "
-            f"{initial_budget}. A run cannot hold more than it was given."
-        )
+            raise TypeError(
+                f"{label} must be a Money amount, got {type(amount).__name__}; "
+                "total_spend is derived from it."
+            )
 
     total_spend = initial_budget - remaining_budget
 

@@ -19,9 +19,9 @@ model that quietly did any of them would be the loop wearing a different name.
 | File | |
 |---|---|
 | `radhanite/runstate.py` | **New.** The §3 state model |
-| `tests/test_runstate.py` | **New.** 46 tests |
+| `tests/test_runstate.py` | **New.** 75 tests |
 | `radhanite/__init__.py` | Exports |
-| `tasks/TASK-007_CAPABILITY_RUN_LOOP.md` | §3.4 what PR A delivered; **§3.5 an ambiguity it leaves open** |
+| `tasks/TASK-007_CAPABILITY_RUN_LOOP.md` | §3.1.1 opacity is not aliasing; §3.4 what PR A delivered; **§3.5 a retraction** |
 | `docs/reviews/PR-030_...`, `docs/pr_explanations/PR-030_...`, `docs/reviews/README.md` | Review prompt, this document, index row |
 
 **No dependency.** The project still has none.
@@ -57,19 +57,69 @@ there is no parameter for it.
 while producing a **negative** spend, which is not a coherent ledger. Refused,
 along with negative amounts on either side.
 
-### `task_state` is opaque, and that settles how it is stored
+### Every construction is validated — `CODEX-PR030-01`
 
-TASK-007 stores it and passes it, and **never reads inside it**. So it is held
-**by reference** — copying or freezing an arbitrary object means inspecting it,
-and deep-copying one would break perfectly reasonable states that cannot be
-copied.
+The first revision of this PR put the invariants in `begin_run()` while
+exporting a `RunState` anyone could construct directly, bypassing every one of
+them. **One safe path and one unsafe path is one unsafe path.**
 
-A test proves the prohibition rather than asserting it: it passes in an object
-that raises on `__getattr__`, `__len__`, `__iter__`, `__eq__` and `__hash__`,
-then takes a snapshot. Any inspection at all fails the test.
+The invariants now live in `__post_init__`, shared by all three public records
+through a single `_normalise` implementation:
 
-**The consequence is stated, not buried.** A caller who mutates that object
-changes what every snapshot appears to have recorded. See §12.
+| Enforced | |
+|---|---|
+| Types | `Money` ×4, `RunPolicy`, `Probability`, `RunStatus` |
+| Bounds | `0 <= remaining_budget <= initial_budget`, `0 <= total_spend <= initial_budget` |
+| Identity | `total_spend + remaining_budget == initial_budget` |
+| Step count | `int`, not `bool`, not negative |
+| Consumed IDs | sorted, de-duplicated, detached, frozen to a tuple |
+| History | detached, frozen to a tuple, every member a `TransitionRecord` |
+| Opaque state | frozen — below |
+
+`begin_run()` keeps exactly one job: deriving `total_spend` from the two
+budgets, so a caller cannot state a spend that contradicts the budget it also
+states. It is the *convenient* entrance, no longer the *safe* one, because
+`RunState(...)` is now equally safe.
+
+`RunSnapshot` validates identically — the correction explicitly required that
+neither a run **nor a snapshot** expose a live alias, and the snapshot is the
+record an auditor actually reads. `TransitionRecord` checks that `before` and
+`after` are snapshots and `selection` is a `Selection`: a transition holding a
+`RunState` would put a history inside a history, which is the recursion §3.3
+exists to prevent.
+
+### `task_state` is opaque, and opacity is not aliasing — `CODEX-PR030-02`
+
+The first revision stored `task_state` **by reference**, and argued §3.1
+entailed it: copying or freezing an arbitrary object means inspecting it, and
+this task must not inspect. **That argument was wrong on both halves.**
+
+- Freezing reads *shape* — mapping, sequence, set — and never meaning. No key,
+  value or field is interpreted, so opacity gives up nothing.
+- A live reference lets a caller rewrite what an already-written audit record
+  appears to say, and lets them insert a back-reference that makes the record
+  recursive after the fact — defeating §3.3 from outside this module.
+
+So opaque state is **frozen structurally on the way in**:
+
+| Input | Stored as |
+|---|---|
+| `None`, `bool`, `int`, `float`, `complex`, `str`, `bytes`, `Decimal`, `Enum` | unchanged |
+| `Money`, `Probability`, `RunPolicy` | unchanged — this repository's own frozen values |
+| mapping | read-only mapping over a **fresh** dict, members frozen |
+| sequence (not `str`/`bytes`) | tuple, members frozen |
+| set | frozenset, members frozen |
+| a cycle | **`ValueError`** — refused deterministically, never recursed into |
+| anything else | **`TypeError`** — refused, never aliased |
+
+The last row is the contract change, and it is deliberate: a caller may no
+longer hand in an arbitrary mutable object. Refusal is decided from the
+object's **type**, so the test that proves nothing inspects the state still
+holds — an object raising on `__getattr__`, `__len__`, `__iter__`, `__eq__` and
+`__hash__` is refused without any of those being called.
+
+No float is introduced and nothing is serialized: freezing rebuilds containers
+and passes values through untouched, so `Decimal` stays `Decimal`.
 
 ### Snapshots cannot contain history
 
@@ -115,11 +165,16 @@ Every failure is a refusal at initialization: money that is not `Money`, a
 probability that is not a `Probability`, a policy that is not a `RunPolicy`, a
 remaining budget that is negative or exceeds the initial one, a negative or
 non-integer step count, `True` as a count, a bare string of consumed
-identifiers, or non-string members.
+identifiers, non-string members, a ledger that does not add up, a status that
+is not a `RunStatus`, a history member that is not a `TransitionRecord`, a
+cyclic opaque state, or an opaque state that cannot be frozen.
+
+**Every one of these is refused on direct construction too**, not only through
+`begin_run()`.
 
 ## 10. Tests run and their results
 
-**Before** — written first, run against `main`:
+**Before the module existed** — written first, run against `main`:
 
 ```
 ImportError: cannot import name 'runstate' from 'radhanite'
@@ -128,29 +183,65 @@ Ran 528 tests — FAILED (errors=1)
 
 An import failure proves *absence*. The mutations establish the rest.
 
+**Before the corrections** — the 29 new regression tests written first and run
+against the rejected implementation:
+
+```
+$ PYTHONDONTWRITEBYTECODE=1 python3.12 -m unittest tests.test_runstate -q
+Ran 75 tests in 0.009s
+FAILED (failures=25)
+```
+
+All 25 in the four new classes — `DirectConstructionTests`,
+`TaskStateIsDetachedTests`, `SiblingRecordConstructionTests`, and the amended
+`OpaqueTaskStateTests`. Nothing else regressed, which is what shows the
+corrections are additive rather than a redesign.
+
 **After:**
 
 ```
 $ python3.12 -m unittest discover -q
-Ran 573 tests in 0.14s
+Ran 602 tests in 0.16s
 OK
 ```
 
-**527 existing, unchanged, plus 46 new.**
+**527 existing, unchanged, plus 75 new.**
 
 ### Deliberate faults, all caught
 
-Bytecode writing disabled throughout.
+Bytecode writing disabled throughout, `__pycache__` cleared between runs.
 
-| Fault introduced | Result |
+The seven the correction authorization required, plus two covering the records
+the correction extended to:
+
+| Fault introduced | Failures |
 |---|---|
-| `total_spend` zero despite baseline spend | **4 failures** |
-| Allow `remaining_budget > initial_budget` | **1 failure** |
-| Allow a negative step count | **1 failure** |
-| Accept `True` as a step count | **1 failure** |
-| Retain the caller's mutable consumed-ID collection | **4 failures** |
-| Put `history` inside the snapshot | **4 failures** |
-| Omit consumed IDs from the snapshot | **1 failure** |
+| Bypass constructor invariant validation entirely | **26** |
+| Retain the caller's mutable consumed-ID input | **5** |
+| Retain the caller's mutable history input | **1** |
+| Retain `task_state` by reference | **12** |
+| Allow recursive/cyclic opaque state | **1** |
+| Allow a `total_spend` inconsistent with the budgets | **2** |
+| Allow an invalid `RunStatus` | **1** |
+| Bypass `RunSnapshot` validation | **2** |
+| Let a transition hold a `RunState` where a snapshot belongs | **1** |
+
+**9/9 killed.** Two of these took a second pass to earn:
+
+- *Allow inconsistent total spend* **survived** the first run. The unbalanced
+  ledger cases already present were caught by the `total_spend <=
+  initial_budget` bound, so the identity check itself was untested. A case where
+  both bounds hold and only the identity fails — $250 budget, $100 remaining,
+  $50 spent — now covers it.
+- *Let a transition hold a run* **survived** because the test that was meant to
+  catch it passed a non-`Selection` object, so it was raising for the wrong
+  reason. A real `Selection` is constructed now, leaving the field under test as
+  the only thing wrong.
+
+The earlier faults from the first revision were re-run and still fail: baseline
+spend zeroed (**4**), `remaining_budget > initial_budget` allowed (**1**),
+negative step count (**1**), `True` as a step count (**1**), `history` inside
+the snapshot (**4**), consumed IDs omitted from the snapshot (**1**).
 
 ## 11. Assumptions made
 
@@ -163,12 +254,15 @@ Bytecode writing disabled throughout.
 
 ## 12. Known limitations
 
-- **`task_state` mutability is a real gap, and it is the specification's.**
-  §3.1 requires opacity, which entails storing by reference, which means a
-  caller mutating that object changes what every snapshot appears to have
-  recorded. The obligation is documented on the caller. Whether the spec should
-  instead *require* immutable task state — and how it would check that without
-  inspecting — is recorded as open in TASK-007 §3.5.
+- **`task_state` now has a narrower contract than "anything at all".** Only
+  immutable values and containers of them are accepted; an arbitrary mutable
+  object is refused. That is a real constraint on callers, and it lands on a
+  producer that does not exist yet — the task-state updater (§5.3, §10) must be
+  designed to return immutable state. Recorded in TASK-007 §3.1.1 so it is a
+  known constraint rather than a surprise.
+- **Freezing rebuilds containers on every snapshot.** A snapshot holds a frozen
+  equivalent of the run's state, equal to it but not the same object. Auditors
+  compare by value, so this costs nothing but is worth knowing.
 - **`TransitionRecord.execution` is untyped**, pending the execution step.
 - **Nothing constructs a `TransitionRecord`.** `history` is always empty until
   the loop exists.
@@ -187,7 +281,9 @@ byte-identical to `main` apart from `__init__.py`'s exports.
 
 ## 14. Deferred to future tasks
 
-The rest of TASK-007, and the §3.5 ambiguity.
+The rest of TASK-007. **The §3.5 "ambiguity" is not deferred — it is
+retracted**: it was a wrong conclusion, not an open product question, and
+`CODEX-PR030-02` resolved it against the reasoning this PR originally recorded.
 
 ## 15. How to explain this to a judge
 

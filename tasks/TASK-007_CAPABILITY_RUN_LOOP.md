@@ -110,6 +110,33 @@ reads it.
 > **Producing and interpreting `task_state` is owned by a separate future task
 > that does not yet exist**, and is not designed here. See §5.3 and §10.
 
+#### 3.1.1 Opacity is not aliasing
+
+**Opaque means TASK-007 does not interpret the state. It does not mean TASK-007
+may retain a mutable reference to it.** An earlier revision of this section
+concluded otherwise — that storing by reference *followed* from opacity, because
+copying or freezing would require inspection. `CODEX-PR030-02` rejected that,
+and it was wrong on both counts:
+
+- **It does not follow.** Freezing a structure reads its *shape* — is this a
+  mapping, a sequence, a set — and never its meaning. No key, value or field is
+  interpreted, so nothing about opacity is given up.
+- **The consequence is unacceptable.** With a live reference, a caller mutating
+  their own object rewrites what an already-written audit record appears to say,
+  and can insert a back-reference into it that makes it recursive after the
+  fact — defeating §3.3 without touching this module.
+
+So `task_state` is **frozen structurally on the way in**: containers become
+immutable equivalents, already-immutable values pass through, cycles are
+refused, and **an object that cannot be frozen is refused rather than stored**.
+Refusal is decided from the object's type alone, so even a value that raises on
+every read is refused without being read.
+
+The obligation this places on callers is explicit: **supply immutable values, or
+containers of immutable values.** That is a narrower contract than "anything at
+all", and a deliberate one — auditability is the point of §3, and a record that
+can change after it is written is not a record.
+
 ### 3.2 Budget accounting
 
 `initial_budget` is **the original run budget**, not a capability-only
@@ -216,29 +243,39 @@ preserve.
 | `RunSnapshot` | Every §3 field **except `history`** — §3.3 |
 | `TransitionRecord` | `before`, `selection`, `after`, `execution`. Defined so `history` has a member type; **no transition is produced** |
 | `RunState` | The §3 fields, `.max_capability_steps` read from the policy, and `.snapshot()` |
-| `begin_run(...)` | Validated initialization. `total_spend` is **derived**, never supplied |
+| `begin_run(...)` | Derives `total_spend` from the budgets. A convenience, **not the only validated path** |
 
-**`task_state` is held by reference**, which §3.1 entails: copying or freezing an
-arbitrary object means inspecting it, and this task must not. The consequence —
-a caller mutating that object changes what every snapshot appears to have
-recorded — is documented in `RunState` rather than left to be discovered. See
-§3.5.
+**Every construction is validated.** The invariants live in `__post_init__` on
+all three records, so `RunState(...)`, `RunSnapshot(...)` and
+`TransitionRecord(...)` enforce the same rules `begin_run` does. An earlier
+revision put them only in `begin_run` while exporting a directly constructible
+`RunState`; `CODEX-PR030-01` rejected that, on the grounds that one safe path
+and one unsafe path is one unsafe path.
+
+**`task_state` is frozen, not aliased** — §3.1.1.
 
 **Not built**: execution, the executor interface, execution results,
 committed-cost transitions, candidate consumption, step increments, task-state
 updates, acquisition calls, eligibility, ranking, selection, terminal
 classification, retry, and the loop itself.
 
-### 3.5 An ambiguity §3.1 leaves open ⚠️
+### 3.5 Retracted: the `task_state` storage question was not ambiguous
 
-§3.1 requires `task_state` to be opaque and never inspected, which settles
-*how* it is stored — by reference, since the alternatives require inspection.
+This section previously recorded an "ambiguity §3.1 leaves open": that §3.1
+settled opacity but not what happens when a caller mutates the state
+afterwards, leaving the choice between aliasing and immutability an open
+product question.
 
-**It does not say what happens when a caller mutates it afterwards.** A snapshot
-holds the same reference, so the audit record silently changes with it. The
-implementation documents the obligation on the caller; whether the specification
-should instead *require* immutable task state, and how it would check that
-without inspecting, is an open product question.
+**That was not an ambiguity; it was a wrong conclusion.** Aliasing was never
+entailed by opacity, and the requirement that resolves it — §4 invariant 13,
+every transition reconstructable from a non-recursive history — was already
+written down. `CODEX-PR030-02` identified this. The resolution is §3.1.1, and
+no product decision was needed to reach it.
+
+One question genuinely remains open, and it is narrower: **§3.1.1 constrains
+what a `task_state` may be, and the task that will produce `task_state` does
+not exist yet** (§5.3, §10). That task must produce immutable state. Recorded
+here so it is a known constraint on a future design rather than a surprise.
 
 ## 4. Invariants
 
