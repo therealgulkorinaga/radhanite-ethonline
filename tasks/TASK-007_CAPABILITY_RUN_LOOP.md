@@ -25,10 +25,13 @@ read.
 ## 2. The loop
 
 ```
-        run state (from §3)
+        run state (§3)
              │
              ▼
-    ┌──► current candidate set        ← candidate source (§5.1)
+      is the task already complete?  ──── yes ──► TERMINAL: task complete (§6)
+             │ no
+             ▼
+    ┌──► current candidate set        ← candidate source (§5.1), given task_state
     │        │
     │        ▼
     │   TASK-006 eligibility, per candidate
@@ -36,229 +39,402 @@ read.
     │        ▼
     │   TASK-006 ranking / selection
     │        │
-    │        ├── STOP ──────────────► terminal (§6)
+    │        ├── STOP ──────────────► TERMINAL: economic or safety (§6)
     │        │
     │        ▼ selected capability
     │   execute it — exactly one       ← capability executor (§5.2)
     │        │
     │        ▼
-    │   apply result to run state:
-    │     · commit the spend
-    │     · mark the candidate ID consumed
-    │     · increment the step count
+    │   apply the result (§7):
+    │     · consume the candidate ID           — always
+    │     · commit `committed_cost`            — always, success or failure
+    │     · increment the paid-step count      — iff committed_cost > 0
     │        │
-    │        ▼
-    │   obtain updated task state      ← task-state updater (§5.3)
+    │        ├── failure ────────────► TERMINAL: execution failure (§6)
     │        │
+    │        ▼ success
+    │   task-state updater             ← §5.3, returns new task_state,
+    │        │                            probability and completion
     └────────┘
 ```
 
-**One iteration buys at most one capability.** A loop that could buy two in a
-pass would make the step count meaningless and the safeguards unenforceable.
+**The already-complete check comes first, before any candidate is considered.**
+That ordering is §6.1's precedence rule and it is not an optimisation.
+
+**One iteration attempts at most one capability.** Two would make the step count
+meaningless and the safeguards unenforceable.
 
 ## 3. Run state
 
 The minimum a run must carry. Immutable per transition: each iteration produces
-a **new** state rather than mutating the last, so the history in §3.1 is a
-sequence of facts rather than a reconstruction.
+a **new** state rather than mutating the last.
 
-| Field | Why it is needed | Owner |
+| Field | Why it is needed | Changes? |
 |---|---|---|
-| `task_value` | An input to every eligibility test | Task, fixed |
-| `initial_budget` | The ceiling total spend is checked against | Task, fixed |
-| `policy` | `RunPolicy` — the step ceiling | Run, fixed |
-| `current_success_probability` | What each candidate is measured against | §5.3, changes |
-| `remaining_budget` | Passed to eligibility each iteration | This task, changes |
-| `total_spend` | Checked against `initial_budget` | This task, changes |
-| `consumed_candidate_ids` | §2.5a single-use enforcement | This task, changes |
-| `capability_step_count` | §2.5 C ceiling enforcement | This task, changes |
-| `status` | Running, or which terminal state — §6 | This task |
-| `history` | §3.1 | This task, append-only |
+| `task_value` | An input to every eligibility test | Fixed |
+| `initial_budget` | The original run budget — §3.2 | Fixed |
+| `policy` | `RunPolicy` — the step ceiling | Fixed |
+| `task_state` | **Opaque.** §3.1 | Yes |
+| `current_success_probability` | What each candidate is measured against | Yes |
+| `remaining_budget` | Passed to eligibility each iteration | Yes |
+| `total_spend` | §3.2 | Yes |
+| `consumed_candidate_ids` | §2.5a single-use enforcement | Yes |
+| `paid_capability_step_count` | §2.5 C ceiling enforcement — §7.2 | Yes |
+| `status` | Running, or which terminal state — §6 | Yes |
+| `history` | §3.3 | Append-only |
 
-**Deliberately excluded**, because nothing in this task needs them: any task
+**Deliberately excluded**, because no specified behaviour needs them: any task
 description or constraints text, any provider identity, any per-capability
-metadata, any timing or retry counters (until §7 is decided), and anything
-belonging to the domain layers in §5.
+metadata, and any retry counters — §7 authorizes no retry.
 
-`remaining_budget` and `total_spend` are both carried although one is derivable
-from the other. The derivation is the invariant — §4 item 1 — and a run record
-that stated only one would make it uncheckable after the fact.
+### 3.1 `task_state` is opaque, and TASK-007 does not interpret it
 
-### 3.1 The history
+**TASK-007 stores `task_state` and passes it. It never reads inside it.**
 
-An append-only record, one entry per iteration, each carrying:
+Candidate generation needs to know what the task currently looks like. So does
+the state updater. So does anyone reconstructing a decision from the record.
+Carrying only `current_success_probability` would make all three impossible:
+a probability is a *summary* of a state, not the state.
 
-- the **`Selection`** TASK-006 returned, whole — which already holds every
-  candidate considered, its figures, and why each failed;
-- the **run state before** the iteration;
-- the **execution result**, where a capability was executed;
-- the **run state after**.
+| | |
+|---|---|
+| **Given to** | the candidate source (§5.1) and the task-state updater (§5.3) |
+| **Returned by** | the task-state updater, alongside the new probability and the completion verdict |
+| **Interpreted by** | **neither TASK-007 nor TASK-006** |
 
-A `Selection` is kept rather than summarized because TASK-006 §8 already
-requires the rejected candidates and their reasons, and summarizing here would
-discard what that section exists to preserve.
+It must be **provider-neutral**: nothing inside it may reach the economic
+decision, which sees only the three candidate fields. `ARCHITECTURE.md` §6
+item 7 applies — this task must not acquire a field, branch or helper that
+reads it.
+
+> **Producing and interpreting `task_state` is owned by a separate future task
+> that does not yet exist**, and is not designed here. See §5.3 and §10.
+
+### 3.2 Budget accounting
+
+`initial_budget` is **the original run budget**, not a capability-only
+allowance. There is no hidden sub-budget.
+
+`total_spend` is **all spend committed from that budget up to the current
+state**, including anything spent before the loop was entered — a baseline
+attempt, for instance. TASK-006 §2.2a already defines `remaining_budget` as net
+of everything spent so far, including the baseline, and an accounting model that
+counted only loop spend would contradict it.
+
+**At loop entry**, initialization must therefore satisfy:
+
+```
+total_spend = initial_budget - remaining_budget
+```
+
+and thereafter every committed cost increases `total_spend` and decreases
+`remaining_budget` by the same exact `Money` amount, preserving:
+
+```
+total_spend + remaining_budget == initial_budget
+```
+
+**No separate `spend_before_capability_loop` field.** It would be derivable
+from the entry state, it would duplicate a fact already recorded in the first
+transition's before-snapshot, and a redundant field is a field that can drift.
+Criterion 12 tests the initialization directly instead.
+
+All arithmetic is exact `Money`.
+
+### 3.3 The history is a sequence of transitions, not nested states
+
+One immutable `TransitionRecord` per iteration. **Nothing contains itself,
+transitively or otherwise** — a record holds *snapshots*, and a snapshot
+excludes `history`.
+
+| Field | Contents |
+|---|---|
+| `before` | Run-state snapshot, **excluding `history`** |
+| `selection` | The **complete** TASK-006 `Selection` |
+| `execution` | The execution result or failure record — absent on a STOP iteration |
+| `after` | Run-state snapshot, **excluding `history`** |
+
+A snapshot carries every §3 field except `history`: `task_value`,
+`initial_budget`, `policy`, `task_state`, `current_success_probability`,
+`remaining_budget`, `total_spend`, `consumed_candidate_ids`,
+`paid_capability_step_count`, `status`.
+
+The `Selection` is kept **whole** rather than summarized, because TASK-006 §8
+already requires every candidate considered with its figures and the reason it
+failed. Summarizing here would discard exactly what that section exists to
+preserve.
 
 ## 4. Invariants
 
-The specification guarantees all of these, and each gets a test in §9.
-
-1. **Total spend never exceeds the initial budget**, and
-   `total_spend + remaining_budget == initial_budget` after every transition.
+1. **`total_spend + remaining_budget == initial_budget`** after every
+   transition, and at initialization — §3.2.
 2. **Remaining budget never becomes negative.**
 3. **A consumed candidate ID never executes again** — §2.5a.
-4. **The same capability type may return under a new candidate ID**, once the
-   state has changed. Enforced by ID alone; this task acquires no notion of
-   type, exactly as TASK-006 §2.5a forbids.
-5. **No capability executes unless TASK-006 selected it.** There is no path from
-   a candidate to execution that does not pass through the decision.
-6. **At most one capability executes per iteration.**
-7. **The step count increments exactly once per completed paid capability step.**
-8. **`capability_step_count >= max_capability_steps` prevents another
+4. **The same capability type may return under a new candidate ID.** Enforced by
+   ID alone; this task acquires no notion of type.
+5. **No capability executes unless TASK-006 selected it.**
+6. **At most one capability execution is attempted per iteration.**
+7. **`paid_capability_step_count` increments exactly once per attempt that
+   committed a positive cost**, and never otherwise — §7.2.
+8. **`paid_capability_step_count >= max_capability_steps` prevents another
    execution** — TASK-006 §2.5 C, unchanged.
 9. **No execution occurs after a terminal state**, of any kind.
-10. **TASK-006 stays provider-neutral.** Nothing this task passes into the
-    decision may carry provider, network or payment identity.
-11. **An execution failure can never appear as successful completion.** §7.
-12. **Every state transition is reconstructable from the run record** —
-    `PREREQ-001` §8 criterion 3.
+10. **TASK-006 stays provider-neutral.** Nothing passed into the decision
+    carries provider, network or payment identity — §5.4.
+11. **An execution failure never appears as successful completion**, and never
+    silently records zero spend when a cost was committed.
+12. **`0 <= committed_cost <= candidate.cost`**, and `committed_cost` never
+    exceeds `remaining_budget` — §7.1.
+13. **Every state transition is reconstructable from the history**, which is
+    non-recursive — §3.3.
 
 ## 5. External interfaces
 
 Three boundaries, all **provider-neutral**. This task orchestrates them and
-defines none of their domain reasoning. Each is specified here only as a shape;
-what sits behind them is other work, none of it authorized.
+defines none of their domain reasoning.
 
 ### 5.1 Candidate source
 
-> Given the current run and task state, return the current candidate set.
+> Given `task_state` and the current run state, return the current candidate set.
 
 Whether the candidates came from declared fixtures, a marketplace, an onchain
-index, or anything else **is not this task's concern and must not become
-visible to it**. `capability.DECLARED_CANDIDATES` satisfies this interface
-today, which is how the loop can be tested without any integration existing.
+index or anything else **is not this task's concern**.
+`capability.DECLARED_CANDIDATES` satisfies this today, which is how the loop can
+be tested with no integration in existence.
 
 ### 5.2 Capability executor
 
-> Given the selected candidate and the current state, perform that capability
+> Given the selected candidate and the current state, attempt that capability
 > and return a structured execution result.
 
-The result carries whether it succeeded and whatever the task-state updater
-needs — and **no payment or provider fields** unless a later authorized task
-demonstrates one is unavoidable. A field naming a provider here would reach the
-decision through §5.3 and defeat §4 item 10.
+The result carries:
+
+| | |
+|---|---|
+| `succeeded` | Whether the capability delivered |
+| `committed_cost` | Exact `Money` actually committed — §7.1 |
+| `evidence` | Opaque; meaningful only to §5.3. Absent or partial on failure |
+
+**No payment or provider fields**, unless a later authorized task demonstrates
+one is unavoidable.
 
 ### 5.3 Task-state updater
 
-> Given the previous task state and an execution result, return the new task
-> state — including the new current success probability — and whether the task
-> is now complete.
+> Given the previous `task_state` and an execution result, return the new
+> `task_state`, the new `current_success_probability`, and whether the task is
+> now complete.
 
-**This is where the domain reasoning lives, and it is emphatically not here.**
-How evidence becomes a probability is a judgement this task orchestrates and
-does not make. It is the same open question recorded in
-[TASK-008](TASK-008_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md) §6.3, and **no
-authorized task owns it.**
+**TASK-007 never derives a probability or a completion verdict itself.** It
+calls this boundary and stores what comes back.
+
+> **This boundary's reasoning requires its own future task**, which does not
+> exist and is not designed here. Turning opaque evidence into a declared
+> probability and a completion verdict is a domain judgement — the same open
+> question recorded in
+> [TASK-008](TASK-008_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md) §6.3.
+
+### 5.4 What may cross into the decision
+
+Only the three TASK-006 §2.2 candidate fields, plus the run-level inputs in
+§2.2a. `task_state`, `evidence`, and anything a provider attached to either
+**must not reach an eligibility test or a ranking comparison.**
 
 ## 6. Terminal states
 
-Four, kept distinct. Collapsing them into one STOP would destroy the
-distinction TASK-006 §8 spent effort creating.
+Four, kept distinct. Collapsing them would destroy the distinction TASK-006 §8
+spent effort creating.
 
 | State | Meaning |
 |---|---|
-| **Already complete** | The task's success condition was satisfied before any decision. **Zero capabilities execute** |
-| **Economic stop** | TASK-006 returned STOP and at least one candidate was refused on economic grounds |
-| **Safety stop** | TASK-006 returned STOP and every refusal was a §2.5 safeguard — including the step ceiling, and including an empty offer at the ceiling |
-| **Unrecoverable execution failure** | §7 |
+| **`TASK_COMPLETE`** | The success condition was satisfied. **Zero further executions** |
+| **`ECONOMIC_STOP`** | Nothing eligible, and at least one candidate was refused on economic grounds |
+| **`SAFETY_STOP`** | Nothing eligible, and no candidate was refused on economic grounds — or a run-level safeguard blocked the run outright |
+| **`EXECUTION_FAILURE`** | A capability was attempted and did not deliver — §7.3 |
 
-The middle two come straight from `Selection.stopped_without_economic_judgement`,
-which already draws that line. This task must not re-derive it.
+### 6.1 Precedence — already-complete wins
 
-## 7. Execution failure — **UNRESOLVED, requires authorization** ⚠️
+**The already-complete check runs before any candidate is considered**, on entry
+and after every successful execution.
 
-**If a selected capability call fails, what happens?**
+Consequently, a run whose task is complete terminates `TASK_COMPLETE` **even
+when**:
 
-This is a product decision and it is not taken here. Four things hang on it, and
-inventing an answer would embed economics this task has no authority over.
+- `max_capability_steps == 0`; or
+- the step ceiling has been reached; or
+- eligible candidates are still on offer.
 
-| | Was the money spent? | Is the ID consumed? | Does the step count rise? | Retry? |
-|---|---|---|---|---|
-| **A — Paid and spent** | Yes | Yes | Yes | No |
-| **B — Not paid** | No | Yes | No | No |
-| **C — Not paid, retryable** | No | No | No | Yes, bounded |
-| **D — Fail the run** | Either | — | — | Run ends |
+A completed task is not stopped by a ceiling. It is finished.
 
-**Recommended: B — not paid, consumed, no step.**
+### 6.2 Classifying a STOP
 
-The reasoning: the run did not receive what it was deciding about, so charging
-it would make `total_spend` stop meaning *value acquired*. Consuming the ID
-anyway is what guarantees termination — a failing capability that stayed on offer
-would be selected again on identical terms forever, which is the same
-non-termination §2.5 A exists to prevent. Not incrementing the step count keeps
-that counter meaning *capabilities actually bought*.
+Classification is **derived from why the candidates were ineligible**, never
+assumed.
 
-Against it: a real payment rail may debit before failing, in which case A is
-what actually happened and B would record a falsehood. That is why this needs
-deciding with the payment integration in view rather than now.
+TASK-006 already computes this: `Selection.stopped_without_economic_judgement`
+is true exactly when every refusal was a §2.5 safeguard. **This task must read
+that value rather than re-derive it.**
 
-**C is not recommended** without a bound and a distinct terminal state, since
-retry is where a run loop quietly becomes non-terminating.
+| Situation | Terminal state |
+|---|---|
+| Every refusal was a safeguard — consumed, ceiling, non-positive cost | `SAFETY_STOP` |
+| Any candidate was refused on economic grounds — budget, uplift, value | `ECONOMIC_STOP` |
+| Zero candidates offered, below the ceiling | `ECONOMIC_STOP` — nothing was affordable because nothing was on offer |
+| Zero candidates offered, at the ceiling | `SAFETY_STOP` |
+| `max_capability_steps == 0`, task not complete | `SAFETY_STOP`, immediately |
 
-**No provider-specific retry rules are specified, and none may be added.** A
-rule that behaved differently for one provider would put provider identity into
-the loop.
+**Mixed failures are recorded as they happened.** A run where one candidate
+failed on budget and another was already consumed is an `ECONOMIC_STOP` — a real
+economic verdict was reached on at least one — and the per-candidate reasons
+survive intact in the `Selection`. The run-level label never erases them.
 
-Whatever is chosen, invariant 11 holds: **a failure never appears as success.**
+## 7. Execution semantics
+
+Supplied by the human product owner following review. **Binding on the
+implementation**, and — like everything in this document — not itself an
+authorization to build.
+
+### 7.1 The executor commits, and reports what it committed
+
+The selected candidate's declared `cost` is the **maximum the executor is
+authorized to commit**. What it actually committed comes back as
+`committed_cost`.
+
+```
+0 <= committed_cost <= candidate.cost
+committed_cost <= remaining_budget
+```
+
+**`committed_cost` is what changes the accounting** — not the declared cost.
+Failure does **not** imply zero spend: a call that debited and then failed
+committed real money, and recording zero would falsify the ledger.
+
+### 7.2 On every execution attempt, success or failure
+
+1. The selected **candidate ID becomes consumed.**
+2. **`committed_cost` is recorded** and applied to `total_spend` and
+   `remaining_budget`.
+3. **If `committed_cost > 0`**, `paid_capability_step_count` increments — a paid
+   capability step occurred.
+4. **If `committed_cost == 0`**, the attempt is recorded but the paid-step count
+   does **not** increment. Nothing was bought.
+
+### 7.3 Failure terminates the run
+
+An execution failure terminates the run as **`EXECUTION_FAILURE`**. There is
+**no automatic retry**, and retry behaviour is outside current authorization.
+
+**This is what guarantees termination on the failure path** — explicitly, not by
+side effect.
+
+> An earlier revision of this document claimed that consuming the candidate ID
+> was itself sufficient to guarantee termination. **It is not.** Nothing stops a
+> candidate source regenerating an equivalent capability under a fresh ID, which
+> would be eligible on identical terms. Termination on failure rests on §7.3's
+> explicit terminal state; ID consumption prevents *re-execution of the same
+> offer*, which is a different and narrower guarantee.
+
+Termination on the non-failure paths rests on TASK-006's three safeguards, which
+are unchanged.
 
 ## 8. Inherited from TASK-006 — criteria 10 and 13
 
 TASK-006 §5a records two acceptance criteria whose end-to-end meaning needs a
-run loop. **This task inherits responsibility for demonstrating them**, with
-their meaning unchanged.
+run loop. **This task inherits responsibility for demonstrating them**, meaning
+unchanged.
 
 | TASK-006 | As stated there | Inherited as |
 |---|---|---|
-| **Criterion 10** | *Task already successful → STOP, with no candidate evaluated* | §9 test 1 |
-| **Criterion 13** | *Total spend can never exceed the budget, on every path including boundary cases where cost exactly equals the remaining budget* | §9 tests 10, 11, 12 |
+| **Criterion 10** | *Task already successful → STOP, with no candidate evaluated* | §9 criteria 1 and 2 |
+| **Criterion 13** | *Total spend can never exceed the budget, on every path including boundary cases where cost exactly equals the remaining budget* | §9 criteria 12–15 |
 
-**TASK-006 is not made complete by this document existing.** It becomes
-complete when these are demonstrated by a TASK-007 implementation — not before,
-and not by writing a specification that promises to.
+**TASK-006 is not made complete by this document existing.** It becomes complete
+when a TASK-007 implementation demonstrates these — not before.
 
 ## 9. Acceptance criteria
 
-1. **Task already complete → zero executions**, and the terminal state is
-   *already complete* — inherited criterion 10.
-2. **No eligible candidate → economic stop.**
-3. **One capability executes, state updates, then STOP.**
-4. **Several capabilities execute in sequence**, each a separate iteration.
-5. **A consumed candidate ID cannot execute twice.**
-6. **The same capability type, under a new candidate ID, may execute later** —
-   by ID alone, with no notion of type anywhere.
-7. **The step ceiling prevents another execution.**
-8. **`max_capability_steps = 0` produces an immediate safety stop**, with zero
-   executions.
-9. **A positive budget does not override the step ceiling** — criterion 22's
-   run-level form.
-10. **Spend exactly equal to the remaining budget is allowed**, where the
-    economics selected it — inherited criterion 13's boundary.
-11. **Spend can never exceed the remaining budget**, on any path.
-12. **Total spend equals the sum of committed capability costs**, and
-    `total_spend + remaining_budget == initial_budget` throughout.
-13. **Candidate ordering cannot change the winner** — permuted offers, identical
-    runs.
-14. **Provider identity cannot influence selection.** Candidates differing only
-    in metadata produce identical runs.
-15. **Execution failure follows the authorized §7 policy exactly**, and never
-    reads as success.
-16. **No execution occurs after a terminal state.**
-17. **The full run record reconstructs every decision and transition**, including
-    the candidates that were rejected and why.
+Terminal states and precedence:
+
+1. **Already-complete task → zero executions**, terminal `TASK_COMPLETE` —
+   inherited criterion 10.
+2. **Already-complete takes precedence** over `max_capability_steps == 0`, over
+   a reached ceiling, and over available eligible candidates.
+3. **Every candidate refused on economic grounds → `ECONOMIC_STOP`.**
+4. **Every candidate refused only by safeguards → `SAFETY_STOP`.**
+5. **Mixed refusals → `ECONOMIC_STOP`**, with every per-candidate reason
+   preserved in the `Selection`.
+6. **`max_capability_steps == 0` with an incomplete task → immediate
+   `SAFETY_STOP`**, zero executions.
+7. **The step ceiling prevents further execution.**
+
+Execution and the loop:
+
+8. **One successful execution → state updates → STOP.**
+9. **Several successful executions run in sequence**, one per iteration.
+10. **A consumed candidate ID cannot execute again.**
+11. **The same capability type may reappear under a new ID** and execute — by ID
+    alone, with no notion of type anywhere.
+
+Accounting — inherited criterion 13:
+
+12. **Baseline spend initializes correctly**: entering with
+    `remaining_budget < initial_budget` yields
+    `total_spend == initial_budget - remaining_budget`.
+13. **A committed cost exactly equal to the remaining budget is permitted**
+    where the economics selected it.
+14. **`committed_cost` never exceeds the candidate's declared cost, nor the
+    remaining budget.**
+15. **`total_spend + remaining_budget == initial_budget`** holds across every
+    transition, and `total_spend` equals the sum of all committed costs plus
+    the entry spend.
+
+Failure semantics:
+
+16. **Success with committed spend** updates accounting and increments the
+    paid-step count.
+17. **Failure with committed spend** records the spend, consumes the ID,
+    increments the paid-step count, and terminates `EXECUTION_FAILURE`.
+18. **Failure with zero committed spend** consumes the ID, leaves the paid-step
+    count unchanged, and terminates `EXECUTION_FAILURE`.
+19. **No execution occurs after any terminal state.**
+
+Neutrality and audit:
+
+20. **Provider metadata cannot influence TASK-006.** Candidates whose external
+    metadata differs but whose three economic fields are identical produce
+    **identical assessments and an identical selection**. This asserts nothing
+    about execution results, evidence, subsequent task states, or whole runs —
+    §9a.
+21. **Candidate ordering cannot change the winner** — permuted offers, identical
+    selections.
+22. **The history is non-recursive** and reconstructs every decision and
+    transition, including the rejected candidates and their reasons.
+
+### 9a. What criterion 20 does not claim
+
+TASK-006's neutrality guarantee is about **the economic kernel**, and stops
+there:
+
+| Guaranteed | **Not** guaranteed |
+|---|---|
+| Identical economic inputs → identical assessments | Identical execution results |
+| Identical eligible economics → identical selection | Identical evidence returned |
+| Provider metadata never reaches or influences selection | Identical task-state updates |
+| | Identical complete runs |
+
+Two capabilities priced the same and claiming the same probability are
+indistinguishable **to the decision**. They may then do entirely different
+things, return different evidence, and send the run down different paths. That
+is expected, and a criterion demanding otherwise would be asserting something
+neither TASK-006 nor this task can deliver.
 
 ## 10. Out of scope
 
 Not owned by this task, and not authorized by it:
 
+- **producing or interpreting `task_state`** — the reasoning that turns
+  previous state plus execution evidence into a new state, a declared
+  probability and a completion verdict. **This requires its own future task**,
+  which does not exist and is not designed here — §5.3;
 - how the **baseline or current success probability** is derived;
 - how **success or completion** is evaluated;
 - how **candidates are discovered or generated**;
@@ -306,5 +482,13 @@ product's central claim.
 - Confirm **no notion of capability type** exists — consumption is by ID.
 - Confirm **no provider name** appears anywhere, including fixtures, comments
   and test names.
-- Confirm §7 was **decided by the product owner before implementation**, and
-  that the implementation matches what was decided.
+- Confirm §7's execution semantics are implemented **exactly** — the authorized
+  maximum, `committed_cost` driving the accounting, the paid-step count rising
+  only on positive spend, and failure terminating the run with no retry.
+- Confirm `task_state` is **never read** by this task or by the decision, and
+  that no field, branch or helper inspects it — §3.1, §5.4.
+- Confirm the history is **non-recursive**: no snapshot contains a history.
+- Confirm the already-complete check **precedes** candidate selection on every
+  path — §6.1.
+- Confirm STOP classification is **read from**
+  `Selection.stopped_without_economic_judgement` rather than re-derived — §6.2.

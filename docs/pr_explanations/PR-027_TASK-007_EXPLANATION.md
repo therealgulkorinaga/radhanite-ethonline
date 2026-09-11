@@ -57,19 +57,23 @@ meaningless and the safeguards unenforceable.
 
 ### The state, and what it deliberately excludes
 
-Ten fields: task value, initial budget, policy, current success probability,
-remaining budget, total spend, consumed IDs, step count, status, history.
+Eleven fields, including **`task_state`** — opaque, stored and passed but never
+read by this task or by the decision. Carrying only a probability would have
+made candidate generation, state updating and audit reconstruction impossible: a
+probability is a *summary* of a state, not the state.
 
-Excluded because nothing needs them yet: task text, constraints, provider
-identity, per-capability metadata, timing and retry counters.
+Excluded because nothing needs them: task text, constraints, provider identity,
+per-capability metadata, retry counters.
 
 `remaining_budget` and `total_spend` are both carried although either derives
 from the other. **The derivation is the invariant** — a record stating only one
 would make it uncheckable afterwards.
 
-The history keeps each `Selection` **whole**, because TASK-006 §8 already
-requires the rejected candidates and their reasons, and summarizing here would
-throw away exactly what that section exists to preserve.
+The history is a **non-recursive** sequence of transition records. Each holds a
+before-snapshot, the complete `Selection`, the execution result, and an
+after-snapshot — and **snapshots exclude the history**, so nothing contains
+itself. The `Selection` is kept whole, because TASK-006 §8 already requires the
+rejected candidates and their reasons.
 
 ### Three interfaces, all provider-neutral
 
@@ -86,14 +90,19 @@ reach the decision through the state updater.
 verdict. **The domain reasoning lives here and emphatically not in the loop.**
 It is the same open question as TASK-008 §6.3, and no authorized task owns it.
 
-### Four terminal states, kept apart
+### Four terminal states, with precedence
 
-Already complete · economic stop · safety stop · unrecoverable execution
-failure.
+`TASK_COMPLETE` · `ECONOMIC_STOP` · `SAFETY_STOP` · `EXECUTION_FAILURE`.
 
-The middle two come straight from
-`Selection.stopped_without_economic_judgement`, which already draws that line.
-Collapsing them would destroy a distinction TASK-006 §8 spent effort creating.
+**Already-complete is checked first**, before any candidate. A finished task
+terminates `TASK_COMPLETE` even at a zero-step policy, even at the ceiling, even
+with eligible candidates on offer. A completed task is not stopped by a ceiling;
+it is finished.
+
+The two STOP kinds are **read from**
+`Selection.stopped_without_economic_judgement` rather than re-derived. Mixed
+failures are recorded as they happened: one economic refusal makes it an
+`ECONOMIC_STOP`, and every per-candidate reason survives in the `Selection`.
 
 ## 6. What goes into the system
 
@@ -167,7 +176,69 @@ or safeguards.
 Deciding §7. Then authorizing and implementing TASK-007. Then whoever owns
 §5.3's reasoning.
 
-## 14a. A note on the renumbering
+## 14a. Corrections after the Codex review
+
+Five findings, all corrected. Together they changed the state model, the history
+structure, the accounting, the terminal states and two acceptance criteria — so
+§§2–9 were rewritten rather than patched.
+
+**`-01` — the loop carried a summary, not the state.** It held
+`current_success_probability` and nothing else. But candidate generation needs
+to know what the task looks like, the state updater needs the previous state,
+and audit reconstruction needs both. A probability is a summary of a state, not
+a substitute for one. `task_state` is now carried: **opaque**, passed to the
+candidate source and the updater, and **never read** by this task or the
+decision. Producing and interpreting it is explicitly a separate future task.
+
+**`-02` — the history defined itself.** A history entry contained the complete
+post-transition run state, which contains the history. That is circular and
+cannot be constructed. It is now a sequence of immutable transition records,
+each holding **snapshots that exclude the history**. Rejected-candidate
+reasoning survives because the whole `Selection` is still kept.
+
+**`-03` — the accounting contradicted TASK-006.** The invariant
+`total_spend + remaining_budget == initial_budget` was asserted alongside a
+definition of `total_spend` as loop spend only. TASK-006 §2.2a already defines
+`remaining_budget` as net of *everything*, baseline included, so the two could
+not both be true. `total_spend` now means all spend from the initial budget, and
+initialization must satisfy `total_spend = initial_budget - remaining_budget`.
+No separate pre-loop field was added: it is derivable, it duplicates a fact the
+first transition already records, and a redundant field can drift. Criterion 12
+tests the initialization directly.
+
+**`-04` — a STOP was assumed to be economic.** Criterion 2 said every "no
+eligible candidate" outcome was an `ECONOMIC_STOP`. False — a run stopped by the
+step ceiling refused nothing on economic grounds. Classification is now derived,
+with the mixed case defined, and **already-complete given explicit precedence**
+over a zero-step policy, a reached ceiling, and available candidates.
+
+**`-05` — the neutrality criterion claimed too much.** It required candidates
+differing only in provider metadata to produce **identical complete runs**.
+TASK-006 guarantees no such thing: it guarantees identical *assessments* and
+*selection*. Two capabilities priced the same may then do entirely different
+things and send the run down different paths. Criterion 20 now asserts what is
+actually guaranteed, and §9a states plainly what it does not.
+
+### Execution semantics, now specified
+
+The product owner supplied them following review, and they are stronger than the
+four options the earlier draft offered.
+
+The executor returns `committed_cost` — exact `Money`, bounded by the
+candidate's declared cost and by the remaining budget. **That figure drives the
+accounting, not the declared cost**, and failure does not imply zero spend: a
+call that debited then failed committed real money.
+
+Every attempt consumes the ID and records the cost. The paid-step count rises
+**only when the committed cost is positive**. Failure terminates the run as
+`EXECUTION_FAILURE`, with no retry.
+
+**One claim from the earlier draft was withdrawn.** It said consuming the
+candidate ID guaranteed termination on the failure path. It does not — nothing
+stops a candidate source regenerating an equivalent capability under a fresh ID.
+Termination now rests on §7.3's explicit terminal state, and §7.3 says so.
+
+## 14b. A note on the renumbering
 
 The Graph was TASK-007 and is now **TASK-008** — the number the product owner
 originally proposed for it. It was given 007 in PR #25 because 007 was free and

@@ -4,7 +4,7 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md`, `docs/PREREQ-001_PRODUCT_DEFINITION.md`, `docs/ARCHITECTURE.md`, `docs/AI_BUILD_GOVERNANCE.md`
 **Date issued:** 2026-09-11
-**Outcome:** _pending — review not yet run_
+**Outcome:** **Rejected** — `CODEX-PR027-01` … `-05`; all five corrected
 
 ---
 
@@ -122,12 +122,49 @@ End with exactly ONE outcome, per §7.2:
 
 ## 2. Findings returned
 
-_Pending. Codex has not yet reviewed this pull request._
+**The reviewer's verbatim response was not supplied** to the agent writing this
+record. What follows is the five findings **as relayed by the human product
+owner** in the correction authorization. Nothing has been invented. §0 is
+unaffected: the prompt in §1 was committed before the review ran.
+
+| | Finding | Departs from |
+|---|---|---|
+| `-01` | The run context carries `current_success_probability` but **not the opaque task/evidence state** that candidate generation, state update and audit reconstruction all require | TASK-007 §3, §5 |
+| `-02` | The history is **recursively defined**: an entry contains the complete post-transition run state, which itself contains the history | TASK-007 §3.1; `PREREQ-001` §8 |
+| `-03` | Accounting is **inconsistent**. `total_spend + remaining_budget == initial_budget` is asserted while `total_spend` is defined as capability-loop spend only — but TASK-006 §2.2a defines `remaining_budget` as already net of baseline spend | TASK-006 §2.2a |
+| `-04` | Acceptance criterion 2 claims **every** "no eligible candidate" outcome is an economic STOP. False — a ceiling stop refuses nothing on economic grounds. Precedence for an already-complete task is also unspecified | TASK-006 §8; TASK-007 §6 |
+| `-05` | Criterion 14 **overclaims**: it requires candidates differing only in provider metadata to produce identical complete runs. TASK-006 guarantees identical assessments and selection, not identical execution, evidence or runs | TASK-006 §2.1 |
 
 ## 3. Outcome
 
-_Pending._
+**Rejected** — `CODEX-PR027-01` through `-05`.
+
+`-02` alone would justify it: a recursively defined structure cannot be
+constructed, so the audit model as specified was unbuildable. `-03` and `-04`
+are both cases of the specification asserting something that contradicts
+TASK-006, and `-05` claimed a guarantee the kernel does not provide.
 
 ## 4. Corrections
 
-_None yet._
+All five corrected; §§2–9 of the task were rewritten rather than patched, since
+the findings interlock across the state model, the history, the accounting, the
+terminal states and the criteria.
+
+| Finding | Correction |
+|---|---|
+| `-01` | `task_state` added — opaque, stored and passed, **never read** by this task or the decision. Its production and interpretation are explicitly a separate future task |
+| `-02` | History is now a sequence of immutable transition records holding **snapshots that exclude the history**. Nothing contains itself; the whole `Selection` is still preserved |
+| `-03` | `total_spend` means all spend from the initial budget, baseline included. Initialization must satisfy `total_spend = initial_budget - remaining_budget`. No redundant pre-loop field |
+| `-04` | Classification derived from refusal reasons, mixed case defined, and **already-complete given explicit precedence** over zero-step policy, reached ceiling and available candidates |
+| `-05` | Criterion 20 now asserts identical **assessments and selection** only; §9a states what is not guaranteed |
+
+The product owner also supplied **execution semantics** — §7 — replacing the
+four-option question the earlier draft left open. A withdrawn claim is recorded
+there: consuming a candidate ID does **not** guarantee termination, since a
+source may regenerate an equivalent capability under a fresh ID. Termination on
+failure now rests on an explicit terminal state.
+
+Acceptance criteria reconciled to **22**, not appended to.
+
+**Corrections are themselves subject to review** (`AI_BUILD_GOVERNANCE.md`
+§7.5). This corrective commit has not been reviewed.
