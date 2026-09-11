@@ -356,6 +356,49 @@ class StopTests(unittest.TestCase):
         self.assertIsInstance(a_selection(candidates=[]), Selection)
 
 
+class ZeroCostOnlyOfferTests(unittest.TestCase):
+    """Criterion 18, demonstrated at the selector — CODEX-PR026-03.
+
+    §4 criterion 18: "a set consisting only of zero-cost candidates yields
+    STOP". Proving separately that `Candidate` refuses zero, that eligibility
+    refuses zero, and that some unrelated all-ineligible set stops, does not
+    demonstrate that outcome. This does.
+
+    The malformed candidate is built with `object.__setattr__`, the technique
+    `_immutable.py` documents and `tests/test_eligibility.py` already uses to
+    exercise the §2.5 A defence in depth.
+    """
+
+    def _free_candidate(self, candidate_id: str) -> Candidate:
+        candidate = Candidate(candidate_id, Money("0.50"), Probability("0.80"))
+        object.__setattr__(candidate, "cost", Money("0.00"))
+        return candidate
+
+    def test_an_offer_of_only_zero_cost_candidates_stops(self) -> None:
+        offer = [self._free_candidate("a-free"), self._free_candidate("b-free")]
+        s = a_selection(candidates=offer)
+        self.assertIs(s.outcome, SelectionOutcome.STOP)
+        self.assertIsNone(s.selected)
+        self.assertEqual(len(s.assessments), 2)
+        for assessment in s.assessments:
+            self.assertIn(
+                Ineligibility.COST_NOT_POSITIVE, assessment.failed_conditions
+            )
+
+    def test_it_stops_however_attractive_the_free_candidates_are(self) -> None:
+        # Certain success, free: the single most tempting thing that could be
+        # offered, and the one that would never terminate.
+        candidate = Candidate("a-free", Money("0.50"), Probability("1"))
+        object.__setattr__(candidate, "cost", Money("0.00"))
+        s = a_selection(candidates=[candidate])
+        self.assertTrue(s.stopped)
+
+    def test_a_priced_candidate_alongside_them_still_wins(self) -> None:
+        # The stop must come from the zero cost, not from the offer being odd.
+        s = a_selection(candidates=[self._free_candidate("a-free"), MIDDLE])
+        self.assertEqual(s.selected.candidate.candidate_id, "b-middle")
+
+
 class SafetyStopTests(unittest.TestCase):
     """§8 — a safety stop must not read as a verdict on value."""
 

@@ -13,7 +13,7 @@ import unittest
 from decimal import Decimal
 
 from radhanite import capability as capability_module
-from radhanite.capability import Candidate, validate_candidates
+from radhanite.capability import DECLARED_CANDIDATES, Candidate, validate_candidates
 from radhanite.money import Money
 from radhanite.probability import Probability
 
@@ -256,6 +256,80 @@ class NoAnticipationTests(unittest.TestCase):
             "wallet",
             "usdc",
         ):
+            self.assertNotIn(forbidden, text)
+
+
+class DeclaredFixtureTests(unittest.TestCase):
+    """TASK-006 §5 deliverable 4 — declared benchmark fixtures, nothing more.
+
+    In the same spirit as TASK-001's DECLARED_STRATEGIES, and under the same
+    honesty constraint: these are numbers someone typed so the rule can be
+    exercised. They are not discovered, measured, priced by anyone, or offered
+    for sale.
+    """
+
+    def test_the_catalogue_exists_and_is_small(self) -> None:
+        self.assertGreater(len(DECLARED_CANDIDATES), 0)
+        self.assertLessEqual(len(DECLARED_CANDIDATES), 5, "do not grow this")
+
+    def test_every_entry_is_a_candidate(self) -> None:
+        for candidate in DECLARED_CANDIDATES:
+            self.assertIsInstance(candidate, Candidate)
+
+    def test_the_order_is_deterministic_between_reads(self) -> None:
+        first = [c.candidate_id for c in DECLARED_CANDIDATES]
+        second = [c.candidate_id for c in DECLARED_CANDIDATES]
+        self.assertEqual(first, second)
+
+    def test_the_catalogue_is_an_immutable_tuple(self) -> None:
+        self.assertIsInstance(DECLARED_CANDIDATES, tuple)
+        with self.assertRaises(AttributeError):
+            DECLARED_CANDIDATES.append(a_candidate())
+
+    def test_identifiers_are_stable_and_unique(self) -> None:
+        ids = [c.candidate_id for c in DECLARED_CANDIDATES]
+        self.assertEqual(len(ids), len(set(ids)))
+        # validate_candidates is the boundary check, and must accept them.
+        self.assertEqual(validate_candidates(DECLARED_CANDIDATES), DECLARED_CANDIDATES)
+
+    def test_a_duplicate_identifier_would_be_refused(self) -> None:
+        twin = Candidate(
+            DECLARED_CANDIDATES[0].candidate_id, Money("9.99"), Probability("0.99")
+        )
+        with self.assertRaises(ValueError):
+            validate_candidates(list(DECLARED_CANDIDATES) + [twin])
+
+    def test_the_figures_are_exact_money_and_probability(self) -> None:
+        for candidate in DECLARED_CANDIDATES:
+            self.assertIsInstance(candidate.cost, Money)
+            self.assertNotIsInstance(candidate.cost, float)
+            self.assertIsInstance(candidate.success_probability, Probability)
+
+    def test_every_cost_is_positive(self) -> None:
+        # §2.5 A. A free fixture could not be constructed anyway; asserted so
+        # the catalogue cannot drift into one.
+        for candidate in DECLARED_CANDIDATES:
+            self.assertTrue(candidate.cost.is_positive)
+
+    def test_the_entries_cannot_be_mutated(self) -> None:
+        with self.assertRaises(Exception):
+            DECLARED_CANDIDATES[0].cost = Money("0.01")
+
+    def test_the_figures_do_not_change_between_reads(self) -> None:
+        snapshot = [(c.candidate_id, c.cost, c.success_probability)
+                    for c in DECLARED_CANDIDATES]
+        self.assertEqual(
+            [(c.candidate_id, c.cost, c.success_probability)
+             for c in DECLARED_CANDIDATES],
+            snapshot,
+        )
+
+    def test_no_provider_network_or_payment_identity_appears(self) -> None:
+        # §2.1. The fixtures are the easiest place for a sponsor name to arrive.
+        text = " ".join(c.candidate_id for c in DECLARED_CANDIDATES).lower()
+        for forbidden in ("hedera", "circle", "arc", "tavily", "blockrun",
+                          "openrouter", "graph", "privy", "x402", "wallet",
+                          "usdc", "chain", "onchain", "token"):
             self.assertNotIn(forbidden, text)
 
 

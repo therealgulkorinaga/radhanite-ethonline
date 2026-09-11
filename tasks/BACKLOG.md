@@ -91,7 +91,8 @@ recorded separately rather than letting the two blur.
 | BL-10 | Human-facing UI for submitting tasks and reviewing run records | **UNAUTHORIZED** |
 | BL-11 | Verticals beyond software engineering | **UNAUTHORIZED** |
 | BL-12 | Several Radhanite agents under shared, externally granted authority | **UNAUTHORIZED** |
-| BL-13 | Selection among candidate capabilities, rather than one attempt and one escalation — [TASK-006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **AUTHORIZED** |
+| BL-13 | Selection among candidate capabilities, rather than one attempt and one escalation — [TASK-006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **AUTHORIZED — implemented, not closed** |
+| BL-16 | The run loop that drives repeated capability decisions | **UNAUTHORIZED** |
 | BL-14 | Radhanite hosting a paid x402 endpoint as hackathon test infrastructure | **UNAUTHORIZED** |
 
 ## Notes
@@ -137,6 +138,14 @@ guarantees the loop terminates. **All three are now resolved** by the human
 product owner and frozen in TASK-006 §6.6–§6.8. Resolving them did not authorize
 the work — authorization was a separate act, taken afterwards, and recorded in
 its own pull request so that the two remain visibly distinct in the history.
+
+`BL-16` is what TASK-006 §5a exposed. All six of that task's deliverables are
+met and 20 of its 22 acceptance criteria are demonstrated, but criteria 10 and
+13 need a run loop — something that observes the task has succeeded, and
+something that accumulates spend across purchases. §2.7 places both outside
+TASK-006 and hands them to a loop that **no authorized task owns**. Until one
+does, TASK-006 cannot honestly be closed, and the economic kernel has nothing
+driving it.
 
 `BL-14` is distinct from `BL-04b`. `BL-04b` is Radhanite sold as a paid service —
 a product direction. `BL-14` is a seller endpoint stood up only so that the
