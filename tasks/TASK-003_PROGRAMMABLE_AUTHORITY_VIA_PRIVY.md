@@ -29,7 +29,7 @@
 > Nothing below has been rewritten.
 >
 > Its place on the active path is taken by
-> [TASK-008](TASK-008_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md), which adds a
+> [TASK-011](TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md), which adds a
 > capability Radhanite can *buy* rather than an authority it must *hold*.
 
 **Predates the product pivot.** Written under the previous product definition

@@ -251,12 +251,17 @@ Radhanite must **not** implement a payment protocol, metering rail, or settlemen
 layer in either direction. x402 is the protocol; Hedera is the rail. Radhanite
 decides *whether* to pay and *how much*.
 
-### 3.5 The Graph — onchain information Radhanite may buy
+### 3.5 The Graph — onchain commercial intelligence Radhanite may buy
 
 Intended later as **one capability among the candidates**, not as a component of
-the decision. It would return structured onchain evidence — wallet, protocol or
-entity activity — which changes what the task knows and therefore what the next
+the decision. It would return live onchain commercial evidence — protocol
+activity, chain and stablecoin usage, treasury and adoption signals, contract
+relationships — which changes what the task knows and therefore what the next
 decision is measured against.
+
+**The Graph returns evidence. It does not decide a success probability or
+economic eligibility.** Evidence reaches TASK-009, which interprets it; the
+economic rule never sees it.
 
 Radhanite must **not** reimplement indexing, subgraph infrastructure, or query
 execution. It decides *whether the evidence is worth its price*.
@@ -268,7 +273,7 @@ provider earns a preference, a tie-break or a "trusted source" exemption by
 identity. If onchain evidence deserves to win, it wins on price and effect.
 
 Specified as a placeholder in
-[TASK-008](../tasks/TASK-008_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md), which
+[TASK-011](../tasks/TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md), which
 carries three unresolved decisions and authorizes nothing.
 
 ## 4. Integration authorization status
@@ -299,23 +304,33 @@ make it real, in an order set by what each depends on:
 it. §4 above is unchanged: an integration becomes authorized only when the human
 product owner says so.
 
-### The active integration path, in priority order
+### The task sequence
 
-Set by the human product owner on 2026-09-11. Nothing here is authorized; this
+Set by the human product owner. **Nothing beyond TASK-006 is authorized**; this
 is the order work would be taken in if it were.
 
-| | Integration | What it contributes |
+| | Task | Layer |
 |---|---|---|
-| 1 | **Hedera / x402** — [TASK-004](../tasks/TASK-004_AGENTIC_PAYMENTS_VIA_HEDERA_AND_X402.md) | A paid independent-judgement capability |
-| 2 | **Circle / Arc** — [TASK-005](../tasks/TASK-005_BUDGET_IN_REAL_USDC_ON_ARC.md) | The marketplace and payment environment, and research |
-| 3 | **The Graph** — [TASK-008](../tasks/TASK-008_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md) | A paid onchain-information capability |
+| 006 | [Generalized capability selection](../tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **Engine** — implemented, provider-neutral, task-agnostic |
+| 007 | [Capability run loop](../tasks/TASK-007_CAPABILITY_RUN_LOOP.md) | **Engine** — generic, opaque task state |
+| 008 | [Capability acquisition](../tasks/TASK-008_CAPABILITY_ACQUISITION.md) | **Boundary** — descriptors become provider-neutral candidates |
+| 009 | [Revenue opportunity state](../tasks/TASK-009_REVENUE_OPPORTUNITY_STATE.md) | **Benchmark reasoning** — the only place it lives |
+| 010 | [Circle marketplace and Arc payments](../tasks/TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | **Adapter** — discovery and settlement |
+| 011 | [Onchain intelligence via The Graph](../tasks/TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md) | **Adapter** — evidence |
+| 012 | [Hedera independent review](../tasks/TASK-012_HEDERA_INDEPENDENT_REVIEW.md) | **Adapter** — one paid second opinion |
+| 013 | [Revenue-agent benchmark](../tasks/TASK-013_REVENUE_AGENT_BENCHMARK.md) | **Assembly** |
+| 014 | [Demonstration surface](../tasks/TASK-014_DEMO_AND_RUN_RECORD.md) | **Presentation** |
 
-**Privy is not on this path.** [TASK-003](../tasks/TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md)
-is deprioritized and records why; its specification is preserved unaltered.
+**The engine does not move because the benchmark did.** TASK-006 and TASK-007
+are task-agnostic and were not redesigned when the benchmark became revenue
+pursuit; everything specific to it is confined to TASK-009 and the adapters.
 
-All three are capabilities the agent could **buy**, which is the shape the
-product definition now takes. That is the substantive difference from the
-authority Privy would have supplied, and the reason for the reordering.
+**Adapters necessarily know their provider.** That is what an adapter is. The
+boundary is TASK-008: descriptors in, three-field candidates out, provider
+identity retained on the adapter side and never visible to §2.1's decision.
+
+Privy is **not** on this path — [TASK-003](../tasks/TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md)
+is deprioritized and records why.
 
 **This table predates the product pivot in
 [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION.md) §2.3, and its dependency chain

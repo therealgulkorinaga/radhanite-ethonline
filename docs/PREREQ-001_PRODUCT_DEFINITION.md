@@ -315,79 +315,97 @@ buys it. Where §5.2 decides how much any one acquisition may have, this is the
 guarantee that the total cannot be exceeded — including when purchases are made
 in several environments that cannot see each other's spending, per §4a.2.
 
-## 6. The ETHOnline demonstration
+## 6. The ETHOnline benchmark
 
-The primary demonstration is **supplier onboarding and due diligence**: deciding
-whether a prospective supplier should be approved, escalated to a human, or
-rejected — and deciding what evidence is economically worth buying in order to
-answer that.
-
-The user supplies the five inputs of §4:
+The current benchmark is **autonomous revenue opportunity pursuit**: an agent
+pursuing a deal it could win, deciding what evidence and judgement are worth
+buying on the way.
 
 ```
-Task:              Assess prospective supplier for onboarding
-Task value:        the declared economic value of a correct decision
-Max autonomous spend: the ceiling the agent may not exceed
-Constraints:       what it may and may not do
-Success condition: the completion contract in §6.5
+Opportunity        a $50,000 crypto-native infrastructure contract
+Operating budget   $250
+Available          research, onchain intelligence, specialist analysis,
+                   independent review — each priced, each optional
+Question           what should it spend next, if anything, to raise the
+                   probability of winning?
 ```
 
-**Target output: `APPROVE` / `ESCALATE` / `REJECT`.**
+**Target output:** a decision about the opportunity, reached having spent what
+the opportunity justified and no more.
 
-**The recommendation is the output. It is not the success condition.** Whether
-a supplier *should* be approved is a judgement, and §4.5 requires a success
-condition evaluable without human judgment. What is machine-checkable is whether
-the run produced a **complete, evidence-linked, in-budget** decision — the
-deterministic completion contract in **§6.5**.
+### 6.0 Why this benchmark
 
-This vertical is chosen because the economic question is unavoidable in it.
-Diligence evidence is genuinely purchasable, genuinely priced, and genuinely
-optional — buying more is always possible and is not always worth it. That is
-precisely the decision Radhanite exists to make.
+Because the economic question is unavoidable in it, and because it makes the
+failure mode visible.
 
-### 6.1 Intended external capabilities
+**A large opportunity does not justify spending badly.** A $50,000 contract and
+a $250 budget look like permission to buy everything available — and an agent
+that does has made no economic decision at all. The benchmark is designed so
+that **poor execution strategy destroys margin even when the opportunity is
+large**, which is exactly the thing nobody currently measures.
 
-| Environment | Capability |
+Unused budget is **retained margin**, not a shortfall. §4.2's rule — budget is
+permission to spend, not a target — is the whole point rather than a caveat.
+
+### 6.1 Where capabilities come from
+
+Three external layers sit **beneath** Radhanite. None of them decides anything.
+
+| Layer | What it supplies |
 |---|---|
-| **Hedera** | An **Independent Second Opinion** skill — one x402-gated service |
-| **Circle Agent Marketplace** | **Tavily-backed** current web research |
-| **Circle Agent Marketplace** | **BlockRun** structured analysis, *only if economically justified* |
+| **Circle / Arc** | Marketplace and service discovery, machine-readable capability descriptors and prices, agent wallet and gateway infrastructure, and settlement over x402 or Nanopayments |
+| **The Graph** | Live onchain commercial intelligence — protocol activity, chain and stablecoin usage, treasury and adoption signals, contract relationships |
+| **Hedera** | One paid independent specialist: a structured second opinion on the current assessment |
 
-**None of these integrations is authorized.** This section records intended
-direction; building any of it requires its own authorized task.
+> **Circle tells the agent what it can buy and how to pay. The Graph and Hedera
+> are things it can buy. Radhanite decides what is worth buying.**
 
-### 6.2 An illustrative path
+Marketplace services — Tavily-backed research, BlockRun analysis — are
+**candidates**, discovered and evaluated. **None is a mandatory step**, and a run
+that rejects all of them is a correct run.
 
-One economically coherent run might go:
+**None of these integrations is authorized.** TASK-010, TASK-011 and TASK-012
+specify them; specification is not permission.
 
-```
-initial assessment
-  → economically justify a second opinion
-  → purchase on Hedera
-  → new task state, new evidence
-  → economically justify research
-  → purchase via Circle / Tavily
-  → optionally justify structured analysis (BlockRun)
-  → success condition met
-  → STOP
-```
+### 6.2 The order is not fixed
+
+The same engine must produce different sequences from different evidence:
+
+| | |
+|---|---|
+| **Onchain first** | A cheap onchain signal is decisive — buy it, then stop |
+| **Research first** | The opportunity is off-chain; research earns its price first |
+| **Deep pursuit** | Several capabilities as the probability climbs |
+| **Abandon cheaply** | Early evidence discourages — stop, having spent almost nothing |
 
 ### 6.3 This is not a hard-coded sponsor sequence
 
-**The path in §6.2 is one possible outcome, not a script.** A run that always
-performs the same purchases in the same order is a demonstration of wiring, not
-of economic reasoning, and would falsify the product's central claim.
+**A run that always makes the same purchases in the same order demonstrates
+wiring, not economic reasoning**, and would falsify the product's central claim.
 
-All of the following are **valid, correct Radhanite runs**:
+All of these are correct runs: buying nothing at all; buying one capability and
+stopping; buying several; rejecting a marketplace service on price. A capability
+is purchased when — and only when — the economics say so, and any implementation
+calling a sponsor's service *because* it is a sponsor's service has violated §5.4
+and `ARCHITECTURE.md` §1.
 
-- stop without buying anything at all;
-- stop after the Hedera second opinion;
-- stop after the second opinion and the research;
-- buy the structured analysis **only** where the economic rule justifies it.
+### 6.3a Supplier onboarding — the previous benchmark
 
-A capability is purchased when — and only when — the economics say it is worth
-buying. Any implementation in which a sponsor's service is called because it is
-a sponsor's service has violated §5.4 and `ARCHITECTURE.md` §1.
+Before this section was rewritten, the benchmark was **supplier onboarding and
+due diligence**: approve, escalate to a human, or reject, deciding what evidence
+was worth buying to answer that.
+
+It is preserved here rather than deleted, because documents committed while it
+was current refer to it and a reader should be able to tell which framing they
+are looking at. It was never implemented, and nothing was lost by moving on.
+
+The reasoning that chose it holds for the current benchmark too — evidence that
+is genuinely purchasable, genuinely priced and genuinely optional. What revenue
+pursuit adds is a **margin** to destroy, which makes bad economic behaviour
+visible rather than merely wasteful.
+
+**The completion contract in §6.5 is unchanged** and applies to the current
+benchmark: the recommendation is the output, never the success condition.
 
 ### 6.4 The software-engineering framing, and what it was
 
@@ -408,8 +426,8 @@ built against, and it is preserved here rather than deleted, because the
 delivered implementation is only intelligible against it.
 
 It was chosen for a good reason that still holds: "the tests pass" is objective,
-binary, machine-checkable and impossible to negotiate with. The supplier
-diligence vertical must meet the same bar — §4.5 is unchanged, and a success
+binary, machine-checkable and impossible to negotiate with. The current
+benchmark must meet the same bar — §4.5 is unchanged, and a success
 condition that needs a human to interpret it is still not a Radhanite task.
 
 Real repository execution and a live test-suite signal remain unauthorized
@@ -443,7 +461,7 @@ rather than by reading the recommendation.
 Every clause is a check on **fields and states**, not on the quality of a
 judgement. Two runs reaching opposite recommendations on the same evidence can
 both satisfy the contract, and that is correct: Radhanite is not being evaluated
-on whether the supplier was in fact creditworthy. It is being evaluated on
+on whether the opportunity was in fact winnable. It is being evaluated on
 whether it bought the right evidence, linked what it claimed, and stopped inside
 its budget.
 
@@ -459,9 +477,9 @@ Describing them otherwise is a boundary violation under
 This document contains two use cases, and they are at different stages. Neither
 supersedes the other by being mentioned later.
 
-| | Implemented V1 | ETHOnline demonstration |
+| | Implemented V1 | ETHOnline benchmark |
 |---|---|---|
-| **Vertical** | Autonomous software engineering | Supplier onboarding / due diligence |
+| **Vertical** | Autonomous software engineering | Revenue opportunity pursuit |
 | **Where** | §6.4, [`TASK-001`](../tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md) | §6, §6.5 |
 | **Success condition** | The repository's tests pass | The completion contract, §6.5 |
 | **Status** | **Implemented and merged.** The delivered two-tier deterministic kernel | **Frozen direction. Not implemented** |
@@ -472,17 +490,17 @@ Three statements, and all three are true at once:
 1. **TASK-001 was built under the software-engineering framing**, remains
    implemented, and remains historically authoritative for TASK-001. It is what
    runs today.
-2. **Supplier onboarding is the frozen primary ETHOnline demonstration
-   direction.** It is not implemented, and appearing in this document does not
+2. **Revenue opportunity pursuit is the current ETHOnline benchmark.** It is not implemented, and appearing in this document does not
    authorize it. A product definition states what Radhanite *is*; it is never
    permission to build — §9.
 3. **It remains subject to implementation authorization**, including the
    `BL-11` vertical boundary where that applies. `BL-11` is neither retired nor
    completed by this document.
 
-**Radhanite is not a supplier-compliance product.** Supplier diligence is a
-vertical chosen to demonstrate the economic layer, in the same way software
-engineering was. The product is §1, and §7 still governs what Radhanite is not.
+**Radhanite is not a sales product.** Revenue pursuit is a vertical chosen to
+demonstrate the economic layer, in the same way software engineering and supplier
+diligence were. The long-term product is broader than sales: Radhanite manages
+the unit economics of autonomous work. The product is §1, and §7 still governs what Radhanite is not.
 
 ## 7. What Radhanite is not
 

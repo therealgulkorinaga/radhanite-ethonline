@@ -330,7 +330,9 @@ implementation:
 - **Payment execution** and **wallet logic**.
 - **Real marketplace pricing.** Costs remain declared.
 - **Learned performance estimates** — `BL-05`, `BL-06`.
-- **Supplier-diligence rules** and anything specific to that vertical.
+- **Benchmark-specific rules** of any kind — revenue pursuit, supplier
+  diligence, or any other vertical. This task is task-agnostic and did not move
+  when the benchmark changed; see `PREREQ-001` §6.
 - **Demo or any user interface** — `BL-10`.
 
 Also unchanged: real repository execution (`BL-07`) and a live test-suite
