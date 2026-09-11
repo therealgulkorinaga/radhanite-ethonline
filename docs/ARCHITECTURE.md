@@ -82,7 +82,10 @@ which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION
 replaced and is still what §2.2.1 describes. There is no run loop over
 capabilities: nothing accumulates spend across purchases, nothing re-evaluates
 task state between them, and nothing decides that a task has already succeeded.
-That orchestration is **unauthorized and unimplemented** — `BL-16`.
+That orchestration is **specified and unauthorized** —
+[TASK-007](../tasks/TASK-007_CAPABILITY_RUN_LOOP.md), `BL-16`. It inherits
+TASK-006's criteria 10 and 13, and carries one unresolved product decision about
+execution failure.
 
 **An implemented kernel is not a working autonomous runtime**, and no document
 in this repository may imply otherwise.
@@ -265,7 +268,7 @@ provider earns a preference, a tie-break or a "trusted source" exemption by
 identity. If onchain evidence deserves to win, it wins on price and effect.
 
 Specified as a placeholder in
-[TASK-007](../tasks/TASK-007_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md), which
+[TASK-008](../tasks/TASK-008_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md), which
 carries three unresolved decisions and authorizes nothing.
 
 ## 4. Integration authorization status
@@ -305,7 +308,7 @@ is the order work would be taken in if it were.
 |---|---|---|
 | 1 | **Hedera / x402** — [TASK-004](../tasks/TASK-004_AGENTIC_PAYMENTS_VIA_HEDERA_AND_X402.md) | A paid independent-judgement capability |
 | 2 | **Circle / Arc** — [TASK-005](../tasks/TASK-005_BUDGET_IN_REAL_USDC_ON_ARC.md) | The marketplace and payment environment, and research |
-| 3 | **The Graph** — [TASK-007](../tasks/TASK-007_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md) | A paid onchain-information capability |
+| 3 | **The Graph** — [TASK-008](../tasks/TASK-008_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md) | A paid onchain-information capability |
 
 **Privy is not on this path.** [TASK-003](../tasks/TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md)
 is deprioritized and records why; its specification is preserved unaltered.

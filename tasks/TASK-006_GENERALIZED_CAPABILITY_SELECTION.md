@@ -444,9 +444,12 @@ document does not take it.
 | **10** — *task already successful → STOP, with no candidate evaluated* | §2.5 **lists** an already-satisfied success condition as terminal. But §2.2a enumerates the decision's inputs and a success verdict is not among them; §2.7 assigns re-evaluating task state to a separate concern; and §3 excludes the layer that would produce it. Nothing this task owns can observe that a task has succeeded |
 | **13** — *total spend can never exceed the budget, on every path* | The selector never spends. Per-decision affordability **is** enforced and tested, including where cost exactly equals the remaining budget — but a *total* across purchases needs something that accumulates, and §2.7 gives that to the run loop |
 
-Both belong to the run loop, and **no authorized task owns the run loop.** §2.7
-hands it steps 1 through 4 of the iterative cycle and stops; nothing picks them
-up.
+**Both belong to the run loop.** §2.7 hands it steps 1 through 4 of the
+iterative cycle and stops. That loop is now specified as
+[TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md), whose §8 inherits these two
+criteria with their meaning unchanged — but TASK-007 is **not authorized**, and
+this task closes only once a TASK-007 implementation demonstrates the inherited
+behaviour, not because a specification promising to exists.
 
 **What this means.** The economic kernel is implemented and its decisions are
 demonstrated. What is missing is the thing that would drive it — and until the

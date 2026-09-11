@@ -1,10 +1,11 @@
-# TASK-007 — Onchain information as a paid capability, via The Graph
+# TASK-008 — Onchain information as a paid capability, via The Graph
 
 **Status:** Placeholder — **NOT AUTHORIZED**, and not yet specified
 **Authorization:** None. This document reserves the work and states its premise; it does not permit implementation.
 **Traces to:** [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §4a
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.1, §3.5, §6
 **Replaces backlog entry:** `BL-15`
+**Renumbered:** was TASK-007 when first written (PR #25). Moved to 008 so the run loop could take 007, which is the number the product owner originally proposed for this task
 **Supersedes on the active path:** [TASK-003](TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md), deprioritized 2026-09-11
 
 ---
