@@ -50,7 +50,7 @@ to the human product owner, not an order inherited by default. See
 |---|---|---|---|
 | BL-01 | Real inference execution via OpenRouter | [TASK-002](TASK-002_REAL_INFERENCE_VIA_OPENROUTER.md) | **UNAUTHORIZED** |
 | BL-02 | Programmable authority over the agent, via Privy | [TASK-003](TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md) | **UNAUTHORIZED — deprioritized** |
-| BL-15 | Onchain information as a paid capability, via The Graph | [TASK-007](TASK-007_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md) | **UNAUTHORIZED** |
+| BL-15 | Onchain information as a paid capability, via The Graph | [TASK-008](TASK-008_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md) | **UNAUTHORIZED** |
 | BL-03 | Agent budget denominated in real USDC on Arc | [TASK-005](TASK-005_BUDGET_IN_REAL_USDC_ON_ARC.md) | **UNAUTHORIZED** |
 | BL-04 | The agent paying for its own purchases, over x402 on Hedera | [TASK-004](TASK-004_AGENTIC_PAYMENTS_VIA_HEDERA_AND_X402.md) | **UNAUTHORIZED** |
 | BL-04b | Radhanite consumed as a paid machine service — the inbound direction | *(none)* | **UNAUTHORIZED** |
@@ -71,7 +71,7 @@ is unaffected by the ordering decision. `BL-15` takes its place on the path.
 `BL-15` is a capability Radhanite could **buy**, which is why it replaces an
 authority Radhanite would have to **hold**. The Graph is not part of the
 decision engine and must never influence ranking by being The Graph —
-`TASK-006` §2.1 is unchanged and TASK-007 §3 restates the prohibition.
+`TASK-006` §2.1 is unchanged and TASK-008 §3 restates the prohibition.
 
 `BL-04` previously described only the inbound direction — other machines paying
 Radhanite. The outbound direction, Radhanite's agent paying for what it buys, is
@@ -92,7 +92,7 @@ recorded separately rather than letting the two blur.
 | BL-11 | Verticals beyond software engineering | **UNAUTHORIZED** |
 | BL-12 | Several Radhanite agents under shared, externally granted authority | **UNAUTHORIZED** |
 | BL-13 | Selection among candidate capabilities, rather than one attempt and one escalation — [TASK-006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **AUTHORIZED — implemented, not closed** |
-| BL-16 | The run loop that drives repeated capability decisions | **UNAUTHORIZED** |
+| BL-16 | The run loop that drives repeated capability decisions — [TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md) | **SPECIFIED — UNAUTHORIZED** |
 | BL-14 | Radhanite hosting a paid x402 endpoint as hackathon test infrastructure | **UNAUTHORIZED** |
 
 ## Notes
@@ -139,13 +139,27 @@ product owner and frozen in TASK-006 §6.6–§6.8. Resolving them did not autho
 the work — authorization was a separate act, taken afterwards, and recorded in
 its own pull request so that the two remain visibly distinct in the history.
 
-`BL-16` is what TASK-006 §5a exposed. All six of that task's deliverables are
-met and 20 of its 22 acceptance criteria are demonstrated, but criteria 10 and
-13 need a run loop — something that observes the task has succeeded, and
-something that accumulates spend across purchases. §2.7 places both outside
-TASK-006 and hands them to a loop that **no authorized task owns**. Until one
-does, TASK-006 cannot honestly be closed, and the economic kernel has nothing
-driving it.
+`BL-16` is what TASK-006 §5a exposed, and it is **now specified** as
+[TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md). Five of that task's deliverables
+are complete and one is partial; 20 of its 22 acceptance criteria are fully
+demonstrated. Criteria 10 and 13 need a run loop — something that observes the
+task has succeeded, and something that accumulates spend across purchases —
+which §2.7 places outside TASK-006.
+
+**TASK-007 inherits those two criteria** with their meaning unchanged, per its
+§8. TASK-006 is not made complete by that specification existing: it closes only
+once a TASK-007 implementation actually demonstrates the inherited behaviour.
+
+TASK-007 is **specified and not authorized**, and carries one unresolved product
+decision — what happens to spend, consumption, the step count and retryability
+when a selected capability fails. Its §7 states four options and recommends one,
+and says plainly that implementation cannot begin until the human product owner
+settles it.
+
+**The Graph moved from TASK-007 to
+[TASK-008](TASK-008_ONCHAIN_INFORMATION_VIA_THE_GRAPH.md)** so the run loop
+could take 007, which is the number the product owner originally proposed for
+the run-loop work. Nothing about that specification changed but its number.
 
 `BL-14` is distinct from `BL-04b`. `BL-04b` is Radhanite sold as a paid service —
 a product direction. `BL-14` is a seller endpoint stood up only so that the
