@@ -72,9 +72,47 @@ an iteration while differing *across* them, and what makes two offers "the same
 service" is a question this task would have to answer without acquiring a notion
 of capability type, which TASK-006 §2.5a forbids.
 
-### 6.2 Pricing that is not known in advance ⚠️ **UNRESOLVED**
+### 6.2 Pricing before purchase ✅ **RESOLVED**
 
-TASK-006 §2.3 requires a strictly positive cost **before** the purchase. A
-source quoting per-token or per-result pricing cannot supply one. Either the
-candidate carries a bound the executor may not exceed — which TASK-007 §7.1
-already anticipates — or such capabilities cannot be offered at all.
+**A capability may enter the TASK-006 candidate set only when its exact
+candidate cost is known before purchase.**
+
+TASK-006 §2.3 requires a strictly positive cost, known *before* the economic
+decision, because the rule it exists to apply is
+
+```
+incremental_expected_value > candidate_cost
+```
+
+and that comparison cannot be made against a price nobody has yet. **TASK-006 is
+not weakened to accommodate a source that cannot quote.**
+
+#### Discovery and purchase are different acts
+
+| | When | Costs money? |
+|---|---|---|
+| **Discovery / quote** | **Before** economic selection | **No** |
+| **Purchase / execution** | **Only after** Radhanite selects the candidate | Yes |
+
+Reading a price is not buying anything. **No payment is made merely to discover
+a price** — a source that charged for its quote would make the decision cost
+money to reach, which is a different product.
+
+#### Circle Agent Marketplace satisfies this
+
+Circle's Discovery responses expose **payment terms before purchase**, including
+the required payment amount and the invocation and payment metadata. TASK-008
+normalizes that quoted amount into the candidate's cost, and TASK-006 evaluates
+it like any other. Nothing about that path requires a price to be discovered by
+spending.
+
+#### A source that cannot quote is not eligible
+
+**If a final price cannot be known before execution, the capability is not
+eligible for the current candidate contract** — not offered, not approximated,
+not given a placeholder.
+
+It becomes eligible only if a future authorized task introduces a deterministic
+pre-purchase quote, or a bounded-price mechanism. **That mechanism is not
+designed here**, and the absence of it is a constraint on what may be offered
+rather than a gap in the rule.

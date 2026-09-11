@@ -145,11 +145,11 @@ rename and the documentation edits disturbed nothing.
 
 - **TASK-008 through TASK-014 are specifications, several thin.** 010, 012, 013
   and 014 state purpose and boundaries; none could be built from as written.
-- **Three unresolved decisions are now visible**, in TASK-008 §6.1 and §6.2 and
-  TASK-009 §7 — candidate identity across iterations, pricing not known in
-  advance, and how evidence becomes a probability. The last has moved from
-  "nobody owns it" to "TASK-009 owns it and has not answered it", which is
-  progress but not an answer.
+- **Two unresolved decisions remain**, in TASK-008 §6.1 and TASK-009 §7 —
+  candidate identity across iterations, and how evidence becomes a probability.
+  The second has moved from "nobody owns it" to "TASK-009 owns it and has not
+  answered it", which is progress but not an answer. **TASK-008 §6.2 is now
+  resolved** — see §14a.
 - **`PREREQ-001` now carries three framings** — software engineering (§6.4),
   supplier onboarding (§6.3a), revenue pursuit (§6). §6.6 tabulates which is
   implemented and which is current. That is honest, and it is also a document
@@ -166,6 +166,72 @@ describe what was true when written.
 ## 14. Deferred to future tasks
 
 All of TASK-008 through TASK-014, and the three unresolved decisions in §12.
+
+## 14a. Corrections after review
+
+Two material contradictions the first version left standing, both now closed.
+
+### The completion contract was still the supplier one
+
+`PREREQ-001` §6.5 is **current** benchmark definition, and it still required
+`APPROVE` | `ESCALATE` | `REJECT` over evidence categories carrying
+`resolved` | `unresolved` | `not_found`. The benchmark had changed; its success
+condition had not.
+
+The current contract now uses **`PURSUE` / `ABANDON` / `ESCALATE`**, defined
+narrowly, with **nine machine-checkable clauses**: one terminal outcome from the
+closed set, every required state field accounted for, every material unresolved
+question explicitly represented, the probability represented per the fixture
+contract, spend within the operating budget, no execution past the step ceiling,
+no consumed ID reused, a deterministic terminal reason, and a record sufficient
+to audit why Radhanite stopped.
+
+**These are benchmark outcomes, not predictions.** `PURSUE` does not assert the
+deal will be won. Radhanite does not forecast sales outcomes and no document may
+say it does.
+
+The old contract is preserved in §6.5 as **historical**, attached to the framing
+in §6.3a. Its *shape* survived — a closed outcome set, explicit representation of
+the unknown, spend inside the ceiling — because the shape was right and only the
+vocabulary was supplier-specific.
+
+The contract is also now explicit that it **is not the economic rule**: three of
+its clauses restate constraints TASK-006 and TASK-007 already enforce, and it
+checks a completed run rather than deciding anything.
+
+### Pricing before purchase — resolved, not accommodated
+
+TASK-008 §6.2 had suggested a source might not know its price before execution,
+which would break TASK-006 §2.3. **TASK-006 was not weakened.**
+
+> **A capability may enter the candidate set only when its exact cost is known
+> before purchase.**
+
+The confusion was between two different acts, now separated explicitly:
+
+| | When | Costs money? |
+|---|---|---|
+| **Discovery / quote** | Before economic selection | **No** |
+| **Purchase / execution** | Only after selection | Yes |
+
+Reading a price is not buying anything, and **no payment is made merely to
+discover a price** — a source charging for its quote would make the decision
+itself cost money, which is a different product.
+
+**Circle satisfies this today.** Discovery responses expose payment terms before
+purchase, including the required amount and invocation metadata; TASK-008
+normalizes that quoted amount into the candidate cost.
+
+A source that genuinely cannot quote is **not eligible** — not offered, not
+approximated, not given a placeholder. It becomes eligible only if a future
+authorized task introduces a deterministic pre-purchase quote or a bounded-price
+mechanism, and **that mechanism is not designed here.**
+
+### Not done deliberately
+
+`PREREQ-001` still carries three framings. The authorization was explicit that a
+broad structural rewrite is **not** part of this correction, and the statuses are
+unambiguous, so the document keeps its history for a later cleanup task.
 
 ## 15. How to explain this to a judge
 

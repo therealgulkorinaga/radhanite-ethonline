@@ -4,7 +4,7 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `docs/PREREQ-001_PRODUCT_DEFINITION.md`, `docs/ARCHITECTURE.md`, `docs/AI_BUILD_GOVERNANCE.md`, `tasks/`
 **Date issued:** 2026-09-11
-**Outcome:** _pending — review not yet run_
+**Outcome:** **Approved with corrections** — two material contradictions, both corrected
 
 ---
 
@@ -133,12 +133,32 @@ End with exactly ONE outcome, per §7.2:
 
 ## 2. Findings returned
 
-_Pending. Codex has not yet reviewed this pull request._
+**The reviewer's verbatim response was not supplied** to the agent writing this
+record. What follows is **as relayed by the human product owner**. §0 is
+unaffected: the prompt in §1 was committed before the review ran.
+
+Both findings correspond to items the prompt itself asked about — §1 items 10
+and 14 — and both were contradictions the PR's own report had already flagged as
+unresolvable without changing specification behaviour. The review confirmed they
+were material and authorized the change.
+
+| | Finding | Departs from |
+|---|---|---|
+| **A** | `PREREQ-001` §6.5, part of the **current** benchmark definition, still used the supplier completion contract — `APPROVE`/`ESCALATE`/`REJECT` over supplier evidence categories | `PREREQ-001` §4.5, §6 |
+| **B** | TASK-008 §6.2 suggested marketplace pricing might not be known before purchase, conflicting with TASK-006 §2.3's requirement for a known positive cost | TASK-006 §2.3 |
 
 ## 3. Outcome
 
-_Pending._
+**Approved with corrections.** The benchmark pivot itself, the six new task
+specifications, the TASK-008 boundary and the claim that the engine did not move
+were not faulted.
 
 ## 4. Corrections
 
-_None yet._
+| Finding | Correction |
+|---|---|
+| **A** | Current contract is now `PURSUE` / `ABANDON` / `ESCALATE` with nine machine-checkable clauses. The supplier contract is preserved as historical. The contract is explicitly *not* the economic rule |
+| **B** | **TASK-006 was not weakened.** A capability may enter the candidate set only when its exact cost is known before purchase. Discovery and purchase are separated: a quote costs nothing and precedes selection; payment follows it. Circle Discovery satisfies this. A source that cannot quote is **not eligible** until a future authorized task introduces a quote or bounded-price mechanism |
+
+**Corrections are themselves subject to review** (`AI_BUILD_GOVERNANCE.md`
+§7.5). This corrective commit has not been reviewed.

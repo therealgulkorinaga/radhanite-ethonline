@@ -56,6 +56,10 @@ payment protocol — `ARCHITECTURE.md` §6 items 1–4.
 
 ## 6. Open decisions ⚠️ **UNRESOLVED**
 
-Whether discovery is live or a captured snapshot for the benchmark; how quoted
-prices map to an exact `Money` cost known before purchase (TASK-008 §6.2); and
-what a partial or metered charge reports as `committed_cost` (TASK-007 §7.1).
+Whether discovery is live or a captured snapshot for the benchmark, and what a
+partial or metered charge reports as `committed_cost` (TASK-007 §7.1).
+
+**Pricing is no longer open.** TASK-008 §6.2 settles it: Circle Discovery
+exposes payment terms before purchase, TASK-008 normalizes the quoted amount
+into the candidate cost, and **no payment is made to discover a price**.
+Discovery may happen before selection; purchase happens only after it.

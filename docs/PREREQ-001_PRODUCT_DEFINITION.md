@@ -330,8 +330,13 @@ Question           what should it spend next, if anything, to raise the
                    probability of winning?
 ```
 
-**Target output:** a decision about the opportunity, reached having spent what
-the opportunity justified and no more.
+**Target output:** exactly one of **`PURSUE`** / **`ABANDON`** / **`ESCALATE`**,
+reached having spent what the opportunity justified and no more.
+
+**The outcome is the output. It is not the success condition** — §4.5 requires
+one evaluable without human judgment, and whether a deal *should* be pursued is
+a judgement. What is machine-checkable is the deterministic completion contract
+in **§6.5**.
 
 ### 6.0 Why this benchmark
 
@@ -433,44 +438,76 @@ condition that needs a human to interpret it is still not a Radhanite task.
 Real repository execution and a live test-suite signal remain unauthorized
 (`BL-07`, `BL-08`), exactly as before.
 
-### 6.5 The machine-checkable success condition
+### 6.5 The machine-checkable completion contract
 
 §4.5 requires a success condition evaluable **without human judgment**. "A
-defensible recommendation" is not one: defensibility is exactly the judgement
-§4.5 excludes. The demonstration's success condition is therefore a
-**deterministic completion contract**, checked by field and state validation
-rather than by reading the recommendation.
+defensible decision" is not one: defensibility is exactly the judgement §4.5
+excludes. The benchmark's success condition is therefore a **deterministic
+completion contract**, checked by field and state validation rather than by
+reading the outcome.
 
-**A run is complete when all six hold:**
+#### The terminal outcome set
 
-1. **Exactly one** allowed recommendation has been produced, from the closed
-   set `APPROVE` | `ESCALATE` | `REJECT`. Zero is incomplete; two is invalid.
-2. **Every required evidence category** defined by the demonstration fixture
-   carries exactly one status from the closed set `resolved` | `unresolved` |
-   `not_found`. A category with no status is incomplete.
-3. **Every material claim** in the recommendation is linked to at least one
-   evidence record, **or** is explicitly marked `unresolved`. An unlinked,
-   unmarked claim fails the contract.
-4. **No required material evidence gap is silently omitted.** A gap must appear
-   as a record with a status, per clause 2 — absence is not a way of passing.
-5. **Either** the run's declared confidence threshold is met, **or** the
-   recommendation is `ESCALATE` *because* a material unresolved evidence gap
-   remains. Escalating to a human on an unresolved gap is a pass, not a failure.
-6. **Total autonomous spend ≤ the task budget.** The §4.2 ceiling, unchanged.
+Exactly one of three, defined narrowly:
 
-Every clause is a check on **fields and states**, not on the quality of a
-judgement. Two runs reaching opposite recommendations on the same evidence can
-both satisfy the contract, and that is correct: Radhanite is not being evaluated
-on whether the opportunity was in fact winnable. It is being evaluated on
-whether it bought the right evidence, linked what it claimed, and stopped inside
-its budget.
+| | |
+|---|---|
+| **`PURSUE`** | Benchmark evidence and state are sufficient to continue the commercial pursuit under the benchmark's success threshold |
+| **`ABANDON`** | The opportunity should no longer receive autonomous pursuit spend under the benchmark state |
+| **`ESCALATE`** | A material unresolved condition prevents autonomous completion and requires an external or human decision |
 
-**Confidence is a declared fixture.** The threshold in clause 5, and any
-confidence figure compared against it, are declared benchmark values — numbers
-someone typed so the contract can be exercised. They are **not** measurements,
-and nothing here asserts that a confident recommendation is a correct one.
-Describing them otherwise is a boundary violation under
-[`ARCHITECTURE.md`](ARCHITECTURE.md) §6 item 12.
+**These are benchmark outcomes, not predictions.** `PURSUE` does not assert the
+deal will be won, and `ABANDON` does not assert it was unwinnable. Radhanite
+does not forecast real-world sales outcomes and no document may say it does.
+
+#### A run is complete when all nine hold
+
+1. **Exactly one** terminal outcome has been produced, from the closed set
+   `PURSUE` | `ABANDON` | `ESCALATE`. Zero is incomplete; two is invalid.
+2. **Every required benchmark state field** defined by the benchmark fixture is
+   accounted for. A required field with no value is incomplete.
+3. **Every material unresolved question is explicitly represented**, not
+   silently omitted. Absence is not a way of passing — an unknown must appear as
+   an unknown.
+4. **The current success probability is represented** according to the
+   benchmark's fixture and state contract.
+5. **Total capability spend is within the operating budget.** The §4.2 ceiling,
+   unchanged.
+6. **No execution occurred beyond the hard capability-step ceiling.**
+7. **No consumed candidate ID was reused.**
+8. **The terminal reason is deterministic** — which of the four terminal states
+   ended the run, and why.
+9. **The run record is sufficient to audit why Radhanite stopped**, including
+   the candidates it considered and rejected.
+
+Every clause checks **fields and states**, not the quality of a judgement. Two
+runs reaching opposite outcomes on the same evidence can both satisfy the
+contract, and that is correct: Radhanite is not evaluated on whether the
+opportunity was in fact winnable. It is evaluated on whether it **bought the
+right evidence, represented what it did not know, and stopped inside its
+budget.**
+
+**This contract is not the economic rule.** Clauses 5 to 7 restate constraints
+TASK-006 and TASK-007 already enforce; the contract checks that a completed run
+satisfied them, and decides nothing itself. Selection remains
+[`TASK-006`](../tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md)'s and is
+untouched by anything here.
+
+**Probabilities and thresholds are declared fixtures.** The success threshold in
+the `PURSUE` definition, and any probability compared against it, are declared
+benchmark values — numbers someone typed so the contract can be exercised. They
+are **not** measurements, estimates or predictions, and remain so unless a
+separately authorized task owns learned estimation. Describing them otherwise is
+a boundary violation under [`ARCHITECTURE.md`](ARCHITECTURE.md) §6 item 12.
+
+#### The previous contract
+
+The supplier benchmark used `APPROVE` | `ESCALATE` | `REJECT` over evidence
+categories carrying `resolved` | `unresolved` | `not_found`. That contract
+belongs to the framing in §6.3a and is **historical**. Its shape survives here —
+a closed outcome set, explicit representation of what is unknown, and spend
+inside the ceiling — because the shape was right and only the vocabulary was
+supplier-specific.
 
 ### 6.6 Two framings, and the status of each
 
