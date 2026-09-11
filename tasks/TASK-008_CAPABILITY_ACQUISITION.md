@@ -1,7 +1,7 @@
 # TASK-008 — Capability acquisition and candidate generation
 
-**Status:** Specified — **NOT AUTHORIZED for implementation**
-**Authorization:** None. This document specifies the work; it does not permit it.
+**Status:** Authorized — **PR A implemented.** The normalization boundary exists; nothing beyond §2 is built
+**Authorization:** PR A authorized by the human product owner, 2026-09-11
 **Traces to:** [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §4a
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.1, §6
 **Satisfies:** [TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md) §5.1, the candidate-source boundary
@@ -50,6 +50,30 @@ TASK-006 §9 requires. Nothing here estimates, learns or predicts an uplift.
 Learning them is `BL-05`/`BL-06` and is unauthorized. A task that quietly began
 predicting uplift would be the most consequential unauthorized change this
 repository could make, because every downstream figure would inherit it.
+
+## 4a. What PR A delivered
+
+`radhanite/acquisition.py`, and nothing else.
+
+| | |
+|---|---|
+| `CapabilityDescriptor` | Four fields: `descriptor_id`, `name`, `cost`, `source_reference`. Immutable. Refuses a non-positive or unquoted cost at construction |
+| `normalize(descriptor, *, expected_post_action_success_probability)` | One descriptor → one `Candidate` |
+| `acquire(offers)` | A whole offer → a `CapabilityCatalog`, refusing duplicate identifiers |
+| `CapabilityCatalog` | The candidates for TASK-006, and `descriptor_for(candidate_id)` to recover what a selection actually was |
+
+**Identity rule:** the candidate takes the descriptor's identifier unchanged. One
+rule, no derivation. A capability offered again after the state changes arrives
+as a *new* descriptor with a new identifier from its source — which is what makes
+it a new candidate under TASK-006 §2.5a, without this layer acquiring any notion
+of capability type.
+
+**`Candidate` is unchanged** — still exactly `candidate_id`, `cost`,
+`success_probability`, asserted by test. `source_reference` and `name` stay on
+the descriptor and never reach the decision.
+
+**Not built**: candidate generation from task state, any provider adapter, any
+network call. PR A is the socket; the plugs are TASK-010 to TASK-012.
 
 ## 5. Out of scope
 
