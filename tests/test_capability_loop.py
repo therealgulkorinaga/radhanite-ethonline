@@ -2,9 +2,10 @@
 
 **Implementation agent: Manus.**
 
-These tests cover only the minimum provider-neutral loop: precedence, TASK-006
-selection reuse, one execution per iteration, updater sequencing, accounting,
-history, terminal classification, and termination safeguards.
+These tests cover only the minimum provider-neutral loop: precomputed terminal
+status precedence, opaque task-state non-inference, TASK-006 selection reuse,
+one execution per iteration, updater sequencing, accounting, history, terminal
+classification, and termination safeguards.
 """
 
 from __future__ import annotations
@@ -95,7 +96,7 @@ def a_run(**overrides) -> RunState:
 
 
 class Task007FinalLoopTests(unittest.TestCase):
-    def test_already_complete_precedes_candidates_and_execution(self) -> None:
+    def test_task_complete_entry_status_precedes_candidates_and_execution(self) -> None:
         run = a_run(status=RunStatus.TASK_COMPLETE)
         source = CandidateSourceFixture([(candidate("unused"),)])
         executor = ExecutorFixture([successful()])
@@ -107,6 +108,22 @@ class Task007FinalLoopTests(unittest.TestCase):
 
         self.assertIs(result, run)
         self.assertEqual(source.calls, [])
+        self.assertEqual(executor.calls, [])
+        self.assertEqual(updater.calls, [])
+
+    def test_running_state_does_not_infer_completion_from_opaque_task_state(self) -> None:
+        run = a_run(task_state={"complete": True})
+        source = CandidateSourceFixture([()])
+        executor = ExecutorFixture([])
+        updater = UpdaterFixture([])
+
+        result = run_capability_loop(
+            state=run, candidate_source=source, executor=executor, updater=updater
+        )
+
+        self.assertIs(result.status, RunStatus.ECONOMIC_STOP)
+        self.assertEqual(len(source.calls), 1)
+        self.assertEqual(source.calls[0][0], {"complete": True})
         self.assertEqual(executor.calls, [])
         self.assertEqual(updater.calls, [])
 
