@@ -1,10 +1,10 @@
 # TASK-007 — The capability run loop
 
-**Status:** Authorized — **PR A and PR B implemented; final generic loop in
-review.** The provider-neutral candidate-source and task-state-updater
+**Status:** Authorized — **PR A, PR B, and the final generic loop implemented
+and merged.** The provider-neutral candidate-source and task-state-updater
 boundaries, terminal classification, immutable history, and repeated loop now
-exist on the implementation branch. Provider-specific generation and domain
-updater logic remain outside this task.
+exist on main. Provider-specific generation and domain updater logic remain
+outside this task.
 **Authorization:** PR A authorized by the human product owner, 2026-09-11
 **Traces to:** [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §5.2, §5.5
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.1, §2.2.3, §6
@@ -454,11 +454,11 @@ one is unavoidable.
 **TASK-007 never derives a probability or a completion verdict itself.** It
 calls this boundary and stores what comes back.
 
-> **This boundary's reasoning requires its own future task**, which does not
-> exist and is not designed here. Turning opaque evidence into a declared
-> probability and a completion verdict is a domain judgement — the same open
-> question recorded in
-> [TASK-011](TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md) §6.3.
+> **This boundary's reasoning is supplied by TASK-009 for the revenue
+> benchmark.** TASK-009 turns declared benchmark evidence into a new immutable
+> opportunity state, a declared probability, and a completion verdict. Other
+> domains may provide different updater implementations through this same
+> boundary.
 
 ### 5.4 What may cross into the decision
 

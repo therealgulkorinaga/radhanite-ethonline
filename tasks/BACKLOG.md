@@ -83,16 +83,17 @@ recorded separately rather than letting the two blur.
 
 Set by the human product owner on 2026-09-11, when the benchmark became
 autonomous revenue opportunity pursuit. TASK-007 PR A and PR B, TASK-007's
-final generic loop, and TASK-008 PR A are authorized on their respective review
-branches. The final loop remains provider-neutral; provider-specific generation,
-benchmark work, and external integration remain incomplete.
+final generic loop, and TASK-008 PR A are implemented and merged. TASK-009 is
+authorized on its review branch. The engine remains provider-neutral;
+provider-specific generation, benchmark assembly, and external integration
+remain incomplete.
 
 | Task | Layer | Status |
 |---|---|---|
 | [006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | Engine — selection | **Implemented and closed** — all 22 criteria demonstrated |
-| [007](TASK-007_CAPABILITY_RUN_LOOP.md) | Engine — the run loop | **Final generic loop in review** — candidate source, TASK-006 selection, PR-B execution, updater, terminal classification, and immutable history implemented; provider-specific work remains incomplete |
+| [007](TASK-007_CAPABILITY_RUN_LOOP.md) | Engine — the run loop | **Implemented and merged** — candidate source, TASK-006 selection, PR-B execution, updater, terminal classification, and immutable history; provider-specific work remains incomplete |
 | [008](TASK-008_CAPABILITY_ACQUISITION.md) | Boundary — candidate generation | **PR A implemented** — normalization/catalog boundary; source-specific generation and adapters remain incomplete |
-| [009](TASK-009_REVENUE_OPPORTUNITY_STATE.md) | Benchmark reasoning | Specified |
+| [009](TASK-009_REVENUE_OPPORTUNITY_STATE.md) | Benchmark reasoning | **Authorized — implementation in review** — immutable state, declared evidence transitions, initializer, and TASK-007 updater |
 | [010](TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | Adapter — Circle / Arc | Specified |
 | [011](TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md) | Adapter — The Graph | Specified |
 | [012](TASK-012_HEDERA_INDEPENDENT_REVIEW.md) | Adapter — Hedera | Specified |
@@ -118,7 +119,7 @@ generic boundaries.
 | BL-11 | Verticals beyond software engineering | **UNAUTHORIZED** |
 | BL-12 | Several Radhanite agents under shared, externally granted authority | **UNAUTHORIZED** |
 | BL-13 | Selection among candidate capabilities, rather than one attempt and one escalation — [TASK-006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **AUTHORIZED — implemented and closed** |
-| BL-16 | The run loop that drives repeated capability decisions — [TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md) | **AUTHORIZED PR A + PR B IMPLEMENTED — FINAL GENERIC LOOP IN REVIEW** |
+| BL-16 | The run loop that drives repeated capability decisions — [TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md) | **AUTHORIZED — implemented and merged** |
 | BL-14 | Radhanite hosting a paid x402 endpoint as hackathon test infrastructure | **UNAUTHORIZED** |
 
 ## Notes

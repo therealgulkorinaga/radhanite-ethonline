@@ -27,6 +27,8 @@ Implemented so far:
   that audit it (TASK-007 §3)
 - ``radhanite.loop`` — provider-neutral candidate sourcing, task-state updating,
   and the generic TASK-007 orchestration loop
+- ``radhanite.revenue`` — declared ETHOnline revenue-opportunity state, evidence,
+  benchmark initializer, and TASK-007 updater (TASK-009)
 
 TASK-001 is complete. TASK-006 — choosing among candidate capabilities rather
 than escalating through two fixed tiers — is implemented: the candidate model,
@@ -35,8 +37,9 @@ TASK-001's scenarios are demonstrated to decide identically under them. TASK-007
 PR A and PR B provide the immutable run-state and one-execution foundations;
 the final-loop branch adds provider-neutral candidate sourcing, task-state
 updating, terminal classification, and repeated orchestration. Nothing beyond
-those authorized boundaries is built: no real inference, no wallet, no tokens,
-interface, or learning.
+those authorized boundaries is built: TASK-009 now supplies only the declared
+revenue-benchmark state and updater fixtures; no real inference, no wallet, no
+tokens, interface, provider integration, or learning exists.
 
 Intended behaviour, once complete: Radhanite is given a task, a budget, a task
 value, constraints and a measurable success condition. It selects an execution
@@ -66,6 +69,17 @@ from radhanite.execution import Attempt, Observation, ScriptedSimulator
 from radhanite.money import CURRENCY, Money
 from radhanite.policy import RunPolicy
 from radhanite.probability import Probability
+from radhanite.revenue import (
+    BENCHMARK_INITIAL_BUDGET,
+    BENCHMARK_INITIAL_PROBABILITY,
+    BENCHMARK_OPPORTUNITY_VALUE,
+    BENCHMARK_P1_PROBABILITY,
+    BENCHMARK_P2_PROBABILITY,
+    RevenueOpportunityUpdater,
+    benchmark_opportunity,
+    initialize_benchmark_run,
+    make_evidence,
+)
 from radhanite.loop import (
     CandidateSource,
     TaskStateUpdate,
@@ -105,6 +119,7 @@ __all__ = [
     "Ineligibility",
     "Observation",
     "Money",
+    "RevenueOpportunityUpdater",
     "Probability",
     "RunOutcome",
     "RunSnapshot",
@@ -124,6 +139,9 @@ __all__ = [
     "Verdict",
     "__version__",
     "acquire",
+    "benchmark_opportunity",
+    "initialize_benchmark_run",
+    "make_evidence",
     "apply_execution",
     "begin_run",
     "assess",
@@ -135,4 +153,9 @@ __all__ = [
     "select",
     "select_capability",
     "validate_candidates",
+    "BENCHMARK_INITIAL_BUDGET",
+    "BENCHMARK_INITIAL_PROBABILITY",
+    "BENCHMARK_OPPORTUNITY_VALUE",
+    "BENCHMARK_P1_PROBABILITY",
+    "BENCHMARK_P2_PROBABILITY",
 ]
