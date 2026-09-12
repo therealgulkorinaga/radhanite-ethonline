@@ -180,11 +180,15 @@ updating, classification, and the full loop remain outstanding.
 once a TASK-007 implementation actually demonstrates the inherited behaviour.
 
 TASK-007 PR A and PR B are **authorized and implemented on the review branch**.
-PR B implements one execution transition only. The remaining task-state updater,
-terminal classification, and loop work are not authorized by this PR-B scope.
-The execution-failure semantics in §7 are implemented: a failed attempt commits
-whatever cost was actually committed, consumes the candidate ID, increments the
-capability-step count, and terminates without retry.
+PR B implements one execution transition only, with exact retained-selection and
+current-state authorization checks and an explicit executor commitment ceiling.
+The remaining task-state updater, terminal classification, and loop work are not
+authorized by this PR-B scope. The execution-failure semantics in §7 are
+implemented: every compliant post-attempt failure is returned as an exact
+`ExecutionResult` with whatever cost was actually committed, while a raw
+exception is permitted only before an attempt or commitment begins. A recorded
+failed attempt consumes the candidate ID, increments the capability-step count,
+and terminates without retry.
 
 **The Graph moved from TASK-007 to
 [TASK-011](TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md)** so the run loop

@@ -245,7 +245,7 @@ excludes `history`.
 |---|---|
 | `before` | Run-state snapshot, **excluding `history`** |
 | `selection` | The **complete** TASK-006 `Selection` |
-| `execution` | The execution result or failure record — absent on a STOP iteration. **Reserved in PR A: `None` until PR B introduces the authorized type** — §3.4 |
+| `execution` | The exact `ExecutionResult` for a compliant execution attempt; absent on a STOP iteration. A raw pre-attempt executor exception produces no transition because the generic layer cannot infer committed spend from it — §5.2, §7.3 |
 | `after` | Run-state snapshot, **excluding `history`** |
 
 A snapshot carries every §3 field except `history`: `task_value`,
@@ -315,7 +315,8 @@ different name (`ARCHITECTURE.md` §6 item 7).
 committed-cost transitions, candidate consumption, step increments, task-state
 updates, acquisition calls, eligibility, ranking, selection, terminal
 classification, retry, and the loop itself. PR B now supplies only the
-provider-neutral execution result, executor boundary, and one execution
+provider-neutral execution result, the explicit executor authorization ceiling,
+exact retained-selection and current-state validation, and one execution
 transition; the remaining items are still not built.
 
 ### 3.4.1 What PR B delivers
@@ -323,10 +324,17 @@ transition; the remaining items are still not built.
 `radhanite/capability_execution.py` supplies the exact immutable
 `ExecutionResult`, the provider-neutral `CapabilityExecutor` protocol, and
 `apply_execution(...)`, which executes one already-selected candidate and
-constructs one immutable `RunState` transition. It consumes the candidate ID,
-increments the attempt count, applies the exact committed cost, and marks a
-failed attempt `EXECUTION_FAILURE`. It does not select, acquire, interpret
-evidence, update task state, classify stops, retry, or run a loop.
+constructs one immutable `RunState` transition. Before invoking the executor,
+it validates the complete retained `Selection` graph by exact type and matches
+all recorded TASK-006 decision inputs to the current `RunState`. It passes the
+executor the explicit maximum authorized commitment,
+`min(candidate.cost, remaining_budget)`. A compliant executor returns an exact
+`ExecutionResult` for every post-attempt outcome, including non-zero committed
+cost on failure; a raw exception is allowed only before an attempt or
+commitment begins. The transition consumes the candidate ID, increments the
+attempt count, applies the exact committed cost, and marks a failed attempt
+`EXECUTION_FAILURE`. It does not select, acquire, interpret evidence, update
+task state, classify stops, retry, or run a loop.
 
 ### 3.5 Retracted: the `task_state` storage question was not ambiguous
 
@@ -388,8 +396,24 @@ be tested with no integration in existence.
 
 ### 5.2 Capability executor
 
-> Given the selected candidate and the current state, attempt that capability
-> and return a structured execution result.
+> Given the selected candidate, the current state, and an explicit maximum
+> authorized commitment, attempt that capability and return a structured
+> execution result.
+
+The generic layer supplies the executor with:
+
+```
+maximum_authorized_cost = min(candidate.cost, current_state.remaining_budget)
+```
+
+The executor must know this ceiling before performing any external side effect
+and must never commit more than it. A compliant executor must normalize every
+provider or internal failure after an execution attempt into an exact failed
+`ExecutionResult`, reporting the actual committed amount, including a positive
+amount on failure. A raw exception has one defined meaning at this boundary: it
+was raised before any execution attempt or financial commitment began. The
+generic layer cannot infer actual spend from an arbitrary exception and must not
+fabricate accounting or silently turn it into a paid attempt.
 
 The result carries:
 
@@ -501,9 +525,15 @@ authorization to build.
 
 ### 7.1 The executor commits, and reports what it committed
 
-The selected candidate's declared `cost` is the **maximum the executor is
-authorized to commit**. What it actually committed comes back as
-`committed_cost`.
+The selected candidate's declared `cost` and the current remaining budget jointly
+bound the **maximum the executor is authorized to commit**. The generic layer
+passes this explicit ceiling to the executor before any side effect:
+
+```
+maximum_authorized_cost = min(candidate.cost, remaining_budget)
+```
+
+What the executor actually committed comes back as `committed_cost`.
 
 ```
 0 <= committed_cost <= candidate.cost
@@ -513,6 +543,13 @@ committed_cost <= remaining_budget
 **`committed_cost` is what changes the accounting** — not the declared cost.
 Failure does **not** imply zero spend: a call that debited and then failed
 committed real money, and recording zero would falsify the ledger.
+
+The executor contract is therefore normative, not merely advisory: every
+compliant post-attempt outcome is represented by an exact `ExecutionResult` and
+is recorded. A malformed result is an executor contract violation; the generic
+layer does not clamp it or invent a committed amount. It cannot make arbitrary
+third-party code auditable after that code commits money and then raises without
+reporting what was committed.
 
 ### 7.2 On every execution attempt, success or failure
 
