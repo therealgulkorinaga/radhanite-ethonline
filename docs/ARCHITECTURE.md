@@ -94,10 +94,13 @@ which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION
 **What does not exist.** The generalized loop is implemented as a provider-
 neutral library boundary, but it does not replace the active CLI path.
 `python -m radhanite` still runs TASK-001's two-tier loop, as §2.2.1 describes.
-No provider-specific candidate generation, payment, network, or external adapter
-exists. TASK-009 now provides the declared revenue-opportunity state, evidence
-contract, benchmark initializer, and provider-neutral TASK-007 updater; it does
-not provide a live adapter. TASK-008 PR A provides
+The TASK-010 review branch now contains one provider-specific Circle Discovery
+and official-CLI x402/Gateway adapter; no payment smoke has been run because
+credentials are unavailable, and no credentials are stored. No other provider-
+specific candidate generation, payment, network, or external adapter exists.
+TASK-009 provides the declared revenue-opportunity state, evidence contract,
+benchmark initializer, and provider-neutral TASK-007 updater; it does not
+provide a live adapter. TASK-008 PR A provides
 normalization and catalog lookup only; its source-specific generation and
 adapters remain unbuilt.
 
@@ -119,7 +122,7 @@ independent of budget.
 acceptance criteria are demonstrated by TASK-007's provider-neutral final loop;
 the economic kernel remains separate. The TASK-001 CLI path still describes
 what actually runs by default, while the generic loop is available as a library
-boundary on this review branch.
+boundary on main.
 
 #### 2.2.3 The generalization requires its own authorized task
 
@@ -171,7 +174,7 @@ the only thing Radhanite is uniquely qualified to own.
 | Onchain information as a purchasable capability | The Graph | **Not authorized yet** |
 | Agent economic budget | Arc / USDC | **Not authorized yet** |
 | Agent payments, outbound and inbound | Hedera / x402 | **Not authorized yet** |
-| Capability discovery and marketplace settlement | Circle Agent Marketplace | **Not authorized yet** |
+| Capability discovery and marketplace settlement | Circle Agent Marketplace / Gateway | **TASK-010 authorized on this review branch** |
 
 **Every system in this table sits beneath Radhanite, not beside it.** Radhanite
 decides *whether* and *what* to buy; these supply it, or settle it.
@@ -296,10 +299,13 @@ carries three unresolved decisions and authorizes nothing.
 
 ## 4. Integration authorization status
 
-**No external integration is authorized at this time.**
+**No external integration beyond TASK-010 is authorized at this time.**
 
-Specifically, **none** of OpenRouter, Arc/USDC, Hedera, x402, The Graph, or
-Privy is authorized in [`TASK-001`](../tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md).
+Specifically, **none** of OpenRouter, Arc/USDC budget custody, Hedera, The Graph,
+or Privy is authorized in [`TASK-001`](../tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md).
+TASK-010 separately authorizes only the Circle Discovery boundary and the
+official Circle CLI x402/Gateway executor boundary; it does not authorize
+Radhanite to reimplement wallets, x402, settlement, or token accounting.
 Any code, dependency, configuration, credential, or network call touching them
 is out of scope and must be rejected in review, regardless of how small.
 
@@ -334,8 +340,8 @@ order work would be taken in if it were.
 | 006 | [Generalized capability selection](../tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **Engine** — implemented, provider-neutral, task-agnostic |
 | 007 | [Capability run loop](../tasks/TASK-007_CAPABILITY_RUN_LOOP.md) | **Engine** — final generic loop implemented and merged; provider-specific generation and benchmark integration incomplete |
 | 008 | [Capability acquisition](../tasks/TASK-008_CAPABILITY_ACQUISITION.md) | **Boundary** — PR A normalization/catalog boundary implemented; generation and adapters incomplete |
-| 009 | [Revenue opportunity state](../tasks/TASK-009_REVENUE_OPPORTUNITY_STATE.md) | **Benchmark reasoning** — state, declared evidence transitions, initializer, and updater implemented on the review branch |
-| 010 | [Circle marketplace and Arc payments](../tasks/TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | **Adapter** — discovery and settlement |
+| 009 | [Revenue opportunity state](../tasks/TASK-009_REVENUE_OPPORTUNITY_STATE.md) | **Benchmark reasoning** — state, declared evidence transitions, initializer, and updater implemented and merged |
+| 010 | [Circle marketplace and Arc payments](../tasks/TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | **Adapter** — live Discovery normalization and opt-in official CLI x402/Gateway execution on the review branch; Arc Testnet remains credential/offer gated |
 | 011 | [Onchain intelligence via The Graph](../tasks/TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md) | **Adapter** — evidence |
 | 012 | [Hedera independent review](../tasks/TASK-012_HEDERA_INDEPENDENT_REVIEW.md) | **Adapter** — one paid second opinion |
 | 013 | [Revenue-agent benchmark](../tasks/TASK-013_REVENUE_AGENT_BENCHMARK.md) | **Assembly** |
