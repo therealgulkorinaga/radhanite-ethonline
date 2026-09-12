@@ -1,6 +1,9 @@
 # TASK-007 — The capability run loop
 
-**Status:** Authorized — **PR A implemented.** The §3 state model exists; the loop, execution and classification do not
+**Status:** Authorized — **PR A implemented; PR B implementation in review.** The
+provider-neutral executor/result boundary and one execution transition exist on
+this branch; task-state updating, terminal classification, and the full loop do
+not.
 **Authorization:** PR A authorized by the human product owner, 2026-09-11
 **Traces to:** [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §5.2, §5.5
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.1, §2.2.3, §6
@@ -308,10 +311,22 @@ PR A implements no execution and no caller has a payload to pass. Freezing an
 arbitrary payload instead would be PR B's schema arriving early under a
 different name (`ARCHITECTURE.md` §6 item 7).
 
-**Not built**: execution, the executor interface, execution results,
+**PR A did not build**: execution, the executor interface, execution results,
 committed-cost transitions, candidate consumption, step increments, task-state
 updates, acquisition calls, eligibility, ranking, selection, terminal
-classification, retry, and the loop itself.
+classification, retry, and the loop itself. PR B now supplies only the
+provider-neutral execution result, executor boundary, and one execution
+transition; the remaining items are still not built.
+
+### 3.4.1 What PR B delivers
+
+`radhanite/capability_execution.py` supplies the exact immutable
+`ExecutionResult`, the provider-neutral `CapabilityExecutor` protocol, and
+`apply_execution(...)`, which executes one already-selected candidate and
+constructs one immutable `RunState` transition. It consumes the candidate ID,
+increments the attempt count, applies the exact committed cost, and marks a
+failed attempt `EXECUTION_FAILURE`. It does not select, acquire, interpret
+evidence, update task state, classify stops, retry, or run a loop.
 
 ### 3.5 Retracted: the `task_state` storage question was not ambiguous
 
