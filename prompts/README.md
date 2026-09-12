@@ -52,7 +52,7 @@ Each preserved prompt is one file:
 # NNN — Short description
 
 **Date:** YYYY-MM-DD
-**Agent:** Claude Code | Codex | other
+**Agent:** Manus | Claude Code | Codex | other
 **Authority:** TASK-XXX, PREREQ-XXX, "governance amendment", or "review correction"
 **Resulted in:** one line on what changed in the repository
 
