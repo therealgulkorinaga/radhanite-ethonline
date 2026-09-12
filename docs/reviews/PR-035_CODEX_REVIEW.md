@@ -6,7 +6,7 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `tasks/TASK-007_CAPABILITY_RUN_LOOP.md` §§2–9; `tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md`; `docs/ARCHITECTURE.md`; `docs/AI_BUILD_GOVERNANCE.md`
 **Date issued:** 2026-09-12
-**Outcome:** pending — review prompt recorded before review
+**Outcome:** correction applied for CODEX-PR035-01; tiny re-review pending
 
 ---
 
@@ -53,12 +53,31 @@ Report stable finding identifiers CODEX-PR035-01, CODEX-PR035-02, and so on. For
 
 ## 2. Findings returned
 
-Pending independent review.
+### CODEX-PR035-01 — completion ownership was overstated
+
+The implementation correctly gives terminal state precedence, but the original
+documentation and test naming could be read as generic detection that an opaque
+task was already complete. `begin_run()` creates a `RUNNING` state, and TASK-007
+does not inspect `task_state` to determine completion. The upstream task/domain
+initializer must determine completion and supply `RunStatus.TASK_COMPLETE` when
+appropriate. No completion evaluator or TASK-009 logic belongs in TASK-007.
+
+The required correction was documentation- and test-focused: the terminal-entry
+test now names and proves the `TASK_COMPLETE` contract, a new regression test
+proves that `RUNNING` with opaque `{"complete": True}` is not interpreted, and
+TASK-006 criterion-10 wording no longer claims generic completion inference or a
+STOP transition that is not written.
 
 ## 3. Outcome
 
-Pending independent review. The pull request must remain unmerged until Codex returns an outcome and the human merge authority approves the merge.
+CODEX-PR035-01 is addressed on the existing PR #35 branch. A tiny independent
+re-review remains required and is limited to the five verification points in the
+authorization record. The pull request must remain unmerged until that re-review
+returns an outcome and the human merge authority approves the merge.
 
 ## 4. Corrections
 
-None pending.
+Applied by **Implementation agent: Manus.** No runtime completion evaluator,
+opaque-state inspection, provider integration, or revenue-specific logic was
+added. The loop mechanics outside this narrow contract correction were not
+reopened.
