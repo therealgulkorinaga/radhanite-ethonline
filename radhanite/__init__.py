@@ -29,6 +29,8 @@ Implemented so far:
   and the generic TASK-007 orchestration loop
 - ``radhanite.revenue`` — declared ETHOnline revenue-opportunity state, evidence,
   benchmark initializer, and TASK-007 updater (TASK-009)
+- ``radhanite.circle`` — live Circle Discovery normalization and an opt-in
+  Circle CLI x402/Gateway executor boundary (TASK-010)
 
 TASK-001 is complete. TASK-006 — choosing among candidate capabilities rather
 than escalating through two fixed tiers — is implemented: the candidate model,
@@ -36,10 +38,10 @@ eligibility rule, ranking, declared fixtures, and run policy exist, and
 TASK-001's scenarios are demonstrated to decide identically under them. TASK-007
 PR A and PR B provide the immutable run-state and one-execution foundations;
 the final-loop branch adds provider-neutral candidate sourcing, task-state
-updating, terminal classification, and repeated orchestration. Nothing beyond
-those authorized boundaries is built: TASK-009 now supplies only the declared
-revenue-benchmark state and updater fixtures; no real inference, no wallet, no
-tokens, interface, provider integration, or learning exists.
+updating, terminal classification, and repeated orchestration. TASK-009 adds
+only the declared revenue-benchmark state and updater fixtures. TASK-010 adds
+the Circle Discovery and opt-in x402/Gateway adapter boundary; no credentials
+are stored and no payment runs automatically.
 
 Intended behaviour, once complete: Radhanite is given a task, a budget, a task
 value, constraints and a measurable success condition. It selects an execution
@@ -61,6 +63,18 @@ from radhanite.capability_execution import (
     CapabilityExecutor,
     ExecutionResult,
     apply_execution,
+)
+from radhanite.circle import (
+    CircleCapabilityCatalog,
+    CircleCapabilityExecutor,
+    CircleCliPaymentClient,
+    CircleDiscoveryError,
+    CircleOffer,
+    CirclePaymentReceipt,
+    CirclePostAttemptError,
+    CirclePreAttemptError,
+    catalog_from_circle_response,
+    live_circle_discovery,
 )
 from radhanite.eligibility import Assessment, Ineligibility, assess
 from radhanite.escalation import Decision, EscalationDecision, FailedCondition, decide
@@ -109,6 +123,14 @@ __all__ = [
     "CapabilityCatalog",
     "CapabilityDescriptor",
     "CapabilityExecutor",
+    "CircleCapabilityCatalog",
+    "CircleCapabilityExecutor",
+    "CircleCliPaymentClient",
+    "CircleDiscoveryError",
+    "CircleOffer",
+    "CirclePaymentReceipt",
+    "CirclePostAttemptError",
+    "CirclePreAttemptError",
     "CandidateSource",
     "Candidate",
     "Decision",
@@ -144,10 +166,12 @@ __all__ = [
     "make_evidence",
     "apply_execution",
     "begin_run",
+    "catalog_from_circle_response",
     "assess",
     "decide",
     "evaluate",
     "normalize",
+    "live_circle_discovery",
     "run_capability_loop",
     "run",
     "select",
