@@ -6,7 +6,7 @@
 **Reviewer:** Codex (independent review agent, `AI_BUILD_GOVERNANCE.md` §1.3)
 **Reviewed against:** `tasks/TASK-007_CAPABILITY_RUN_LOOP.md` §§3, 5.2, 7, and 9; `tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md`; `tasks/TASK-008_CAPABILITY_ACQUISITION.md`; `docs/ARCHITECTURE.md`; `docs/AI_BUILD_GOVERNANCE.md`
 **Date issued:** 2026-09-12
-**Outcome:** pending — review prompt recorded before review
+**Outcome:** Merged without review — the correction branch merged before the required independent re-review
 
 ---
 
@@ -136,6 +136,7 @@ executor interface gained its explicit authorization-ceiling argument.
 
 ## 4. Outcome
 
-Corrections for CODEX-PR034-01, CODEX-PR034-02, and CODEX-PR034-03 are complete
-on PR #34. Independent Codex re-review remains required. The pull request is
-open and unmerged.
+Corrections for CODEX-PR034-01, CODEX-PR034-02, and CODEX-PR034-03 were complete
+on PR #34. PR #34 subsequently merged before the required independent Codex
+re-review. This record therefore does not claim Codex approval; it records the
+honest outcome **Merged without review**.

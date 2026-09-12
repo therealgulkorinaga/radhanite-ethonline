@@ -25,17 +25,18 @@ Implemented so far:
   candidates (TASK-008)
 - ``radhanite.runstate`` — what a capability run carries, and the snapshots
   that audit it (TASK-007 §3)
+- ``radhanite.loop`` — provider-neutral candidate sourcing, task-state updating,
+  and the generic TASK-007 orchestration loop
 
 TASK-001 is complete. TASK-006 — choosing among candidate capabilities rather
-than escalating through two fixed tiers — is authorized and partially built: the
-candidate model, the eligibility rule, the ranking, the declared fixtures
-and the run policy exist, and TASK-001's scenarios are demonstrated to decide
-identically under them. TASK-007 PR B adds the provider-neutral executor/result
-boundary, explicit commitment ceiling, exact retained-selection/current-state
-checks, and one immutable execution transition, but the task-state updater,
-terminal classification, and full run loop do not exist. Nothing beyond those
-authorized boundaries is built: no real inference, no wallet, no tokens, no
-interface, and no learning.
+than escalating through two fixed tiers — is implemented: the candidate model,
+eligibility rule, ranking, declared fixtures, and run policy exist, and
+TASK-001's scenarios are demonstrated to decide identically under them. TASK-007
+PR A and PR B provide the immutable run-state and one-execution foundations;
+the final-loop branch adds provider-neutral candidate sourcing, task-state
+updating, terminal classification, and repeated orchestration. Nothing beyond
+those authorized boundaries is built: no real inference, no wallet, no tokens,
+interface, or learning.
 
 Intended behaviour, once complete: Radhanite is given a task, a budget, a task
 value, constraints and a measurable success condition. It selects an execution
@@ -65,6 +66,12 @@ from radhanite.execution import Attempt, Observation, ScriptedSimulator
 from radhanite.money import CURRENCY, Money
 from radhanite.policy import RunPolicy
 from radhanite.probability import Probability
+from radhanite.loop import (
+    CandidateSource,
+    TaskStateUpdate,
+    TaskStateUpdater,
+    run_capability_loop,
+)
 from radhanite.run import RunOutcome, RunRecord, Step, run
 from radhanite.runstate import (
     RunSnapshot,
@@ -88,6 +95,7 @@ __all__ = [
     "CapabilityCatalog",
     "CapabilityDescriptor",
     "CapabilityExecutor",
+    "CandidateSource",
     "Candidate",
     "Decision",
     "EscalationDecision",
@@ -111,6 +119,8 @@ __all__ = [
     "TransitionRecord",
     "Strategy",
     "Task",
+    "TaskStateUpdate",
+    "TaskStateUpdater",
     "Verdict",
     "__version__",
     "acquire",
@@ -120,6 +130,7 @@ __all__ = [
     "decide",
     "evaluate",
     "normalize",
+    "run_capability_loop",
     "run",
     "select",
     "select_capability",

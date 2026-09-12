@@ -82,16 +82,15 @@ recorded separately rather than letting the two blur.
 ## The current task sequence
 
 Set by the human product owner on 2026-09-11, when the benchmark became
-autonomous revenue opportunity pursuit. TASK-007 PR A and TASK-008 PR A are
-authorized and implemented. TASK-007 PR B is authorized and implemented on the
-current review branch; no task-state updater, terminal-classification, remaining
-loop work, provider-specific generation, benchmark work, or external integration
-is authorized by this PR.
+autonomous revenue opportunity pursuit. TASK-007 PR A and PR B, TASK-007's
+final generic loop, and TASK-008 PR A are authorized on their respective review
+branches. The final loop remains provider-neutral; provider-specific generation,
+benchmark work, and external integration remain incomplete.
 
 | Task | Layer | Status |
 |---|---|---|
-| [006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | Engine — selection | **Implemented**, not closed |
-| [007](TASK-007_CAPABILITY_RUN_LOOP.md) | Engine — the run loop | **PR B in review** — executor/result boundary and one transition implemented; task-state updating, classification, and loop remain incomplete |
+| [006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | Engine — selection | **Implemented and closed** — all 22 criteria demonstrated |
+| [007](TASK-007_CAPABILITY_RUN_LOOP.md) | Engine — the run loop | **Final generic loop in review** — candidate source, TASK-006 selection, PR-B execution, updater, terminal classification, and immutable history implemented; provider-specific work remains incomplete |
 | [008](TASK-008_CAPABILITY_ACQUISITION.md) | Boundary — candidate generation | **PR A implemented** — normalization/catalog boundary; source-specific generation and adapters remain incomplete |
 | [009](TASK-009_REVENUE_OPPORTUNITY_STATE.md) | Benchmark reasoning | Specified |
 | [010](TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | Adapter — Circle / Arc | Specified |
@@ -118,8 +117,8 @@ generic boundaries.
 | BL-10 | Human-facing UI for submitting tasks and reviewing run records — [TASK-014](TASK-014_DEMO_AND_RUN_RECORD.md) | **UNAUTHORIZED** |
 | BL-11 | Verticals beyond software engineering | **UNAUTHORIZED** |
 | BL-12 | Several Radhanite agents under shared, externally granted authority | **UNAUTHORIZED** |
-| BL-13 | Selection among candidate capabilities, rather than one attempt and one escalation — [TASK-006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **AUTHORIZED — implemented, not closed** |
-| BL-16 | The run loop that drives repeated capability decisions — [TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md) | **AUTHORIZED PR A + PR B IMPLEMENTED — REMAINDER UNAUTHORIZED** |
+| BL-13 | Selection among candidate capabilities, rather than one attempt and one escalation — [TASK-006](TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **AUTHORIZED — implemented and closed** |
+| BL-16 | The run loop that drives repeated capability decisions — [TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md) | **AUTHORIZED PR A + PR B IMPLEMENTED — FINAL GENERIC LOOP IN REVIEW** |
 | BL-14 | Radhanite hosting a paid x402 endpoint as hackathon test infrastructure | **UNAUTHORIZED** |
 
 ## Notes
@@ -166,29 +165,30 @@ product owner and frozen in TASK-006 §6.6–§6.8. Resolving them did not autho
 the work — authorization was a separate act, taken afterwards, and recorded in
 its own pull request so that the two remain visibly distinct in the history.
 
-`BL-16` is what TASK-006 §5a exposed, and it is **now specified** as
+`BL-16` is what TASK-006 §5a exposed, and it is **now implemented** as
 [TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md). TASK-006 has five of its six
 deliverables complete and 20 of its 22 acceptance criteria directly demonstrated.
 Its criteria 10 and 13 need a run loop — something that observes the task has
 succeeded, and something that accumulates spend across purchases — which §2.7
-places outside TASK-006. TASK-007 PR A delivered the state model. PR B now
-delivers the executor/result boundary and one execution transition; task-state
-updating, classification, and the full loop remain outstanding.
+places outside TASK-006. TASK-007 PR A delivered the state model. PR B delivered
+the executor/result boundary and one execution transition; the final-loop review
+branch now adds the generic updater, classification, and orchestration boundary.
 
 **TASK-007 inherits those two criteria** with their meaning unchanged, per its
-§8. TASK-006 is not made complete by that specification existing: it closes only
-once a TASK-007 implementation actually demonstrates the inherited behaviour.
+§8. TASK-006 is now closed because the TASK-007 final-loop implementation
+demonstrates the inherited behaviour without moving economic reasoning into the
+selection kernel.
 
 TASK-007 PR A and PR B are **authorized and implemented on the review branch**.
-PR B implements one execution transition only, with exact retained-selection and
+PR B implements one execution transition with exact retained-selection and
 current-state authorization checks and an explicit executor commitment ceiling.
-The remaining task-state updater, terminal classification, and loop work are not
-authorized by this PR-B scope. The execution-failure semantics in §7 are
-implemented: every compliant post-attempt failure is returned as an exact
-`ExecutionResult` with whatever cost was actually committed, while a raw
-exception is permitted only before an attempt or commitment begins. A recorded
-failed attempt consumes the candidate ID, increments the capability-step count,
-and terminates without retry.
+The final-loop review branch adds only the generic candidate-source,
+task-state-updater, stop-classification, and repeated-orchestration boundaries.
+The execution-failure semantics in §7 are implemented: every compliant
+post-attempt failure is returned as an exact `ExecutionResult` with whatever cost
+was actually committed, while a raw exception is permitted only before an
+attempt or commitment begins. A recorded failed attempt consumes the candidate
+ID, increments the capability-step count, and terminates without retry.
 
 **The Graph moved from TASK-007 to
 [TASK-011](TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md)** so the run loop

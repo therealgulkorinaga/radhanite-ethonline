@@ -1,6 +1,6 @@
 # TASK-006 — Generalized capability selection
 
-**Status:** Authorized and implemented — **NOT CLOSED.** Five deliverables met and one partial; 20 of 22 acceptance criteria directly demonstrated. Criteria 10 and 13 have no owner inside this task — see §5a
+**Status:** Authorized and implemented — **CLOSED.** All six deliverables and all 22 acceptance criteria are demonstrated, including inherited criteria 10 and 13 through TASK-007's final loop — see §5a.
 **Authorization:** Authorized by the human product owner, 2026-09-09
 **Traces to:** [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §4a, §5.1
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.2.2, §2.2.3
@@ -395,8 +395,8 @@ success signal (`BL-08`) remain unauthorized.
    `radhanite/eligibility.py`, `radhanite/selection.py`.
 2. ✅ A candidate model carrying exactly the three fields in §2.2.
    `radhanite/capability.py`.
-3. ⚠️ **Partial.** A test suite covering §4 — 20 of its 22 criteria are directly
-   demonstrated; criteria 10 and 13 have no home in this task. See §5a.
+3. ✅ A test suite covering all 22 criteria in §4, with criteria 10 and 13
+   demonstrated end to end by TASK-007's final loop. See §5a.
 4. ✅ Declared candidate fixtures sufficient to exercise the rule, in the same
    spirit as TASK-001's `DECLARED_STRATEGIES` and under the same honesty
    constraint in §9. `capability.DECLARED_CANDIDATES` — three entries, no
@@ -417,50 +417,44 @@ external. `AI_BUILD_GOVERNANCE.md` §2.2 permits a task to name dependencies it
 requires; this one requires none, and adding any would need the specification
 amended first.
 
-## 5a. Closure status — two criteria this task cannot reach
+## 5a. Closure status — two criteria supplied by the run loop
 
-**Five of the six §5 deliverables are complete; deliverable 3 is partial. 20 of
-the 22 §4 acceptance criteria are fully demonstrated. TASK-006 is not
-complete.**
+**All six §5 deliverables are complete, and all 22 §4 acceptance criteria are
+fully demonstrated. TASK-006 is closed.**
 
-Criteria 10 and 13 are exercised at the selector, but their full meaning —
-observing that a task has already succeeded, and bounding spend *across* a run —
-still requires the future run loop for end-to-end satisfaction.
+Criteria 10 and 13 were exercised at the selector, and their full meaning —
+observing that a task has already succeeded and bounding spend *across* a run —
+is now demonstrated end to end by TASK-007's final loop.
 
 Criteria 10 and 13 of §4 require behaviour that §2.2a, §2.7 and §3 of this same
-task place outside it. That is an **ownership inconsistency** in this
-specification, not an implementation gap, and it is recorded here rather than
-resolved by quietly satisfying the criteria in the wrong layer.
+task place outside it. That is an **ownership boundary**, not an implementation
+gap in the economic kernel. The criteria are now demonstrated by TASK-007's
+separate run-loop layer rather than by moving loop logic into this task.
 
 **Stated precisely, because an earlier revision of this section overstated it.**
-§2.5 does list an already-satisfied success condition as terminal — it does not
-say the selector is forbidden from knowing about it. The inconsistency is one of
-*ownership*: no section of this task assigns production of the success verdict
-or of accumulated spend to anything inside it, and §3 excludes the layers that
-would produce them. Whether the resolution is to move the criteria, to widen the
-scope, or to give the run loop its own task is a product decision, and this
-document does not take it.
+§2.5 lists an already-satisfied success condition as terminal — it does not say
+the selector must produce that verdict. The boundary remains one of *ownership*:
+the run loop produces the completion check and accumulated spend, while this task
+continues to own only the economic decision.
 
-| Criterion | Why it cannot be demonstrated here |
+| Criterion | How the cross-layer behaviour is demonstrated |
 |---|---|
-| **10** — *task already successful → STOP, with no candidate evaluated* | §2.5 **lists** an already-satisfied success condition as terminal. But §2.2a enumerates the decision's inputs and a success verdict is not among them; §2.7 assigns re-evaluating task state to a separate concern; and §3 excludes the layer that would produce it. Nothing this task owns can observe that a task has succeeded |
-| **13** — *total spend can never exceed the budget, on every path* | The selector never spends. Per-decision affordability **is** enforced and tested, including where cost exactly equals the remaining budget — but a *total* across purchases needs something that accumulates, and §2.7 gives that to the run loop |
+| **10** — *task already successful → STOP, with no candidate evaluated* | TASK-007 checks terminal completion before candidate sourcing and records a STOP transition with no execution. The selector remains unaware of task-state meaning. |
+| **13** — *total spend can never exceed the budget, on every path* | TASK-007 accumulates exact `committed_cost` across immutable transitions and preserves the ledger identity and bounds. The selector continues to enforce per-decision affordability. |
 
 **Both belong to the run loop.** §2.7 hands it steps 1 through 4 of the
-iterative cycle and stops. That loop is now specified as
+iterative cycle and stops. That loop is specified as
 [TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md), whose §8 inherits these two
-criteria with their meaning unchanged — but TASK-007 is **not authorized**, and
-this task closes only once a TASK-007 implementation demonstrates the inherited
-behaviour, not because a specification promising to exists.
+criteria with their meaning unchanged. The TASK-007 final-loop implementation
+now demonstrates the inherited behaviour without moving economic reasoning into
+TASK-006.
 
 **What this means.** The economic kernel is implemented and its decisions are
-demonstrated. What is missing is the thing that would drive it — and until the
-product owner decides where the loop lives, these two criteria have nowhere
-legitimate to be satisfied. TASK-006 stays open rather than being marked
-complete against criteria it cannot meet.
+demonstrated. TASK-007 supplies the separate driver that demonstrates the two
+end-to-end criteria, so TASK-006 can close without taking ownership of the loop.
 
-**§5 deliverable 3 is therefore partial**, not complete: it asks for a test
-suite covering §4, and two of §4's criteria have no home in this task.
+**§5 deliverable 3 is complete**: its full acceptance suite is demonstrated,
+with the two cross-layer criteria supplied by TASK-007 as §8 specifies.
 
 ## 6. Decisions
 
