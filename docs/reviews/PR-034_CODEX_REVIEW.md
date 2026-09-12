@@ -76,12 +76,66 @@ request.
 
 ## 2. Findings returned
 
-Pending. Codex review has not yet been run.
+Codex returned three material findings. Arko authorized corrections to this
+existing PR only; no new PR was authorized and no merge was performed.
 
-## 3. Outcome
+### CODEX-PR034-01 — transitive immutability through the retained Selection
 
-Pending independent review.
+**Finding:** `apply_execution(...)` checked only the top-level `Selection` and
+the selected `Assessment` with insufficient transitive exact-type protection.
+The public selection pipeline could admit frozen subclasses of `Candidate` or
+`Assessment` carrying mutable list fields. A rejected assessment or candidate
+is retained in the complete decision record and was therefore an audit escape
+hatch as well.
 
-## 4. Corrections
+**Correction:** `capability_execution.py` now validates the complete retained
+Selection graph before executor invocation. It requires exact `Selection`,
+`Assessment`, `Candidate`, economic-value, probability, identifier, step,
+policy, and refusal-condition types, rejecting subclasses throughout selected
+and rejected members. Normal exact repository values remain accepted.
 
-None. No Codex findings have been returned.
+### CODEX-PR034-02 — stale or forged Selection accepted against another RunState
+
+**Finding:** A structurally valid Selection created for one decision context
+could be passed to `apply_execution(...)` with a different current RunState.
+
+**Correction:** The transition now matches the Selection’s recorded task value,
+current success probability, remaining budget, consumed candidate IDs,
+capability-step count, and maximum capability-step ceiling against the current
+RunState before invoking the executor. It also requires the exact selected
+Assessment to be retained in the Selection and to be eligible. No selection or
+ranking is rerun.
+
+### CODEX-PR034-03 — executor side effects and exception-path recording
+
+**Finding:** The original executor boundary did not make the authorized
+commitment ceiling explicit and could not distinguish a pre-attempt raw
+exception from a post-attempt failure that had committed money.
+
+**Correction:** The existing `CapabilityExecutor` interface now receives
+`maximum_authorized_cost = min(candidate.cost, current_state.remaining_budget)`
+before any side effect. A compliant executor must return an exact failed
+`ExecutionResult` containing actual committed cost for every post-attempt
+failure, including non-zero cost. A raw exception is permitted only before an
+attempt or financial commitment begins. Malformed results are contract
+violations: the generic layer does not clamp or invent accounting.
+
+## 3. Correction verification
+
+The focused correction suite contains 47 tests and passes. The full repository
+suite contains 699 passing tests under Python 3.12. Nineteen deliberate mutation
+checks killed all nineteen mutants, including the original eight PR-B faults,
+both retained-graph subclass faults, skipped rejected-member validation, all
+six state-context omissions, executor-before-stale-rejection, authorization
+omission, malformed-result conversion, and pre-attempt exception conversion.
+
+No dependency, provider, payment, wallet, network, retry, selection, ranking,
+acquisition, task-state updater, terminal classification, or full-loop work was
+added. No new public data type was introduced; the existing provider-neutral
+executor interface gained its explicit authorization-ceiling argument.
+
+## 4. Outcome
+
+Corrections for CODEX-PR034-01, CODEX-PR034-02, and CODEX-PR034-03 are complete
+on PR #34. Independent Codex re-review remains required. The pull request is
+open and unmerged.
