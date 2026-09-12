@@ -6,7 +6,8 @@
 
 This pull request implements the smallest runtime boundary needed to turn one
 already-selected TASK-006 capability into one auditable attempt. It does not
-implement the repeated capability run loop.
+implement the repeated capability run loop. This explanation also records the
+authorized corrections for CODEX-PR034-01, CODEX-PR034-02, and CODEX-PR034-03.
 
 Arko authorized this work as TASK-007 PR B. The human-only merge gate remains in
 force, and Codex remains the independent reviewer.
@@ -16,18 +17,47 @@ force, and Codex remains the independent reviewer.
 The branch adds an immutable `ExecutionResult` containing three provider-neutral
 facts: whether the attempt succeeded, the exact amount actually committed, and
 opaque evidence for a later task-state interpreter. It adds a minimal
-`CapabilityExecutor` protocol whose only inputs are the selected candidate and
-the current run state.
+`CapabilityExecutor` protocol receiving the selected candidate, the current run
+state, and the explicit maximum authorized commitment.
 
 The branch also adds `apply_execution(...)`. This function accepts an already
 selected capability, calls the injected executor once, validates the result, and
 returns a new immutable `RunState` containing one transition record. The
 transition consumes the candidate identifier, increments the capability-step
-count once, and applies the exact committed amount to the ledger.
+count once, and applies the exact committed amount to the ledger. Before the
+executor is called, the generic layer validates the entire retained Selection
+graph by exact type and matches the Selection’s recorded decision inputs to the
+current RunState.
 
 `TransitionRecord.execution` now accepts either `None` or the exact
 `ExecutionResult` type. Arbitrary payloads, run states, snapshots, and
-subclasses remain rejected. The package exports the new public boundary.
+subclasses remain rejected. The package exports the existing public boundary;
+no new public data type was introduced by the corrections.
+
+### 2.1 Codex corrections
+
+**CODEX-PR034-01 — transitive exact-type audit safety.** A frozen subclass of
+`Candidate` or `Assessment` can carry a mutable subclass-only field. The
+correction walks every retained assessment and candidate, including rejected
+ones, and rejects every subclass before the Selection can enter a transition
+record. Exact ordinary `Candidate`, `Assessment`, and `Selection` values remain
+valid.
+
+**CODEX-PR034-02 — current-state authorization.** `apply_execution(...)` now
+requires the Selection’s recorded task value, probability, remaining budget,
+consumed candidate IDs, capability-step count, and maximum step ceiling to match
+the current RunState. It also requires an exact, eligible selected Assessment
+that is one of the retained assessments. Any mismatch is rejected before the
+executor is called; no selection or ranking is rerun.
+
+**CODEX-PR034-03 — executor commitment and failure contract.** The generic
+layer passes `min(candidate.cost, current_state.remaining_budget)` to the
+executor before any side effect. A compliant executor must never exceed it and
+must return an exact failed `ExecutionResult` with actual committed cost for
+every post-attempt/provider failure, including positive-cost failure. A raw
+exception means the executor failed before an attempt or financial commitment
+began. The generic layer does not fabricate spend from arbitrary exceptions or
+silently clamp malformed results.
 
 ## 3. Why the change was needed
 
@@ -66,10 +96,10 @@ A caller first supplies a valid TASK-006 `Selection` whose outcome is
 the step ceiling has not been reached, and that the candidate identifier has not
 already been consumed.
 
-The injected executor receives exactly the selected `Candidate` and the current
-`RunState`. It is called exactly once. Its exact `ExecutionResult` is then
-validated against the candidate’s declared cost and the current remaining
-budget.
+The injected executor receives exactly the selected `Candidate`, the current
+`RunState`, and `min(candidate.cost, current_state.remaining_budget)`. It is
+called exactly once. Its exact `ExecutionResult` is then validated against that
+explicit authorization ceiling.
 
 For a valid attempt, the returned state has one additional consumed identifier,
 one additional capability step, and ledger values derived from
@@ -82,7 +112,8 @@ probability, and `RUNNING` status. A failed result sets the new status to
 The transition receives an existing `RunState`, an existing TASK-006
 `Selection`, and an injected object implementing the executor protocol. The
 executor receives no provider, payment, wallet, network, endpoint, or
-marketplace parameter.
+marketplace parameter. Its third input is only the exact provider-neutral
+authorization ceiling.
 
 `committed_cost` uses the existing exact `Money` type. Evidence is frozen with
 the same structural mechanism used for opaque `task_state`: containers are
@@ -94,7 +125,8 @@ subclass-based escape hatches are refused.
 The new code makes only transition and validation decisions required by TASK-007
 §5.2 and §7. It does not decide which candidate is best. It does not generate or
 acquire candidates. It does not interpret evidence or decide whether a task is
-complete.
+complete. Selection context matching is an authorization check, not a second
+decision engine.
 
 The transition accepts a committed amount only when all three economic bounds
 hold:
@@ -104,7 +136,7 @@ hold:
 committed_cost <= remaining_budget
 ```
 
-The candidate’s declared cost is the maximum authorized commitment, but the
+The authorization ceiling is `min(candidate.cost, remaining_budget)`, and the
 actual committed amount drives the ledger.
 
 ## 8. Outputs or state changes
@@ -128,17 +160,20 @@ consumed candidate IDs, invalid result types, negative committed cost, committed
 cost above the candidate cost, and committed cost above the remaining budget.
 It performs no silent clamping.
 
-A failed execution is recorded with its actual committed cost, consumes the
-candidate, increments the step count, sets `EXECUTION_FAILURE`, and receives no
-retry. An invalid result is rejected before a new state is returned.
+A compliant failed execution is recorded with its actual committed cost,
+consumes the candidate, increments the step count, sets `EXECUTION_FAILURE`, and
+receives no retry. An invalid result is an executor contract violation and is
+rejected without fabricated accounting. A raw exception is permitted only for a
+pre-attempt failure; the generic layer cannot infer what arbitrary code committed
+after beginning an attempt.
 
 ## 10. Tests run and results
 
-The focused PR B suite contains 32 tests and passes:
+The focused PR B correction suite contains 47 tests and passes:
 
 ```text
 PYTHONDONTWRITEBYTECODE=1 python3.12 -m unittest tests.test_capability_execution -q
-Ran 32 tests in 0.005s
+Ran 47 tests in 0.010s
 OK
 ```
 
@@ -146,15 +181,16 @@ The full suite passes:
 
 ```text
 PYTHONDONTWRITEBYTECODE=1 python3.12 -m unittest discover -q
-Ran 684 tests in 0.204s
+Ran 699 tests in 0.247s
 OK
 ```
 
-Eight deliberate mutation checks were run against the focused suite. The tests
-killed all eight mutants: candidate consumption omitted, step counting tied to
-positive cost, step counting tied to success, declared-cost charging in both
-ledger fields, omitted candidate-cost validation, omitted remaining-budget
-validation, and failure retry.
+Nineteen deliberate mutation checks were run against the focused suite. The
+tests killed all nineteen mutants: the eight original PR-B accounting/result
+faults, retained Candidate and Assessment subclasses, skipped rejected-graph
+validation, each of the six current-state context checks, executor invocation
+before stale-selection rejection, omitted authorization enforcement, malformed
+result conversion, and pre-attempt exception conversion.
 
 The implementation adds no dependency. TASK-006 and TASK-008 semantics remain
 unchanged, and no provider-specific runtime work was added.
