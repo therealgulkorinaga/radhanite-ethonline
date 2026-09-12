@@ -87,7 +87,7 @@ that buys nothing is a correct run. See
 | Governance and planning scaffolding | Present |
 | Product code | **Present** — TASK-001’s active runtime plus the TASK-006 kernel, TASK-007 PR A state foundation and PR B one-execution boundary, and TASK-008 PR A acquisition/catalog boundary |
 | TASK-001 | **Implemented and merged.** All seventeen acceptance criteria met |
-| Tests | **684 passing** on Python 3.12 |
+| Tests | **699 passing** on Python 3.12 |
 | Language | Python 3.12, standard library only — no external dependencies |
 | Capability selection engine | **Implemented** — [TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md); the task is not closed |
 | TASK-007 run loop | **PR B in review** — state model, immutable snapshots, executor/result boundary, and one execution transition; updater, classification, and loop remain incomplete |
