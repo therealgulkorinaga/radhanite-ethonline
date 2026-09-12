@@ -28,11 +28,13 @@ Implemented so far:
 
 TASK-001 is complete. TASK-006 — choosing among candidate capabilities rather
 than escalating through two fixed tiers — is authorized and partially built: the
-the candidate model, the eligibility rule, the ranking, the declared fixtures
+candidate model, the eligibility rule, the ranking, the declared fixtures
 and the run policy exist, and TASK-001's scenarios are demonstrated to decide
-identically under them. The run loop that maintains the step count and the
-consumed identifiers does not. Nothing beyond those is authorized: no real inference, no
-wallet, no tokens, no interface, and no learning.
+identically under them. TASK-007 PR B adds the provider-neutral executor/result
+boundary and one immutable execution transition, but the task-state updater,
+terminal classification, and full run loop do not exist. Nothing beyond those
+authorized boundaries is built: no real inference, no wallet, no tokens, no
+interface, and no learning.
 
 Intended behaviour, once complete: Radhanite is given a task, a budget, a task
 value, constraints and a measurable success condition. It selects an execution
@@ -50,6 +52,11 @@ from radhanite.acquisition import (
     normalize,
 )
 from radhanite.capability import DECLARED_CANDIDATES, Candidate, validate_candidates
+from radhanite.capability_execution import (
+    CapabilityExecutor,
+    ExecutionResult,
+    apply_execution,
+)
 from radhanite.eligibility import Assessment, Ineligibility, assess
 from radhanite.escalation import Decision, EscalationDecision, FailedCondition, decide
 from radhanite.evaluation import Evaluation, Verdict, evaluate
@@ -79,10 +86,12 @@ __all__ = [
     "Attempt",
     "CapabilityCatalog",
     "CapabilityDescriptor",
+    "CapabilityExecutor",
     "Candidate",
     "Decision",
     "EscalationDecision",
     "Evaluation",
+    "ExecutionResult",
     "FailedCondition",
     "Ineligibility",
     "Observation",
@@ -104,6 +113,7 @@ __all__ = [
     "Verdict",
     "__version__",
     "acquire",
+    "apply_execution",
     "begin_run",
     "assess",
     "decide",
