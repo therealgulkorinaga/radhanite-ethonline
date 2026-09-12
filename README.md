@@ -7,19 +7,18 @@ Radhanite is being built for ETHOnline 2026.
 **TASK-001 is implemented and merged.** It remains the active CLI/runtime path:
 the deterministic **two-tier economic kernel** makes an opening attempt and one
 optional escalation, with declared costs and declared success probabilities.
-The full suite currently passes **699 tests on Python 3.12**.
+The full suite currently passes **712 tests on Python 3.12**.
 
 The generalized capability-selection kernel in
-[TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) is implemented but
-not closed. TASK-007 PR A provides the immutable run-state foundation, and PR B
-now provides the provider-neutral execution result, explicit executor
-authorization ceiling, exact retained-selection/current-state checks, and one
-execution transition on this review branch. TASK-008 PR A provides the
-descriptor-to-candidate acquisition/catalog boundary. The remaining TASK-007
-task-state updater, terminal classification, and full loop, TASK-008
-source-specific candidate generation, the benchmark, and external adapters are
-not yet implemented. The distinction between what runs, what is partially
-implemented, and what is authorized to be built remains deliberate throughout
+[TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) is implemented and
+closed. TASK-007 PR A and PR B provide the immutable run-state and
+one-execution foundations; this review branch adds the provider-neutral
+candidate-source and task-state-updater boundaries, terminal classification,
+and generic repeated run loop. TASK-008 PR A provides the
+descriptor-to-candidate acquisition/catalog boundary. TASK-008 source-specific
+candidate generation, the benchmark, and external adapters are not yet
+implemented. The distinction between what runs, what is implemented in a
+review branch, and what is authorized to be built remains deliberate throughout
 this repository.
 
 ---
@@ -85,12 +84,12 @@ that buys nothing is a correct run. See
 | Item | Status |
 |---|---|
 | Governance and planning scaffolding | Present |
-| Product code | **Present** — TASK-001’s active runtime plus the TASK-006 kernel, TASK-007 PR A state foundation and PR B one-execution boundary, and TASK-008 PR A acquisition/catalog boundary |
-| TASK-001 | **Implemented and merged.** All seventeen acceptance criteria met |
-| Tests | **699 passing** on Python 3.12 |
+| Product code | **Present** — TASK-001’s active runtime plus the TASK-006 kernel, TASK-007 state/execution/final-loop foundations, and TASK-008 PR A acquisition/catalog boundary |
+| TASK-006 | **Implemented and closed.** All 22 acceptance criteria met |
+| Tests | **712 passing** on Python 3.12 |
 | Language | Python 3.12, standard library only — no external dependencies |
-| Capability selection engine | **Implemented** — [TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md); the task is not closed |
-| TASK-007 run loop | **PR B in review** — state model, immutable snapshots, executor/result boundary, and one execution transition; updater, classification, and loop remain incomplete |
+| Capability selection engine | **Implemented and closed** — [TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) |
+| TASK-007 run loop | **Final generic loop in review** — state model, executor/result boundary, injected candidate source/updater, terminal classification, immutable history, and repeated orchestration; provider-specific integrations remain incomplete |
 | TASK-008 acquisition | **PR A implemented** — normalization/catalog boundary; source-specific generation and adapters remain incomplete |
 | Benchmark and adapters | **Specified, not implemented** — TASK-009 … TASK-014 |
 | External integrations (Circle/Arc, The Graph, Hedera, OpenRouter) | **Not authorized** |
@@ -117,11 +116,11 @@ docs/                      Product definition, architecture, rules, governance
   HACKATHON_RULES.md                 ETHOnline constraints we build under
   AI_BUILD_GOVERNANCE.md             How AI agents are permitted to build here
 radhanite/                 The economic kernel and generalized foundations
-tests/                     The test suite — 699 tests, standard library only
+tests/                     The test suite — 712 tests, standard library only
 tasks/                     Authorized work, one file per task
   TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md   Implemented and merged
-  TASK-006                                  Kernel implemented, not closed
-  TASK-007                                  PR A state foundation; PR B in review
+  TASK-006                                  Kernel implemented and closed
+  TASK-007                                  Final generic loop in review; provider-neutral
   TASK-008                                  PR A acquisition/catalog boundary implemented
   TASK-002 .. TASK-005, TASK-009 .. TASK-014 Proposed or specified, not authorized
   BACKLOG.md                                Unauthorized future placeholders

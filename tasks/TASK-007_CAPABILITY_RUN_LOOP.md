@@ -1,9 +1,10 @@
 # TASK-007 — The capability run loop
 
-**Status:** Authorized — **PR A implemented; PR B implementation in review.** The
-provider-neutral executor/result boundary and one execution transition exist on
-this branch; task-state updating, terminal classification, and the full loop do
-not.
+**Status:** Authorized — **PR A and PR B implemented; final generic loop in
+review.** The provider-neutral candidate-source and task-state-updater
+boundaries, terminal classification, immutable history, and repeated loop now
+exist on the implementation branch. Provider-specific generation and domain
+updater logic remain outside this task.
 **Authorization:** PR A authorized by the human product owner, 2026-09-11
 **Traces to:** [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §5.2, §5.5
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.1, §2.2.3, §6
@@ -31,7 +32,7 @@ read.
         run state (§3)
              │
              ▼
-      is the task already complete?  ──── yes ──► TERMINAL: task complete (§6)
+      is entry status TASK_COMPLETE?  ──── yes ──► return terminal state (§6)
              │ no
              ▼
     ┌──► current candidate set        ← candidate source (§5.1), given task_state
@@ -61,8 +62,12 @@ read.
     └────────┘
 ```
 
-**The already-complete check comes first, before any candidate is considered.**
-That ordering is §6.1's precedence rule and it is not an optimisation.
+**The entry-status check comes first, before any candidate is considered.**
+`RunStatus.TASK_COMPLETE` is the authoritative precomputed completion signal at
+loop entry. TASK-007 does not inspect opaque `task_state` to determine whether a
+task is complete. The upstream task/domain initializer is responsible for making
+that determination and constructing the appropriate initial state. This ordering
+is §6.1's precedence rule and it is not an optimisation.
 
 **One iteration attempts at most one capability.** Two would make the step count
 meaningless and the safeguards unenforceable.
@@ -336,6 +341,20 @@ attempt count, applies the exact committed cost, and marks a failed attempt
 `EXECUTION_FAILURE`. It does not select, acquire, interpret evidence, update
 task state, classify stops, retry, or run a loop.
 
+### 3.4.2 What the final-loop implementation delivers
+
+`radhanite/loop.py` supplies the provider-neutral `CandidateSource` and
+`TaskStateUpdater` boundaries, the immutable `TaskStateUpdate` return type, and
+`run_capability_loop(...)`. The loop checks terminal entry status before asking
+for candidates, does not infer completion from opaque task state, reuses TASK-006 assessment and selection, invokes the PR-B
+one-execution transition at most once per iteration, and calls the updater only
+after a successful execution. It preserves exact committed-cost accounting,
+consumed IDs, execution-attempt counts, complete selections, and non-recursive
+transition history. It classifies STOP using TASK-006's retained refusal
+classification, with the step ceiling taking precedence, and terminates
+execution failures without retry. It does not interpret task state, implement
+revenue reasoning, discover providers, or replace the TASK-001 CLI path.
+
 ### 3.5 Retracted: the `task_state` storage question was not ambiguous
 
 This section previously recorded an "ambiguity §3.1 leaves open": that §3.1
@@ -459,19 +478,29 @@ spent effort creating.
 | **`SAFETY_STOP`** | The ceiling was reached — whatever else was true — or, below it, no candidate was refused on economic grounds |
 | **`EXECUTION_FAILURE`** | A capability was attempted and did not deliver — §7.3 |
 
-### 6.1 Precedence — already-complete wins
+### 6.1 Precedence — a precomputed terminal entry wins
 
-**The already-complete check runs before any candidate is considered**, on entry
-and after every successful execution.
+**The terminal-state check runs before any candidate is considered at loop
+entry.** `RunStatus.TASK_COMPLETE` is the authoritative precomputed completion
+signal supplied by the upstream task/domain initializer. TASK-007 does not read
+inside opaque `task_state` and cannot infer that an arbitrary task is already
+successful. For the revenue-agent benchmark, TASK-009 or its initializer owns
+that domain-specific determination.
 
-Consequently, a run whose task is complete terminates `TASK_COMPLETE` **even
-when**:
+After a successful execution, TASK-007 stores the updater's explicit completion
+verdict and returns `TASK_COMPLETE` when that verdict is true. It does not
+derive the verdict itself.
+
+Consequently, an entry state already marked `TASK_COMPLETE` returns unchanged
+**even when**:
 
 - `max_capability_steps == 0`; or
 - the step ceiling has been reached; or
 - eligible candidates are still on offer.
 
-A completed task is not stopped by a ceiling. It is finished.
+A completed task is not stopped by a ceiling. It is finished. No STOP transition
+is written for this entry case; the original terminal state is returned
+unchanged.
 
 ### 6.2 Classifying a STOP
 
@@ -604,19 +633,21 @@ unchanged.
 
 | TASK-006 | As stated there | Inherited as |
 |---|---|---|
-| **Criterion 10** | *Task already successful → STOP, with no candidate evaluated* | §9 criteria 1 and 2 |
+| **Criterion 10** | *An entry state already marked `TASK_COMPLETE` gets no further candidate evaluation or execution* | §9 criteria 1 and 2 |
 | **Criterion 13** | *Total spend can never exceed the budget, on every path including boundary cases where cost exactly equals the remaining budget* | §9 criteria 15–23 |
 
-**TASK-006 is not made complete by this document existing.** It becomes complete
-when a TASK-007 implementation demonstrates these — not before.
+**TASK-006 was not made complete by this document existing.** Its closure now
+follows because the TASK-007 final-loop implementation demonstrates these
+inherited behaviours — not because a specification promised to do so.
 
 ## 9. Acceptance criteria
 
 Terminal states and precedence:
 
-1. **Already-complete task → zero executions**, terminal `TASK_COMPLETE` —
-   inherited criterion 10.
-2. **Already-complete takes precedence** over `max_capability_steps == 0`, over
+1. **`TASK_COMPLETE` entry status → zero candidate-source calls, zero executions,
+   and zero updater calls**, returning the original terminal state — inherited
+   criterion 10.
+2. **`TASK_COMPLETE` entry status takes precedence** over `max_capability_steps == 0`, over
    a reached ceiling, and over available eligible candidates.
 3. **Below the ceiling**, every candidate refused on economic grounds →
    `ECONOMIC_STOP`.
@@ -775,7 +806,7 @@ product's central claim.
 - Confirm `task_state` is **never read** by this task or by the decision, and
   that no field, branch or helper inspects it — §3.1, §5.4.
 - Confirm the history is **non-recursive**: no snapshot contains a history.
-- Confirm the already-complete check **precedes** candidate selection on every
-  path — §6.1.
+- Confirm `TASK_COMPLETE` entry status **precedes** candidate selection and
+  causes no source, executor, or updater calls — §6.1.
 - Confirm STOP classification is **read from**
   `Selection.stopped_without_economic_judgement` rather than re-derived — §6.2.
