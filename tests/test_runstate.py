@@ -1,7 +1,7 @@
 """The state a capability run carries, and the snapshots that audit it.
 
-TASK-007 §3. This is the state model only — no execution, no transitions, no
-classification, no loop.
+TASK-007 §3 and PR B's exact execution-result audit boundary. This module does
+not execute capabilities, classify stops, or run the loop.
 """
 
 import dataclasses
@@ -631,14 +631,14 @@ class RecursiveWalkTests(unittest.TestCase):
         self.assertEqual(sum(1 for v in reachable if v is snap), 1)
 
 
-# ── CODEX-PR030-01, remaining: the execution escape hatch ──────────────────
+# ── TASK-007 PR B: the exact execution-result boundary ─────────────────────
 
-class ExecutionPlaceholderTests(unittest.TestCase):
+class ExecutionResultBoundaryTests(unittest.TestCase):
     """`execution` accepted anything, which reopened every hole beside it.
 
     A mutable payload is a live alias inside history; a `RunState` payload puts
-    history inside history. PR A implements no execution and no caller needs a
-    payload, so the smallest safe contract is that there isn't one yet.
+    history inside history. PR B keeps the boundary closed without accepting a
+    generic payload.
     """
 
     def _transition(self, **overrides):
@@ -653,32 +653,31 @@ class ExecutionPlaceholderTests(unittest.TestCase):
 
     def test_a_mutable_payload_is_rejected(self) -> None:
         for payload in ([], {}, {"cost": "0.40"}, ["committed"], set(), bytearray()):
-            with self.assertRaises(ValueError):
+            with self.assertRaises(TypeError):
                 self._transition(execution=payload)
 
     def test_a_run_state_as_execution_is_rejected(self) -> None:
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             self._transition(execution=a_run())
 
     def test_a_snapshot_as_execution_is_rejected(self) -> None:
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             self._transition(execution=a_run().snapshot())
 
     def test_a_transition_as_execution_is_rejected(self) -> None:
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             self._transition(execution=self._transition())
 
     def test_even_an_immutable_payload_is_rejected(self) -> None:
-        # Not "freeze whatever arrives" — PR A has no authorized execution
-        # result type at all, and inventing one here would be PR B's schema
-        # arriving early under a different name.
+        # Not "freeze whatever arrives" — PR B authorizes one exact execution
+        # result type, not a generic payload.
         for payload in ("committed", 1, Money("0.40"), ("committed",)):
-            with self.assertRaises(ValueError):
+            with self.assertRaises(TypeError):
                 self._transition(execution=payload)
 
     def test_caller_mutation_cannot_reach_an_existing_history_record(self) -> None:
         payload = {"committed_cost": "0.40"}
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             self._transition(execution=payload)
         payload["committed_cost"] = "999.00"
         # Nothing retained it, so there is nothing for the mutation to reach.
@@ -880,10 +879,10 @@ class TransitiveImmutabilityAuditTests(unittest.TestCase):
         # The walk proves a *valid* run is clean. This proves the invalid ones
         # never get built, which is the half a walk over good data cannot show.
         snap = a_run().snapshot()
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             TransitionRecord(before=snap, selection=a_selection(), after=snap,
                              execution={"committed": ["0.40"]})
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             TransitionRecord(before=snap, selection=a_selection(), after=snap,
                              execution=a_run())
         with self.assertRaises(TypeError):

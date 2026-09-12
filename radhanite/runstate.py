@@ -318,17 +318,13 @@ class TransitionRecord:
     Defined here because `RunState.history` needs a member type. **No transition
     is produced by this step** — building these is the loop's job.
 
-    **`execution` is a reserved placeholder and must be `None` in PR A** —
-    `CODEX-PR030-01`. The field exists so the shape of a transition is settled;
-    the *authorized execution result type arrives with PR B*.
+    **`execution` is `None` for STOP iterations and the exact authorized
+    `ExecutionResult` for execution transitions** — TASK-007 PR B. The field
+    remains provider-neutral and refuses every other payload.
 
-    Accepting anything else was the last live alias in the module: a mutable
-    payload here is a caller-owned object inside an audit record, and a
-    `RunState` here puts a history inside a history. Refusing outright is the
-    smallest safe contract, because PR A implements no execution and no caller
-    has a payload to pass. Freezing an arbitrary payload instead would be
-    PR B's schema arriving early under a different name, which
-    `ARCHITECTURE.md` §6 item 7 forbids.
+    Accepting anything else would be a live alias inside an audit record, and a
+    `RunState` here would put a history inside a history. The exact-type check
+    keeps the audit boundary closed without making execution generic.
     """
 
     before: RunSnapshot
@@ -346,12 +342,17 @@ class TransitionRecord:
             _exactly(getattr(self, label), RunSnapshot, label)
         _exactly(self.selection, Selection, "selection")
         if self.execution is not None:
-            raise ValueError(
-                f"execution must be None in PR A, got "
-                f"{type(self.execution).__name__}. It is a reserved placeholder; "
-                "the authorized execution result type arrives with TASK-007 "
-                "PR B — CODEX-PR030-01."
-            )
+            # Local import avoids a module cycle: capability_execution imports
+            # the state records in this module to build one transition.
+            from radhanite.capability_execution import ExecutionResult
+
+            if type(self.execution) is not ExecutionResult:
+                raise TypeError(
+                    "execution must be exactly ExecutionResult or None, got "
+                    f"{type(self.execution).__name__}. Arbitrary payloads, "
+                    "RunState, RunSnapshot and subclasses are not execution "
+                    "results — TASK-007 PR B."
+                )
 
 
 @refuse_rehydration

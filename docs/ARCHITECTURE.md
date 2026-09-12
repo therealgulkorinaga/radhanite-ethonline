@@ -68,7 +68,8 @@ which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION
 > not.** Those are different claims and this section keeps them apart.
 
 **What exists** — `radhanite/capability.py`, `eligibility.py`, `selection.py`,
-`policy.py`, `acquisition.py`, and `runstate.py`:
+`policy.py`, `acquisition.py`, `runstate.py`, and the PR-B
+`capability_execution.py` boundary:
 
 - the **candidate model**, three fields, provider-neutral;
 - the **eligibility rule**, all six conditions of TASK-006 §2.3;
@@ -77,6 +78,10 @@ which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION
 - **run policy**, carrying the purchase ceiling with no default;
 - the TASK-007 PR A **run-state foundation**, including immutable snapshots,
   validated ledger state, and non-recursive transition shape;
+- the TASK-007 PR B **one-execution boundary**, including the immutable result,
+  provider-neutral executor interface, explicit pre-side-effect authorization
+  ceiling, exact retained-selection and current-state validation, exact
+  committed-cost validation, and one immutable transition;
 - the TASK-008 PR A **acquisition/catalog boundary**, which retains source
   descriptors outside the provider-neutral candidate;
 - **compatibility tests** demonstrating that TASK-001's scenarios decide
@@ -87,11 +92,14 @@ which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION
 replaced and is still what §2.2.1 describes. There is no run loop over
 capabilities: nothing accumulates spend across purchases, nothing re-evaluates
 task state between them, and nothing decides that a task has already succeeded.
-That orchestration remains incomplete. TASK-007 PR A provides state only; its
-executor, execution transitions, terminal classification, and loop remain
-unbuilt. TASK-008 PR A provides normalization and catalog lookup only; candidate
-generation from task state and provider-specific adapters remain unbuilt. The
-remaining work is specified but not authorized by the current PR-A scopes.
+That orchestration remains incomplete. TASK-007 PR B provides one execution
+transition only; it validates the complete retained decision record against the
+current run state and requires compliant executors to return an exact result
+for every post-attempt outcome. Its task-state updater, terminal classification,
+and full loop remain unbuilt. TASK-008 PR A provides normalization and catalog
+lookup only; candidate generation from task state and provider-specific adapters
+remain unbuilt. The remaining work is specified but not authorized by the
+current PR-A/PR-B scopes.
 
 **An implemented kernel is not a working autonomous runtime**, and no document
 in this repository may imply otherwise.
@@ -314,14 +322,15 @@ product owner says so.
 
 ### The task sequence
 
-Set by the human product owner. TASK-007 PR A and TASK-008 PR A are authorized
-and implemented; the remaining runtime, benchmark, and integration work is not
-authorized. This is the order work would be taken in if it were.
+Set by the human product owner. TASK-007 PR A and PR B, and TASK-008 PR A, are
+authorized and implemented on the current review branch; the remaining runtime,
+benchmark, and integration work is not authorized. This is the order work would
+be taken in if it were.
 
 | | Task | Layer |
 |---|---|---|
 | 006 | [Generalized capability selection](../tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **Engine** — implemented, provider-neutral, task-agnostic |
-| 007 | [Capability run loop](../tasks/TASK-007_CAPABILITY_RUN_LOOP.md) | **Engine** — PR A state foundation implemented; execution, transitions, classification, and loop incomplete |
+| 007 | [Capability run loop](../tasks/TASK-007_CAPABILITY_RUN_LOOP.md) | **Engine** — PR B executor/result boundary and one transition implemented; task-state updating, classification, and loop incomplete |
 | 008 | [Capability acquisition](../tasks/TASK-008_CAPABILITY_ACQUISITION.md) | **Boundary** — PR A normalization/catalog boundary implemented; generation and adapters incomplete |
 | 009 | [Revenue opportunity state](../tasks/TASK-009_REVENUE_OPPORTUNITY_STATE.md) | **Benchmark reasoning** — the only place it lives |
 | 010 | [Circle marketplace and Arc payments](../tasks/TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | **Adapter** — discovery and settlement |
