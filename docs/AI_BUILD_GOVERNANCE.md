@@ -349,6 +349,20 @@ whose own purpose was fixing a stale claim about the review agent — shipped wi
 the review agent omitted from it entirely. Nothing required the attribution, so
 restructuring the description silently dropped it.
 
+### 4.5 Manus textual attribution
+
+Every implementation step must carry visible textual attribution to the current
+implementation agent. In each implementation progress report, commit message,
+pull request description, pull request explanation, and handoff report, include
+this exact bold line:
+
+> **Implementation agent: Manus.**
+
+This is a textual provenance requirement, not a GitHub-account claim. It does not
+represent a separate GitHub user, grant repository access, or change authorship
+metadata. The human product owner, Codex, and any other contributors remain
+named separately with their actual roles.
+
 ## 5. Prompt preservation
 
 > **Meaningful AI prompts that cause substantive repository changes are
@@ -374,7 +388,9 @@ Applies to every AI agent operating in this repository.
    when different readings produce materially different work.
 5. **State assumptions explicitly** rather than encoding them invisibly.
 6. **Report honestly.** Never describe unverified work as verified.
-7. **Never merge.**
+7. In every implementation step's user-facing and durable process record, include
+   the exact bold line **Implementation agent: Manus.** as required by §4.5.
+8. **Never merge.**
 
 ## 7. Review readiness and review outcomes
 
