@@ -79,8 +79,9 @@ which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION
 - the TASK-007 PR A **run-state foundation**, including immutable snapshots,
   validated ledger state, and non-recursive transition shape;
 - the TASK-007 PR B **one-execution boundary**, including the immutable result,
-  provider-neutral executor interface, exact committed-cost validation, and one
-  immutable transition;
+  provider-neutral executor interface, explicit pre-side-effect authorization
+  ceiling, exact retained-selection and current-state validation, exact
+  committed-cost validation, and one immutable transition;
 - the TASK-008 PR A **acquisition/catalog boundary**, which retains source
   descriptors outside the provider-neutral candidate;
 - **compatibility tests** demonstrating that TASK-001's scenarios decide
@@ -92,11 +93,13 @@ replaced and is still what §2.2.1 describes. There is no run loop over
 capabilities: nothing accumulates spend across purchases, nothing re-evaluates
 task state between them, and nothing decides that a task has already succeeded.
 That orchestration remains incomplete. TASK-007 PR B provides one execution
-transition only; its task-state updater, terminal classification, and full loop
-remain unbuilt. TASK-008 PR A provides normalization and catalog lookup only;
-candidate generation from task state and provider-specific adapters remain
-unbuilt. The remaining work is specified but not authorized by the current
-PR-A/PR-B scopes.
+transition only; it validates the complete retained decision record against the
+current run state and requires compliant executors to return an exact result
+for every post-attempt outcome. Its task-state updater, terminal classification,
+and full loop remain unbuilt. TASK-008 PR A provides normalization and catalog
+lookup only; candidate generation from task state and provider-specific adapters
+remain unbuilt. The remaining work is specified but not authorized by the
+current PR-A/PR-B scopes.
 
 **An implemented kernel is not a working autonomous runtime**, and no document
 in this repository may imply otherwise.
