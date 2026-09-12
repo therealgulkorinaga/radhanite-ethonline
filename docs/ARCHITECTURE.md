@@ -64,8 +64,9 @@ which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION
   the previous purchase revealed;
 - **dynamic skill acquisition** across independent environments.
 
-> **The kernel described above is implemented. A working generalized runtime is
-> not.** Those are different claims and this section keeps them apart.
+> **The kernel and provider-neutral generalized loop described above are
+> implemented. Provider-integrated runtime work is not.** Those are different
+> claims and this section keeps them apart.
 
 **What exists** — `radhanite/capability.py`, `eligibility.py`, `selection.py`,
 `policy.py`, `acquisition.py`, `runstate.py`, and the PR-B
@@ -82,24 +83,21 @@ which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION
   provider-neutral executor interface, explicit pre-side-effect authorization
   ceiling, exact retained-selection and current-state validation, exact
   committed-cost validation, and one immutable transition;
+- the TASK-007 **final generic loop**, including injected candidate sourcing,
+  injected task-state updating, TASK-006 selection reuse, terminal
+  classification, and one immutable transition per iteration;
 - the TASK-008 PR A **acquisition/catalog boundary**, which retains source
   descriptors outside the provider-neutral candidate;
 - **compatibility tests** demonstrating that TASK-001's scenarios decide
   identically under the generalized rule.
 
-**What does not exist.** The generalized kernel **is not driving the runtime**.
-`python -m radhanite` still runs TASK-001's two-tier loop, which has not been
-replaced and is still what §2.2.1 describes. There is no run loop over
-capabilities: nothing accumulates spend across purchases, nothing re-evaluates
-task state between them, and nothing decides that a task has already succeeded.
-That orchestration remains incomplete. TASK-007 PR B provides one execution
-transition only; it validates the complete retained decision record against the
-current run state and requires compliant executors to return an exact result
-for every post-attempt outcome. Its task-state updater, terminal classification,
-and full loop remain unbuilt. TASK-008 PR A provides normalization and catalog
-lookup only; candidate generation from task state and provider-specific adapters
-remain unbuilt. The remaining work is specified but not authorized by the
-current PR-A/PR-B scopes.
+**What does not exist.** The generalized loop is implemented as a provider-
+neutral library boundary, but it does not replace the active CLI path.
+`python -m radhanite` still runs TASK-001's two-tier loop, as §2.2.1 describes.
+No provider-specific candidate generation, revenue-opportunity updater,
+payment, network, or external adapter exists. TASK-008 PR A provides
+normalization and catalog lookup only; its source-specific generation and
+adapters remain unbuilt.
 
 **An implemented kernel is not a working autonomous runtime**, and no document
 in this repository may imply otherwise.
@@ -115,9 +113,11 @@ single-use while capability types may recur, and termination is guaranteed by a
 positive-cost invariant, single-use IDs, and a hard capability-step ceiling
 independent of budget.
 
-**TASK-006 is authorized and its kernel is implemented; the task is not closed.**
-Two of its acceptance criteria have no owner inside it — TASK-006 §5a. Until a
-run loop exists, §2.2.1 still describes what actually runs.
+**TASK-006 is authorized, implemented, and closed.** Its two cross-layer
+acceptance criteria are demonstrated by TASK-007's provider-neutral final loop;
+the economic kernel remains separate. The TASK-001 CLI path still describes
+what actually runs by default, while the generic loop is available as a library
+boundary on this review branch.
 
 #### 2.2.3 The generalization requires its own authorized task
 
@@ -322,15 +322,15 @@ product owner says so.
 
 ### The task sequence
 
-Set by the human product owner. TASK-007 PR A and PR B, and TASK-008 PR A, are
-authorized and implemented on the current review branch; the remaining runtime,
-benchmark, and integration work is not authorized. This is the order work would
-be taken in if it were.
+Set by the human product owner. TASK-007 PR A and PR B, TASK-007's final generic
+loop, and TASK-008 PR A are implemented on their respective review branches; the
+remaining runtime, benchmark, and integration work is incomplete. This is the
+order work would be taken in if it were.
 
 | | Task | Layer |
 |---|---|---|
 | 006 | [Generalized capability selection](../tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **Engine** — implemented, provider-neutral, task-agnostic |
-| 007 | [Capability run loop](../tasks/TASK-007_CAPABILITY_RUN_LOOP.md) | **Engine** — PR B executor/result boundary and one transition implemented; task-state updating, classification, and loop incomplete |
+| 007 | [Capability run loop](../tasks/TASK-007_CAPABILITY_RUN_LOOP.md) | **Engine** — final generic loop implemented in review; provider-specific generation and benchmark integration incomplete |
 | 008 | [Capability acquisition](../tasks/TASK-008_CAPABILITY_ACQUISITION.md) | **Boundary** — PR A normalization/catalog boundary implemented; generation and adapters incomplete |
 | 009 | [Revenue opportunity state](../tasks/TASK-009_REVENUE_OPPORTUNITY_STATE.md) | **Benchmark reasoning** — the only place it lives |
 | 010 | [Circle marketplace and Arc payments](../tasks/TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | **Adapter** — discovery and settlement |
