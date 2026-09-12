@@ -31,7 +31,8 @@ than escalating through two fixed tiers — is authorized and partially built: t
 candidate model, the eligibility rule, the ranking, the declared fixtures
 and the run policy exist, and TASK-001's scenarios are demonstrated to decide
 identically under them. TASK-007 PR B adds the provider-neutral executor/result
-boundary and one immutable execution transition, but the task-state updater,
+boundary, explicit commitment ceiling, exact retained-selection/current-state
+checks, and one immutable execution transition, but the task-state updater,
 terminal classification, and full run loop do not exist. Nothing beyond those
 authorized boundaries is built: no real inference, no wallet, no tokens, no
 interface, and no learning.
