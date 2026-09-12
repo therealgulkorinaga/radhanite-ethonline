@@ -132,6 +132,8 @@ advisory:
 
 - A **human product owner** authorizes tasks and performs all merges.
 - **Manus** implements only tasks that have been explicitly authorized.
+- Every implementation step carries the bold textual attribution
+  **Implementation agent: Manus.**
 - **Codex** independently reviews implementations against the specification.
 - Future scope is never silently implemented. If it is not in an authorized
   task, it does not get built.
