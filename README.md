@@ -7,12 +7,13 @@ Radhanite is being built for ETHOnline 2026.
 **TASK-001 is implemented and merged.** It remains the active CLI/runtime path:
 the deterministic **two-tier economic kernel** makes an opening attempt and one
 optional escalation, with declared costs and declared success probabilities.
-The full suite currently passes **684 tests on Python 3.12**.
+The full suite currently passes **699 tests on Python 3.12**.
 
 The generalized capability-selection kernel in
 [TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) is implemented but
 not closed. TASK-007 PR A provides the immutable run-state foundation, and PR B
-now provides the provider-neutral execution result, executor boundary, and one
+now provides the provider-neutral execution result, explicit executor
+authorization ceiling, exact retained-selection/current-state checks, and one
 execution transition on this review branch. TASK-008 PR A provides the
 descriptor-to-candidate acquisition/catalog boundary. The remaining TASK-007
 task-state updater, terminal classification, and full loop, TASK-008
@@ -116,7 +117,7 @@ docs/                      Product definition, architecture, rules, governance
   HACKATHON_RULES.md                 ETHOnline constraints we build under
   AI_BUILD_GOVERNANCE.md             How AI agents are permitted to build here
 radhanite/                 The economic kernel and generalized foundations
-tests/                     The test suite — 684 tests, standard library only
+tests/                     The test suite — 699 tests, standard library only
 tasks/                     Authorized work, one file per task
   TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md   Implemented and merged
   TASK-006                                  Kernel implemented, not closed
