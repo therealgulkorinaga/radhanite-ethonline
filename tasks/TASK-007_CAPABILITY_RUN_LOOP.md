@@ -1,9 +1,10 @@
 # TASK-007 — The capability run loop
 
-**Status:** Authorized — **PR A implemented; PR B implementation in review.** The
-provider-neutral executor/result boundary and one execution transition exist on
-this branch; task-state updating, terminal classification, and the full loop do
-not.
+**Status:** Authorized — **PR A and PR B implemented; final generic loop in
+review.** The provider-neutral candidate-source and task-state-updater
+boundaries, terminal classification, immutable history, and repeated loop now
+exist on the implementation branch. Provider-specific generation and domain
+updater logic remain outside this task.
 **Authorization:** PR A authorized by the human product owner, 2026-09-11
 **Traces to:** [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §5.2, §5.5
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.1, §2.2.3, §6
@@ -336,6 +337,20 @@ attempt count, applies the exact committed cost, and marks a failed attempt
 `EXECUTION_FAILURE`. It does not select, acquire, interpret evidence, update
 task state, classify stops, retry, or run a loop.
 
+### 3.4.2 What the final-loop implementation delivers
+
+`radhanite/loop.py` supplies the provider-neutral `CandidateSource` and
+`TaskStateUpdater` boundaries, the immutable `TaskStateUpdate` return type, and
+`run_capability_loop(...)`. The loop checks terminal completion before asking
+for candidates, reuses TASK-006 assessment and selection, invokes the PR-B
+one-execution transition at most once per iteration, and calls the updater only
+after a successful execution. It preserves exact committed-cost accounting,
+consumed IDs, execution-attempt counts, complete selections, and non-recursive
+transition history. It classifies STOP using TASK-006's retained refusal
+classification, with the step ceiling taking precedence, and terminates
+execution failures without retry. It does not interpret task state, implement
+revenue reasoning, discover providers, or replace the TASK-001 CLI path.
+
 ### 3.5 Retracted: the `task_state` storage question was not ambiguous
 
 This section previously recorded an "ambiguity §3.1 leaves open": that §3.1
@@ -607,8 +622,9 @@ unchanged.
 | **Criterion 10** | *Task already successful → STOP, with no candidate evaluated* | §9 criteria 1 and 2 |
 | **Criterion 13** | *Total spend can never exceed the budget, on every path including boundary cases where cost exactly equals the remaining budget* | §9 criteria 15–23 |
 
-**TASK-006 is not made complete by this document existing.** It becomes complete
-when a TASK-007 implementation demonstrates these — not before.
+**TASK-006 was not made complete by this document existing.** Its closure now
+follows because the TASK-007 final-loop implementation demonstrates these
+inherited behaviours — not because a specification promised to do so.
 
 ## 9. Acceptance criteria
 
