@@ -21,3 +21,21 @@ The pre-implementation baseline on fresh `main` was 699 passing tests. No extern
 ## Review boundary
 
 Codex review is required before merge. The implementation agent must not merge this pull request.
+
+## CODEX-PR035-01 contract correction
+
+The correction clarifies the ownership boundary for completion. `RunStatus.TASK_COMPLETE`
+is the authoritative precomputed completion signal at loop entry. TASK-007 checks
+that terminal status before candidate sourcing and returns the original terminal
+state unchanged, so it makes zero candidate-source, executor, or updater calls.
+
+TASK-007 does not inspect opaque `task_state` to infer completion. The upstream
+task/domain initializer owns the domain-specific determination that a task is
+already complete. For the revenue-agent benchmark, that responsibility belongs
+to TASK-009 or its initializer; no TASK-009 logic is included here.
+
+The focused tests now also prove that a `RUNNING` state containing opaque
+`{"complete": True}` is not interpreted as completion. The TASK-006 criterion-10
+closure claim is correspondingly narrowed to the precomputed `TASK_COMPLETE`
+entry-state guarantee. No new evaluator, provider integration, revenue logic, or
+runtime abstraction was added.
