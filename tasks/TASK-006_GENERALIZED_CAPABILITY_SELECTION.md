@@ -353,7 +353,11 @@ success signal (`BL-08`) remain unauthorized.
 8. **Equal net expected value → lower cost wins.**
 9. **Equal net expected value and equal cost → lexicographically smaller stable
    ID wins.**
-10. **Task already successful** → STOP, with no candidate evaluated.
+10. **A precomputed `TASK_COMPLETE` entry state** receives no further
+    candidate evaluation or execution. The upstream task/domain initializer
+    determines whether the task is already successful; TASK-007 returns that
+    terminal state unchanged and does not infer completion from opaque
+    `task_state`.
 11. **No eligible candidate among several** → STOP.
 12. **Exact money semantics preserved.** All arithmetic through `Money`,
     `Probability` and the exact decimal context. No float appears anywhere in
@@ -422,9 +426,12 @@ amended first.
 **All six §5 deliverables are complete, and all 22 §4 acceptance criteria are
 fully demonstrated. TASK-006 is closed.**
 
-Criteria 10 and 13 were exercised at the selector, and their full meaning —
-observing that a task has already succeeded and bounding spend *across* a run —
-is now demonstrated end to end by TASK-007's final loop.
+Criteria 10 and 13 were exercised at the selector, and their cross-layer meaning
+is now demonstrated end to end by TASK-007's final loop. Criterion 10 is
+demonstrated as the generic guarantee that an entry state already marked
+`TASK_COMPLETE` receives no further candidate evaluation or execution. TASK-007
+does not infer completion from opaque `task_state`; the upstream task/domain
+initializer owns the determination that a task is already successful.
 
 Criteria 10 and 13 of §4 require behaviour that §2.2a, §2.7 and §3 of this same
 task place outside it. That is an **ownership boundary**, not an implementation
@@ -434,19 +441,22 @@ separate run-loop layer rather than by moving loop logic into this task.
 **Stated precisely, because an earlier revision of this section overstated it.**
 §2.5 lists an already-satisfied success condition as terminal — it does not say
 the selector must produce that verdict. The boundary remains one of *ownership*:
-the run loop produces the completion check and accumulated spend, while this task
-continues to own only the economic decision.
+the upstream initializer supplies `TASK_COMPLETE` when its domain evaluation has
+already established completion; the run loop returns that terminal state before
+candidate sourcing and accumulates spend, while this task continues to own only
+the economic decision.
 
 | Criterion | How the cross-layer behaviour is demonstrated |
 |---|---|
-| **10** — *task already successful → STOP, with no candidate evaluated* | TASK-007 checks terminal completion before candidate sourcing and records a STOP transition with no execution. The selector remains unaware of task-state meaning. |
+| **10** — *entry state marked `TASK_COMPLETE` → no further candidate evaluation or execution* | TASK-007 returns the precomputed terminal entry state before candidate sourcing, with zero source, executor, and updater calls. No STOP transition is written, and the selector remains unaware of task-state meaning. |
 | **13** — *total spend can never exceed the budget, on every path* | TASK-007 accumulates exact `committed_cost` across immutable transitions and preserves the ledger identity and bounds. The selector continues to enforce per-decision affordability. |
 
 **Both belong to the run loop.** §2.7 hands it steps 1 through 4 of the
 iterative cycle and stops. That loop is specified as
 [TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md), whose §8 inherits these two
-criteria with their meaning unchanged. The TASK-007 final-loop implementation
-now demonstrates the inherited behaviour without moving economic reasoning into
+criteria with the ownership boundary made explicit. The TASK-007 final-loop
+implementation demonstrates the precomputed-terminal-state guarantee and the
+spend bound without moving completion inference or economic reasoning into
 TASK-006.
 
 **What this means.** The economic kernel is implemented and its decisions are
@@ -643,8 +653,10 @@ When reviewing an implementation of TASK-006, verify specifically:
 - No provider, network, or payment name appears anywhere, including in
   fixtures, comments, and test names.
 - The three candidate fields are the only ones the rule reads.
-- STOP is reachable and correct on all four routes: already successful, zero
-  candidates, all ineligible, and budget exhausted.
+- STOP is reachable and correct on the refusal routes: zero candidates, all
+  ineligible, and budget exhausted. A precomputed `TASK_COMPLETE` entry state
+  returns terminally before candidate evaluation; TASK-006 does not infer
+  completion from opaque task state.
 - The budget ceiling holds where cost exactly equals the remaining budget.
 - TASK-001's scenarios are actually re-run, not merely asserted to be equivalent.
 - **No item in §3 appears anywhere**, including in dependencies, configuration,
