@@ -1,7 +1,7 @@
 # TASK-009 — Revenue opportunity state and evaluation
 
-**Status:** Specified — **NOT AUTHORIZED for implementation**
-**Authorization:** None. This document specifies the work; it does not permit it.
+**Status:** Authorized — **implementation in review**
+**Authorization:** Arko authorized TASK-009 implementation on 2026-09-12.
 **Traces to:** [`PREREQ-001`](../docs/PREREQ-001_PRODUCT_DEFINITION.md) §6
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.1, §6
 **Satisfies:** [TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md) §5.3, the task-state updater boundary
@@ -67,9 +67,43 @@ Discovering or executing capabilities; anything about budget, price or
 selection; and every provider — Circle, The Graph and Hedera reach this task as
 *results*, through TASK-007, never directly.
 
-## 7. Open decision ⚠️ **UNRESOLVED**
+## 7. Resolved benchmark fixture decision
 
-**How does evidence become a probability?** Declared rules keep it honest but
-make the benchmark's realism depend on how those rules were chosen. This is the
-question recorded as unresolved in TASK-011 §6.3 and TASK-007 §5.3, and it is
-now this task's to answer — but it is not answered here.
+The implementation uses two declared, deterministic transitions for the
+hackathon fixture:
+
+| Evidence outcome key | Required prior probability | New declared probability | Resolved question |
+|---|---:|---:|---|
+| `positive_market_signal` | `0.08` | `0.14` | `market_signal` |
+| `positive_commercial_fit` | `0.14` | `0.17` | `commercial_fit` |
+
+The probabilities are fixture constants. They are not estimates, predictions,
+learned scores, or language-model outputs. The updater rejects an outcome key at
+an incompatible prior probability, so transitions cannot be applied out of
+sequence.
+
+## 8. Implemented boundary
+
+`radhanite/revenue.py` supplies the minimum benchmark domain layer:
+
+- `RevenueOpportunityState` is an immutable mapping containing the opportunity
+  identity, description, potential contract value, immutable evidence tuple,
+  unresolved questions, declared probability, completion condition, and terminal
+  benchmark outcome.
+- `BenchmarkEvidence` is an immutable mapping containing a capability key,
+  evidence type, immutable facts, optional opaque source reference, and one
+  declared outcome key. It contains no provider requirement and never reaches
+  TASK-006.
+- `initialize_benchmark_run(...)` creates a TASK-007 `RunState`. An incomplete
+  opportunity receives `RUNNING`; an explicitly already-complete opportunity
+  receives authoritative `TASK_COMPLETE` before the generic loop is called.
+- `RevenueOpportunityUpdater.update(...)` accepts only exact immutable benchmark
+  state and a successful `ExecutionResult`. It returns TASK-007's exact
+  `TaskStateUpdate` with the next immutable state, declared probability, and
+  completion verdict. It does not read candidate price or select capabilities.
+
+The implementation includes one deterministic end-to-end fixture path: a market
+signal changes `0.08` to `0.14`, and a commercial-fit result changes `0.14` to
+`0.17` and resolves the benchmark's two required questions. TASK-006 still makes
+both capability decisions from the updated probability and candidate economics;
+the updater does not encode candidate order.
