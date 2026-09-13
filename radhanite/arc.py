@@ -1,4 +1,4 @@
-"""TASK-010 Arc Testnet payment boundary.
+"""TASK-015 Arc Testnet payment boundary.
 
 **Implementation agent: Manus.**
 
@@ -16,6 +16,7 @@ helper from the process environment.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -38,8 +39,14 @@ __all__ = [
     "ARC_TESTNET_WALLET_CHAIN",
     "ARC_TESTNET_USDC",
     "ARC_TESTNET_GATEWAY_WALLET",
+    "ARC_TESTNET_GATEWAY_DOMAIN",
+    "ARC_X402_VERSION",
+    "ARC_X402_SCHEME",
+    "ARC_X402_BATCHING_NAME",
+    "ARC_X402_BATCHING_VERSION",
     "CircleArcDeveloperWalletPaymentClient",
     "ArcPaymentError",
+    "ArcPaymentCommitmentUnresolvedError",
     "arc_demo_catalog",
 ]
 
@@ -48,6 +55,11 @@ ARC_TESTNET_CHAIN_ID = 5_042_002
 ARC_TESTNET_WALLET_CHAIN = "ARC-TESTNET"
 ARC_TESTNET_USDC = "0x3600000000000000000000000000000000000000"
 ARC_TESTNET_GATEWAY_WALLET = "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+ARC_TESTNET_GATEWAY_DOMAIN = 26
+ARC_X402_VERSION = 2
+ARC_X402_SCHEME = "exact"
+ARC_X402_BATCHING_NAME = "GatewayWalletBatched"
+ARC_X402_BATCHING_VERSION = "1"
 ARC_DEMO_SOURCE_REFERENCE = (
     "official Circle Arc nanopayments sample / separate demo seller"
 )
@@ -79,8 +91,18 @@ class CircleArcDeveloperWalletPaymentClient:
                 f"Arc wallet client accepts only {ARC_TESTNET_NETWORK!r}; "
                 f"received {offer.network!r}."
             )
-        if offer.asset.lower() != ARC_TESTNET_USDC.lower():
+        if _normalize_evm_address(offer.asset, "Arc offer asset") != ARC_TESTNET_USDC.lower():
             raise ValueError("Arc offer must use the Arc Testnet USDC asset.")
+        if offer.scheme != ARC_X402_SCHEME:
+            raise ValueError("Arc offer must use the x402 exact scheme.")
+        if offer.extra_name != ARC_X402_BATCHING_NAME:
+            raise ValueError("Arc offer must use GatewayWalletBatched x402 metadata.")
+        if offer.extra_version != ARC_X402_BATCHING_VERSION:
+            raise ValueError("Arc offer must use GatewayWalletBatched version 1.")
+        if _normalize_evm_address(
+            offer.verifying_contract, "Arc offer verifying contract"
+        ) != ARC_TESTNET_GATEWAY_WALLET.lower():
+            raise ValueError("Arc offer must verify against the Arc GatewayWallet contract.")
         if maximum_authorized_cost != offer.quoted_cost:
             raise ValueError(
                 "Arc payment authorization must equal the selected pre-purchase quote."
@@ -116,6 +138,10 @@ class CircleArcDeveloperWalletPaymentClient:
         payload = _parse_result(completed.stdout)
         if completed.returncode != 0:
             detail = _safe_error(payload, completed.stderr, completed.stdout)
+            if payload and payload.get("commitment_status") == "unresolved":
+                raise ArcPaymentCommitmentUnresolvedError(
+                    "Arc payment may have been submitted; exact commitment is unresolved."
+                )
             raise ArcPaymentError(f"Arc x402 payment failed: {detail}")
         if payload is None:
             raise ArcPaymentError("Arc x402 helper returned no JSON result.")
@@ -128,12 +154,13 @@ class CircleArcDeveloperWalletPaymentClient:
             capability_key="arc-demo-x402",
             evidence_type="arc_x402_payment",
             facts=(
-                "Arc Testnet x402 payment accepted by the official demo seller",
+                "Arc Testnet x402 payment accepted by the identified seller",
                 f"payment_reference={payment_reference}",
                 f"wallet_address={payload.get('wallet_address', 'unknown')}",
                 f"network={ARC_TESTNET_NETWORK}",
                 f"asset={ARC_TESTNET_USDC}",
-                f"settlement_status={payload.get('status')}",
+                f"settlement_status={payload.get('settlement_status')}",
+                "reference_semantics=Gateway acceptance; on-chain finality not asserted",
             ),
             source_reference=offer.source_reference,
             outcome_key="positive_market_signal",
@@ -143,6 +170,10 @@ class CircleArcDeveloperWalletPaymentClient:
             committed_cost=committed_cost,
             evidence=evidence,
         )
+
+
+class ArcPaymentCommitmentUnresolvedError(ArcPaymentError):
+    """A signed/submitted payment may have committed without exact evidence."""
 
 
 def arc_demo_catalog(
@@ -182,8 +213,11 @@ def arc_demo_catalog(
         source_reference=ARC_DEMO_SOURCE_REFERENCE,
         request_url=resource,
         asset=ARC_TESTNET_USDC,
-        scheme="GatewayWalletBatched",
+        scheme=ARC_X402_SCHEME,
         atomic_amount=atomic,
+        extra_name=ARC_X402_BATCHING_NAME,
+        extra_version=ARC_X402_BATCHING_VERSION,
+        verifying_contract=ARC_TESTNET_GATEWAY_WALLET,
     )
     return CircleCapabilityCatalog(
         catalog=CapabilityCatalog(entries=((candidate, descriptor),)),
@@ -196,6 +230,14 @@ def _money_to_atomic(value: Money) -> str:
     if units != units.to_integral_value():
         raise ValueError("Arc x402 price must have at most 6 USDC decimal places.")
     return str(int(units))
+
+
+def _normalize_evm_address(value: object, label: str) -> str:
+    if not isinstance(value, str) or re.fullmatch(r"0x[0-9a-fA-F]{40}", value) is None:
+        raise ValueError(
+            f"{label} must have a 0x prefix and exactly 40 hexadecimal characters."
+        )
+    return value.lower()
 
 
 def _parse_result(stdout: str | None) -> Mapping[str, Any] | None:
@@ -224,11 +266,13 @@ def _safe_error(
 def _validate_result(
     payload: Mapping[str, Any], offer: CircleOffer, authorized: Money
 ) -> None:
-    if payload.get("status") != "settled":
-        raise ArcPaymentError(f"Arc helper did not report settled status: {payload!r}")
+    if payload.get("status") != "gateway_accepted":
+        raise ArcPaymentError(f"Arc helper did not report Gateway acceptance: {payload!r}")
+    if payload.get("settlement_status") != "gateway_accepted":
+        raise ArcPaymentError("Arc helper returned an unsupported settlement status.")
     if payload.get("network") != ARC_TESTNET_NETWORK:
         raise ArcPaymentError("Arc helper returned a non-Arc network.")
-    if str(payload.get("asset", "")).lower() != ARC_TESTNET_USDC.lower():
+    if _normalize_evm_address(payload.get("asset"), "Arc helper asset") != ARC_TESTNET_USDC.lower():
         raise ArcPaymentError("Arc helper returned a non-Arc-USDC asset.")
     try:
         actual = Money(str(payload.get("amount")))
@@ -240,3 +284,6 @@ def _validate_result(
         )
     if payload.get("response_status") not in {200, 201, 202}:
         raise ArcPaymentError("Arc helper did not receive a successful seller response.")
+    reference = payload.get("payment_reference")
+    if not isinstance(reference, str) or not reference.strip():
+        raise ArcPaymentError("Arc helper returned no Gateway payment reference.")

@@ -54,16 +54,28 @@ def main() -> int:
             ),
             updater=RevenueOpportunityUpdater(),
         )
-        execution = result.history[0].execution
+        transition = result.history[0]
+        execution = transition.execution
+        selection = transition.selection
+        selected = selection.selected
+        if selected is None:
+            return _blocker("Arc smoke stopped before selection", selection.reason)
         facts = execution.evidence["facts"] if execution else ()
         print(json.dumps({
             "status": "ok",
             "wallet_model": "Circle Developer-Controlled Wallet EOA",
+            "wallet_address": next((fact.split("=", 1)[1] for fact in facts if fact.startswith("wallet_address=")), None),
             "network": ARC_TESTNET_NETWORK,
             "asset": ARC_TESTNET_USDC,
             "quoted_price": str(offer.quoted_cost.amount),
+            "current_success_probability": str(selection.current_success_probability.value),
+            "incremental_expected_value": str(selected.incremental_expected_value.amount),
+            "task006_decision": selection.reason,
+            "selected_candidate": selected.candidate.candidate_id,
+            "x402_payment_execution": "completed",
             "run_status": result.status.value,
             "total_spend": str(result.total_spend.amount),
+            "committed_testnet_usdc": str(execution.committed_cost.amount) if execution else None,
             "payment_facts": facts,
             "task009_probability": str(result.current_success_probability.value),
             "task009_evidence_count": len(result.task_state["evidence"]),

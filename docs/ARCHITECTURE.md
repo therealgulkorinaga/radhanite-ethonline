@@ -47,8 +47,9 @@ authoritative for the implementation.**
 
 Every acceptance criterion in TASK-001 and every field in the run record
 documented in [`RUN_RECORDS.md`](RUN_RECORDS.md) were written against this
-model. It remains the active runtime. The repository now contains **764 passing
-tests**; the TASK-001 two-tier model is no longer the only implemented layer.
+model. It remains the active runtime. The repository contains merged TASK-010
+support and a TASK-015 follow-on review branch; the TASK-001 two-tier model is
+no longer the only implemented layer.
 
 #### 2.2.2 Authorized migration direction — partially implemented
 
@@ -94,8 +95,8 @@ which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION
 **What does not exist.** The generalized loop is implemented as a provider-
 neutral library boundary, but it does not replace the active CLI path.
 `python -m radhanite` still runs TASK-001's two-tier loop, as §2.2.1 describes.
-The TASK-010 review branch contains the historical provider-specific Circle
-Discovery and official-CLI Base adapter plus an explicit Arc Testnet path using
+Merged PR #37 contains the historical provider-specific Circle Discovery and
+official-CLI Base adapter plus an explicit Arc Testnet path using
 Circle's official EOA Developer-Controlled Wallet and x402 batching SDKs. The
 Arc boundary prepares Gateway balance through Circle's approval/deposit
 transactions, binds payment to `eip155:5042002`, and hands exact committed cost
@@ -351,7 +352,8 @@ order work would be taken in if it were.
 | 007 | [Capability run loop](../tasks/TASK-007_CAPABILITY_RUN_LOOP.md) | **Engine** — final generic loop implemented and merged; provider-specific generation and benchmark integration incomplete |
 | 008 | [Capability acquisition](../tasks/TASK-008_CAPABILITY_ACQUISITION.md) | **Boundary** — PR A normalization/catalog boundary implemented; generation and adapters incomplete |
 | 009 | [Revenue opportunity state](../tasks/TASK-009_REVENUE_OPPORTUNITY_STATE.md) | **Benchmark reasoning** — state, declared evidence transitions, initializer, and updater implemented and merged |
-| 010 | [Circle marketplace and Arc payments](../tasks/TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | **Adapter** — live Discovery normalization and opt-in official CLI x402/Gateway execution on the review branch; Arc Testnet remains credential/offer gated |
+| 010 | [Circle marketplace and Arc payments](../tasks/TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | **Adapter** — live Discovery normalization and opt-in official CLI x402/Gateway execution merged in PR #37; Arc Testnet remains credential/offer gated |
+| 015 | [Circle Wallet + x402 + Arc Testnet Execution](../tasks/TASK-015_CIRCLE_WALLET_X402_ARC_TESTNET_EXECUTION.md) | **Adapter follow-on** — authorized on a new review branch for exact Arc requirement validation and truthful selected-only execution |
 | 011 | [Onchain intelligence via The Graph](../tasks/TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md) | **Adapter** — evidence |
 | 012 | [Hedera independent review](../tasks/TASK-012_HEDERA_INDEPENDENT_REVIEW.md) | **Adapter** — one paid second opinion |
 | 013 | [Revenue-agent benchmark](../tasks/TASK-013_REVENUE_AGENT_BENCHMARK.md) | **Assembly** |

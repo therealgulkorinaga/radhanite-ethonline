@@ -1,8 +1,9 @@
 # TASK-010 — Circle marketplace and Arc payments adapter
 
-**Status:** Authorized — **implementation on review branch, Arc phase added**
+**Status:** Authorized — **implemented and merged in PR #37; Arc phase remains credential/offer gated**
 **Authorization:** Arko authorized TASK-010 on 2026-09-13 for one thin Circle
-Marketplace/Arc payment adapter. This review branch is not merged.
+Marketplace/Arc payment adapter. PR #37 is merged; TASK-015 is the authorized
+follow-on for the real Arc Testnet execution slice.
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.1, §3.3, §6
 **Satisfies:** [TASK-008](TASK-008_CAPABILITY_ACQUISITION.md) as a source, and [TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md) §5.2 as an executor
 
@@ -57,7 +58,7 @@ payment protocol — `ARCHITECTURE.md` §6 items 1–4.
 
 ## 6. Current implementation boundary
 
-This review branch uses **live Circle Discovery** at
+The merged implementation uses **live Circle Discovery** at
 `https://api.circle.com/v2/x402/discovery/resources`. The selected vertical
 slice is the live AIsa API CoinGecko Simple Price resource, exposed at an exact
 quoted price of `12000` micro-USDC (`0.012` USDC) on Base mainnet with the

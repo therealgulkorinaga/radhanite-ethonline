@@ -7,7 +7,7 @@ Radhanite is being built for ETHOnline 2026.
 **TASK-001 is implemented and merged.** It remains the active CLI/runtime path:
 the deterministic **two-tier economic kernel** makes an opening attempt and one
 optional escalation, with declared costs and declared success probabilities.
-The full suite currently passes **764 tests on Python 3.12** on this review branch.
+The full suite currently passes **768 tests on Python 3.12** on the TASK-015 branch.
 
 The generalized capability-selection kernel in
 [TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) is implemented and
@@ -27,8 +27,8 @@ smoke uses a separately identified demo seller derived from Circle's official
 Arc nanopayments example; it is never represented as a Marketplace listing.
 The live Arc smoke is blocked in this checkout until credentials, an EOA wallet,
 testnet USDC, Gateway balance, and a seller URL are supplied. The distinction
-between what runs, what is implemented in a review branch, and what is
-authorized to be built remains deliberate throughout this repository.
+between what runs, what is implemented and merged, and what is authorized to be
+built remains deliberate throughout this repository.
 
 ---
 
@@ -96,15 +96,15 @@ hard-coded: a run that buys nothing is a correct run. See
 | Governance and planning scaffolding | Present |
 | Product code | **Present** — TASK-001’s active runtime plus the TASK-006 kernel, TASK-007 state/execution/final-loop foundations, and TASK-008 PR A acquisition/catalog boundary |
 | TASK-006 | **Implemented and closed.** All 22 acceptance criteria met |
-| Tests | **764 passing** on Python 3.12 |
+| Tests | **768 passing** on Python 3.12 |
 | Language | Python 3.12 standard-library core; opt-in Node.js 22 Arc SDK path |
 | Capability selection engine | **Implemented and closed** — [TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) |
 | TASK-007 run loop | **Implemented and merged** — state model, executor/result boundary, injected candidate source/updater, terminal classification, immutable history, and repeated orchestration; provider-specific integrations remain incomplete |
 | TASK-008 acquisition | **PR A implemented** — normalization/catalog boundary; source-specific generation and adapters remain incomplete |
 | TASK-009 benchmark reasoning | **Implemented and merged** — immutable opportunity state, declared evidence transitions, benchmark initializer, and TASK-007 updater; provider adapters remain incomplete |
-| TASK-010 Circle adapter | **Implemented on this review branch** — historical Base Discovery/CLI corrections plus the authorized Arc Testnet EOA Developer-Controlled Wallet + x402/Gateway boundary; live Arc payment remains unverified until the explicit smoke is configured |
+| TASK-010 Circle adapter | **Implemented and merged in PR #37** — historical Base Discovery/CLI corrections plus the authorized Arc Testnet EOA Developer-Controlled Wallet + x402/Gateway boundary; live Arc payment remains unverified until the explicit smoke is configured |
 | Benchmark assembly and remaining adapters | **Specified, not implemented** — TASK-011 … TASK-014 |
-| External integrations (Circle Discovery/Gateway and Arc Testnet x402) | **TASK-010 authorized on this review branch; other integrations not authorized** |
+| External integrations (Circle Discovery/Gateway and Arc Testnet x402) | **TASK-010 merged; TASK-015 is the authorized Arc execution follow-on; other integrations not authorized** |
 | Privy | **Deprioritized** — superseded on the active path ([TASK-003](tasks/TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md)) |
 
 ## Running the tests
@@ -176,14 +176,14 @@ docs/                      Product definition, architecture, rules, governance
   AI_BUILD_GOVERNANCE.md             How AI agents are permitted to build here
 radhanite/                 The economic kernel and generalized foundations
 scripts/                   Explicit opt-in Circle/Arc smoke and demo-seller helpers
-tests/                     The test suite — 764 tests
+tests/                     The test suite — 768 tests
 tasks/                     Authorized work, one file per task
   TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md   Implemented and merged
   TASK-006                                  Kernel implemented and closed
   TASK-007                                  Final generic loop implemented and merged; provider-neutral
   TASK-008                                  PR A acquisition/catalog boundary implemented
   TASK-009                                  Revenue opportunity state/updater implemented and merged
-  TASK-010                                  Circle Discovery/Gateway and Arc adapter in review
+  TASK-010                                  Circle Discovery/Gateway and Arc adapter merged
   TASK-002 .. TASK-005, TASK-011 .. TASK-014 Proposed or specified, not authorized
   BACKLOG.md                                Unauthorized future placeholders
 prompts/                   Preserved AI prompts that caused repository changes
