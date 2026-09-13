@@ -1,323 +1,397 @@
-<title>Radhanite</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Petrona:ital,wght@0,400..700;1,400..600&family=Karla:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-
-<style>
-:root{
-  --paper:#EEF1ED; --card:#F7F9F6; --sunk:#E4E9E2;
-  --ink:#14201C; --ink-2:#4C5C55; --ink-3:#7C8A83;
-  --verdigris:#2C6B5A; --verdigris-soft:rgba(44,107,90,.10);
-  --brass:#7E6029; --brass-soft:rgba(126,96,41,.10);
-  --madder:#8E3A2D;
-  --rule:rgba(20,32,28,.13); --rule-soft:rgba(20,32,28,.07);
-  --lift:0 1px 2px rgba(20,32,28,.04),0 8px 28px -18px rgba(20,32,28,.28);
-
-  --display:"Petrona",Georgia,"Times New Roman",serif;
-  --body:"Karla",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  --data:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
-}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --paper:#0D1512; --card:#17211D; --sunk:#111A17;
-    --ink:#E7ECE8; --ink-2:#9EAEA6; --ink-3:#6B7A73;
-    --verdigris:#63B69B; --verdigris-soft:rgba(99,182,155,.13);
-    --brass:#C6A257; --brass-soft:rgba(198,162,87,.13);
-    --madder:#D4746A;
-    --rule:rgba(231,236,232,.15); --rule-soft:rgba(231,236,232,.08);
-    --lift:0 8px 32px -22px rgba(0,0,0,.9);
-  }
-}
-:root[data-theme="dark"]{
-  --paper:#0D1512; --card:#17211D; --sunk:#111A17;
-  --ink:#E7ECE8; --ink-2:#9EAEA6; --ink-3:#6B7A73;
-  --verdigris:#63B69B; --verdigris-soft:rgba(99,182,155,.13);
-  --brass:#C6A257; --brass-soft:rgba(198,162,87,.13);
-  --madder:#D4746A;
-  --rule:rgba(231,236,232,.15); --rule-soft:rgba(231,236,232,.08);
-  --lift:0 8px 32px -22px rgba(0,0,0,.9);
-}
-
-*{box-sizing:border-box}
-html{scroll-snap-type:y proximity; scroll-behavior:smooth}
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto; scroll-snap-type:none}}
-body{
-  margin:0; background:var(--paper); color:var(--ink);
-  font-family:var(--body); font-size:16px; line-height:1.55;
-  -webkit-font-smoothing:antialiased;
-}
-h1,h2{font-family:var(--display); font-weight:600; text-wrap:balance; margin:0; letter-spacing:-.015em}
-p{margin:0}
-a{color:var(--verdigris); text-underline-offset:3px}
-a:focus-visible{outline:2px solid var(--verdigris); outline-offset:3px}
-.num{font-variant-numeric:tabular-nums}
-
-/* ── deck ───────────────────────────────────────────── */
-.deck{max-width:1000px; margin:0 auto; padding-inline:20px; padding-block:22px 22px; display:grid; gap:20px}
-.card{
-  scroll-snap-align:center;
-  background:var(--card); border:1px solid var(--rule); box-shadow:var(--lift);
-  padding:clamp(26px,4.4vw,52px);
-  min-height:min(640px,80vh);
-  display:grid; align-content:center; gap:clamp(20px,3vw,34px);
-}
-.card.split{grid-template-columns:minmax(0,0.92fr) minmax(0,1.08fr); align-items:center; column-gap:clamp(28px,5vw,64px)}
-.say{display:grid; gap:14px; align-content:center}
-
-.idx{
-  font-family:var(--data); font-size:11px; font-weight:500; letter-spacing:.16em;
-  text-transform:uppercase; color:var(--ink-3);
-  display:flex; align-items:center; gap:10px;
-}
-.idx::before{content:""; width:18px; height:1px; background:var(--ink-3)}
-h2{font-size:clamp(24px,3.4vw,36px); line-height:1.18}
-.line{color:var(--ink-2); font-size:clamp(15px,1.5vw,17px); max-width:40ch}
-.line em{font-style:normal; color:var(--ink); font-weight:600}
-
-/* card 1 */
-.wordmark{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
-.wordmark b{font-family:var(--display); font-weight:600; font-size:clamp(26px,4vw,34px); letter-spacing:-.02em}
-.wordmark span{font-family:var(--data); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3)}
-.thesis{font-family:var(--display); font-size:clamp(28px,4.6vw,46px); line-height:1.16; letter-spacing:-.018em}
-.thesis .q{display:block; color:var(--ink-3)}
-.thesis .a{display:block}
-.thesis em{font-style:italic; color:var(--verdigris)}
-.figs{display:grid; grid-template-columns:repeat(2,1fr); gap:1px; background:var(--rule); border:1px solid var(--rule)}
-.fig{background:var(--card); padding:16px 18px}
-.fig b{font-family:var(--data); font-size:clamp(20px,2.6vw,26px); font-weight:600; letter-spacing:-.02em; display:block}
-.fig span{font-size:12.5px; color:var(--ink-3); display:block; margin-top:3px}
-
-/* card 2 — the sum */
-.sum{border:1px solid var(--rule); background:var(--sunk)}
-.sum .r{display:flex; justify-content:space-between; gap:16px; padding:13px 18px; border-bottom:1px solid var(--rule-soft); font-size:14.5px}
-.sum .r span:first-child{color:var(--ink-2)}
-.sum .r span:last-child{font-family:var(--data); font-weight:500}
-.sum .r.tot{border-bottom:0; border-top:1px solid var(--rule); padding-block:16px}
-.sum .r.tot span:first-child{color:var(--ink); font-weight:600}
-.sum .r.tot span:last-child{font-size:22px; font-weight:600; color:var(--verdigris)}
-.stamp{
-  display:flex; align-items:center; gap:10px; padding:14px 18px; background:var(--verdigris-soft);
-  font-family:var(--data); font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--verdigris); font-weight:600;
-}
-.stamp::before{content:""; width:9px; height:9px; background:var(--verdigris); flex:none}
-.fine{font-size:12.5px; color:var(--ink-3); max-width:38ch}
-
-/* card 3 — gates */
-.gates{display:grid}
-.gate{display:grid; grid-template-columns:1fr auto; gap:14px; align-items:center; padding:12px 0; border-bottom:1px solid var(--rule-soft)}
-.gate:first-child{border-top:1px solid var(--rule-soft)}
-.gate code{font-family:var(--data); font-size:13.5px}
-.tag{font-family:var(--data); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; padding:3px 8px; white-space:nowrap}
-.tag.e{color:var(--verdigris); background:var(--verdigris-soft)}
-.tag.s{color:var(--brass); background:var(--brass-soft)}
-
-/* card 4 — stop */
-.pull{
-  font-family:var(--display); font-size:clamp(26px,4vw,40px); line-height:1.2; letter-spacing:-.018em;
-  border-left:3px solid var(--verdigris); padding-left:clamp(18px,2.5vw,28px);
-}
-.pull small{display:block; font-family:var(--body); font-size:15px; color:var(--ink-2); margin-top:16px; letter-spacing:0; max-width:36ch; line-height:1.55}
-
-/* cards 5/6 — lists */
-.list{display:grid}
-.li{display:grid; grid-template-columns:12px 1fr; gap:13px; align-items:baseline; padding:9px 0; border-bottom:1px solid var(--rule-soft); font-size:14.5px}
-.li i{width:8px; height:8px; margin-top:6px; font-style:normal}
-.on i{background:var(--verdigris)}
-.off i{border:1.5px solid var(--brass)}
-.count{font-family:var(--data); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3); padding-bottom:10px; border-bottom:2px solid var(--ink)}
-.off .count{border-bottom-color:var(--brass)}
-
-/* card 7 — record */
-.roles{display:grid; gap:14px}
-.role{display:grid; grid-template-columns:auto 1fr; gap:14px; align-items:baseline}
-.role b{font-family:var(--data); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); white-space:nowrap; padding-top:2px}
-.role span{font-size:14.5px}
-.rec{border:1px solid var(--rule); overflow:hidden}
-.rec .rr{display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:baseline; padding:11px 16px; border-bottom:1px solid var(--rule-soft); font-size:14px}
-.rec .rr:last-child{border-bottom:0}
-.rec .rr b{font-family:var(--data); font-size:12.5px; color:var(--ink-3); font-weight:400}
-.rec .rr em{font-family:var(--data); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; font-style:normal; white-space:nowrap}
-.rej{color:var(--madder)} .app{color:var(--verdigris)}
-
-/* card 8 — tracks */
-.tracks{display:grid; gap:1px; background:var(--rule); border:1px solid var(--rule)}
-.tr{background:var(--card); padding:18px}
-.tr b{font-family:var(--display); font-size:18px; font-weight:600; display:block}
-.tr span{font-size:13.5px; color:var(--ink-2); display:block; margin-top:5px}
-.tr em{font-family:var(--data); font-size:9.5px; letter-spacing:.11em; text-transform:uppercase; font-style:normal; color:var(--brass); background:var(--brass-soft); padding:3px 8px; display:inline-block; margin-top:11px}
-.asof{font-family:var(--data); font-size:11px; line-height:1.7; color:var(--ink-3); margin-top:16px; max-width:60ch}
-.asof code{font-size:11px}
-.close{display:flex; gap:20px; flex-wrap:wrap; justify-content:space-between; align-items:baseline; font-size:13.5px; color:var(--ink-3); border-top:1px solid var(--rule); padding-top:20px}
-
-/* rail */
-.rail{position:fixed; right:16px; top:50%; transform:translateY(-50%); display:grid; gap:9px; z-index:5}
-.rail a{width:7px; height:7px; border:1px solid var(--ink-3); border-radius:50%; display:block; transition:background .2s,border-color .2s}
-.rail a[aria-current="true"]{background:var(--verdigris); border-color:var(--verdigris)}
-@media (max-width:900px){.rail{display:none}}
-
-@media (max-width:760px){
-  .card{grid-template-columns:1fr !important; min-height:0; padding:26px 22px}
-  .figs{grid-template-columns:repeat(2,1fr)}
-}
-</style>
-
-<nav class="rail" aria-label="Sections">
-  <a href="#c1" aria-label="The question"></a><a href="#c2" aria-label="The sum"></a>
-  <a href="#c3" aria-label="The gates"></a><a href="#c4" aria-label="Stopping"></a>
-  <a href="#c5" aria-label="Built"></a><a href="#c6" aria-label="Not built"></a>
-  <a href="#c7" aria-label="Method"></a><a href="#c8" aria-label="Direction"></a>
-</nav>
-
-<main class="deck">
-
-  <section class="card split" id="c1">
-    <div class="say">
-      <div class="wordmark"><b>Radhanite</b><span>ETHOnline 2026</span></div>
-      <h1 class="thesis">
-        <span class="q">Rails answer how a machine pays.</span>
-        <span class="a">We answer <em>whether it should</em>.</span>
-      </h1>
-      <p class="line">An economic control layer for autonomous work.</p>
-    </div>
-    <div class="figs">
-      <div class="fig"><b class="num">423</b><span>tests, Python 3.12</span></div>
-      <div class="fig"><b class="num">23</b><span>pull requests merged</span></div>
-      <div class="fig"><b class="num">47</b><span>review findings, all fixed</span></div>
-      <div class="fig"><b class="num">0</b><span>external dependencies</span></div>
-    </div>
-  </section>
-
-  <section class="card split" id="c2">
-    <div class="say">
-      <div class="idx">01 &middot; The decision</div>
-      <h2>Every purchase is one sum.</h2>
-      <p class="line">Something costs 50&cent; and lifts your odds from 50% to 80%. The outcome is worth $20. <em>That is the whole product.</em></p>
-      <p class="fine">Probabilities are declared fixtures. Nothing here measures or learns them.</p>
-    </div>
-    <div class="sum">
-      <div class="r"><span>Chance of success now</span><span class="num">0.50</span></div>
-      <div class="r"><span>Chance after buying it</span><span class="num">0.80</span></div>
-      <div class="r"><span>Worth finishing the task</span><span class="num">$20.00</span></div>
-      <div class="r"><span>Price</span><span class="num">&minus;&thinsp;$0.50</span></div>
-      <div class="r tot"><span>Net expected value</span><span class="num">$5.50</span></div>
-      <div class="stamp">Buy it</div>
-    </div>
-  </section>
-
-  <section class="card split" id="c3">
-    <div class="say">
-      <div class="idx">02 &middot; The gates</div>
-      <h2>Six conditions. Three aren&rsquo;t about money.</h2>
-      <p class="line">The economic three decide whether it&rsquo;s worth it. The safeguards are what <em>guarantee the run ends</em>.</p>
-    </div>
-    <div class="gates">
-      <div class="gate"><code>cost &gt; 0</code><span class="tag s">safeguard</span></div>
-      <div class="gate"><code>cost &lt;= remaining_budget</code><span class="tag e">economic</span></div>
-      <div class="gate"><code>probability &gt; current</code><span class="tag e">economic</span></div>
-      <div class="gate"><code>value &gt; cost</code><span class="tag e">economic</span></div>
-      <div class="gate"><code>not already bought</code><span class="tag s">safeguard</span></div>
-      <div class="gate"><code>steps &lt; max_steps</code><span class="tag s">safeguard</span></div>
-    </div>
-  </section>
-
-  <section class="card" id="c4">
-    <div class="idx">03 &middot; The counterintuitive part</div>
-    <p class="pull">
-      A run that buys nothing at all is a <em style="font-style:italic;color:var(--verdigris)">correct</em> run.
-      <small>Budget is permission to spend, not a target. Stopping early with money unspent is the system working &mdash; and it says <em style="font-style:normal;font-weight:600;color:var(--ink)">why</em> it stopped, so a safety limit is never reported as &ldquo;nothing was worth buying&rdquo;.</small>
-    </p>
-  </section>
-
-  <section class="card split" id="c5">
-    <div class="say">
-      <div class="idx">04 &middot; Shipped</div>
-      <h2>The engine runs today.</h2>
-      <p class="line">Merged, tested, independently reviewed. <em>No dependencies.</em></p>
-    </div>
-    <div class="list on">
-      <div class="count">Implemented &middot; 12 modules</div>
-      <div class="li on"><i></i><span>Exact decimal money &mdash; floats refused</span></div>
-      <div class="li on"><i></i><span>The five task inputs</span></div>
-      <div class="li on"><i></i><span>The escalate-or-stop rule</span></div>
-      <div class="li on"><i></i><span>Deterministic two-tier kernel</span></div>
-      <div class="li on"><i></i><span>Candidate capability model</span></div>
-      <div class="li on"><i></i><span>Six-condition eligibility</span></div>
-      <div class="li on"><i></i><span>Ranking, with deterministic tie-breaks</span></div>
-      <div class="li on"><i></i><span>Run record &mdash; including what it rejected</span></div>
-    </div>
-  </section>
-
-  <section class="card split" id="c6">
-    <div class="say">
-      <div class="idx">05 &middot; Not shipped</div>
-      <h2>And here&rsquo;s what doesn&rsquo;t exist.</h2>
-      <p class="line">Every demo overclaims. <em>This one lists its own gaps</em> &mdash; and the repo enforces it.</p>
-    </div>
-    <div class="list off">
-      <div class="count">Specification only</div>
-      <div class="li off"><i></i><span>Any real model call &mdash; execution is simulated</span></div>
-      <div class="li off"><i></i><span>Any wallet, key or signature</span></div>
-      <div class="li off"><i></i><span>Any chain, token or settlement</span></div>
-      <div class="li off"><i></i><span>Any payment protocol</span></div>
-      <div class="li off"><i></i><span>The loop over many purchases</span></div>
-      <div class="li off"><i></i><span>Finding what&rsquo;s for sale</span></div>
-      <div class="li off"><i></i><span>Learned probabilities</span></div>
-      <div class="li off"><i></i><span>The revenue-agent benchmark</span></div>
-    </div>
-  </section>
-
-  <section class="card split" id="c7">
-    <div class="say">
-      <div class="idx">06 &middot; Method</div>
-      <h2>Built by agents that can&rsquo;t approve themselves.</h2>
-      <div class="roles">
-        <div class="role"><b>Human</b><span>Authorizes each task. Performs every merge.</span></div>
-        <div class="role"><b>Claude</b><span>Implements only what a task specifies.</span></div>
-        <div class="role"><b>Codex</b><span>Reviews independently, against the spec.</span></div>
+<!doctype html>
+<html lang="en">
+<head>
+  <!-- Implementation agent: Manus. -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Radhanite — the economic execution layer for autonomous agents.">
+  <title>Radhanite · Economic execution layer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #111827;
+      --ink-soft: #536174;
+      --muted: #8995a6;
+      --paper: #f5f7fa;
+      --surface: #ffffff;
+      --surface-2: #eef2f5;
+      --line: #dce3ea;
+      --line-dark: #c4ced8;
+      --mint: #0b8f78;
+      --mint-dark: #066b5a;
+      --mint-wash: #e2f4ef;
+      --amber: #a86a09;
+      --amber-wash: #fff3d7;
+      --red: #b34742;
+      --red-wash: #fdecea;
+      --blue: #3d6aa8;
+      --blue-wash: #eaf1ff;
+      --display: "Space Grotesk", sans-serif;
+      --body: "Manrope", sans-serif;
+      --mono: "DM Mono", monospace;
+      --shadow: 0 12px 40px rgba(29, 50, 74, .08);
+      --shadow-tight: 0 3px 14px rgba(29, 50, 74, .07);
+      --ease: cubic-bezier(.23, 1, .32, 1);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    button, a { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; text-decoration: none; }
+    :focus-visible { outline: 3px solid rgba(11,143,120,.36); outline-offset: 3px; }
+    .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    .app-shell { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
+    .sidebar { background: #18232e; color: #d7e1e8; padding: 28px 18px 22px; display: flex; flex-direction: column; gap: 30px; }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 10px; }
+    .brand-mark { width: 31px; height: 31px; display: grid; place-items: center; color: #fff; background: var(--mint); border-radius: 9px; box-shadow: 0 0 0 5px rgba(11,143,120,.14); font-family: var(--display); font-weight: 700; font-size: 18px; }
+    .brand-name { font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: -.04em; }
+    .brand-sub { color: #8ea0ae; font: 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; margin-top: 1px; }
+    .nav-label { color: #718493; font: 10px var(--mono); letter-spacing: .13em; text-transform: uppercase; padding: 0 11px; margin-bottom: 8px; }
+    .nav { display: grid; gap: 4px; }
+    .nav-button { border: 0; background: transparent; color: #9cadb9; border-radius: 8px; padding: 11px 11px; display: flex; align-items: center; gap: 11px; text-align: left; transition: background .18s var(--ease), color .18s var(--ease), transform .18s var(--ease); }
+    .nav-button:hover { color: #fff; background: rgba(255,255,255,.06); }
+    .nav-button:active { transform: scale(.98); }
+    .nav-button.active { color: #eafff8; background: rgba(11,143,120,.22); box-shadow: inset 3px 0 var(--mint); }
+    .nav-icon { width: 20px; color: currentColor; font-family: var(--mono); font-size: 12px; text-align: center; }
+    .sidebar-bottom { margin-top: auto; display: grid; gap: 13px; padding: 14px 10px 0; border-top: 1px solid rgba(255,255,255,.1); }
+    .sidebar-note { color: #90a1ad; font-size: 11px; line-height: 1.5; }
+    .mode-badge { display: inline-flex; width: fit-content; align-items: center; gap: 7px; border: 1px solid rgba(104,220,190,.33); background: rgba(11,143,120,.2); color: #a8efda; border-radius: 999px; padding: 5px 9px; font: 10px var(--mono); letter-spacing: .08em; }
+    .mode-dot { width: 6px; height: 6px; border-radius: 50%; background: #64d6b8; box-shadow: 0 0 0 3px rgba(100,214,184,.15); }
+    .main { min-width: 0; padding: 26px clamp(20px, 3.4vw, 52px) 58px; }
+    .topbar { max-width: 1480px; margin: 0 auto 27px; display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+    .eyebrow { color: var(--mint-dark); font: 11px var(--mono); letter-spacing: .13em; text-transform: uppercase; margin-bottom: 8px; }
+    h1, h2, h3, p { margin: 0; }
+    h1, h2, h3 { font-family: var(--display); letter-spacing: -.045em; }
+    h1 { font-size: clamp(26px, 3vw, 39px); line-height: 1.06; }
+    h2 { font-size: 21px; line-height: 1.15; }
+    h3 { font-size: 15px; line-height: 1.2; letter-spacing: -.02em; }
+    .topbar-sub { color: var(--ink-soft); margin-top: 7px; font-size: 13px; }
+    .top-actions { display: flex; align-items: center; gap: 9px; }
+    .button { border: 1px solid var(--line-dark); background: var(--surface); color: var(--ink); border-radius: 7px; padding: 9px 13px; font-size: 12px; font-weight: 700; transition: transform .16s var(--ease), box-shadow .16s var(--ease), border-color .16s var(--ease); }
+    .button:hover { border-color: var(--mint); box-shadow: var(--shadow-tight); }
+    .button:active { transform: scale(.97); }
+    .button.primary { background: var(--mint); border-color: var(--mint); color: #fff; }
+    .button.primary:hover { background: var(--mint-dark); }
+    .button.ghost { background: transparent; }
+    .view { max-width: 1480px; margin: 0 auto; display: none; }
+    .view.active { display: block; animation: enter .35s var(--ease) both; }
+    @keyframes enter { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+    .mode-banner { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 12px 15px; margin-bottom: 16px; border: 1px solid #c4e6db; background: var(--mint-wash); border-radius: 9px; color: #15594c; }
+    .mode-banner strong { font-size: 12px; }
+    .mode-banner span { color: #357567; font-size: 12px; }
+    .mode-banner .mode-badge { flex: none; border-color: rgba(11,143,120,.3); background: rgba(255,255,255,.45); color: var(--mint-dark); }
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 16px 17px; box-shadow: var(--shadow-tight); min-height: 108px; }
+    .kpi-label { color: var(--ink-soft); font: 10px var(--mono); letter-spacing: .11em; text-transform: uppercase; }
+    .kpi-value { display: block; margin-top: 11px; color: var(--ink); font: 700 clamp(24px, 2.6vw, 34px) var(--display); letter-spacing: -.06em; }
+    .kpi-value.mint { color: var(--mint-dark); }
+    .kpi-foot { color: var(--muted); font-size: 11px; margin-top: 4px; }
+    .stage-strip { display: flex; align-items: center; gap: 0; padding: 13px 16px; margin-bottom: 17px; border: 1px solid var(--line); background: var(--surface); border-radius: 9px; overflow-x: auto; box-shadow: var(--shadow-tight); }
+    .stage-step { display: flex; align-items: center; gap: 8px; color: var(--muted); white-space: nowrap; font-size: 11px; }
+    .stage-step.done { color: var(--mint-dark); font-weight: 700; }
+    .stage-step.current { color: var(--ink); font-weight: 800; }
+    .stage-dot { width: 8px; height: 8px; border-radius: 50%; border: 2px solid currentColor; }
+    .stage-step.done .stage-dot { background: var(--mint); border-color: var(--mint); }
+    .stage-step.current .stage-dot { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 0 4px var(--amber-wash); }
+    .stage-arrow { color: var(--line-dark); margin: 0 13px; font-family: var(--mono); }
+    .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.42fr) minmax(330px, .8fr); gap: 16px; align-items: start; }
+    .panel { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-tight); overflow: hidden; }
+    .panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; padding: 18px 19px 14px; border-bottom: 1px solid var(--line); }
+    .panel-kicker { color: var(--muted); font: 10px var(--mono); text-transform: uppercase; letter-spacing: .13em; margin-bottom: 6px; }
+    .panel-sub { color: var(--ink-soft); font-size: 12px; margin-top: 5px; }
+    .panel-body { padding: 15px 19px 19px; }
+    .cap-list { display: grid; gap: 10px; }
+    .cap-card { position: relative; border: 1px solid var(--line); border-radius: 8px; padding: 14px 15px; transition: border-color .18s var(--ease), box-shadow .18s var(--ease), transform .18s var(--ease); }
+    .cap-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-tight); }
+    .cap-card.selected { border-color: #65bca9; box-shadow: 0 0 0 3px rgba(11,143,120,.1); }
+    .cap-card.selected::before { content: ""; position: absolute; inset: 11px auto 11px 0; width: 3px; border-radius: 0 3px 3px 0; background: var(--mint); }
+    .cap-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+    .cap-name { font-weight: 800; font-size: 14px; }
+    .cap-meta { display: flex; flex-wrap: wrap; gap: 5px 10px; margin-top: 4px; color: var(--ink-soft); font-size: 11px; }
+    .cap-meta strong { color: var(--ink); font-weight: 700; }
+    .status { border-radius: 5px; padding: 4px 7px; font: 10px var(--mono); font-weight: 500; letter-spacing: .08em; }
+    .status.buy { background: var(--mint-wash); color: var(--mint-dark); }
+    .status.skip { background: var(--amber-wash); color: var(--amber); }
+    .status.ineligible { background: var(--red-wash); color: var(--red); }
+    .cap-metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-top: 15px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .metric-label { display: block; color: var(--muted); font: 9px var(--mono); letter-spacing: .05em; text-transform: uppercase; }
+    .metric-value { display: block; color: var(--ink); font: 500 12px var(--mono); margin-top: 4px; white-space: nowrap; }
+    .metric-value.highlight { color: var(--mint-dark); font-weight: 600; }
+    .cap-reason { color: var(--ink-soft); font-size: 11px; margin-top: 11px; }
+    .decision-card { background: #172d37; color: #e9f3f1; border-color: #172d37; }
+    .decision-card .panel-head { border-bottom-color: rgba(255,255,255,.12); }
+    .decision-card .panel-kicker, .decision-card .panel-sub { color: #93b0b0; }
+    .decision-card .panel-body { padding-top: 18px; }
+    .decision-verdict { display: flex; align-items: center; gap: 10px; color: #8ae0c7; font: 700 21px var(--display); letter-spacing: -.04em; }
+    .verdict-mark { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: #62cfb0; color: #102e2a; font-size: 14px; }
+    .decision-reason { margin-top: 10px; color: #bad0ce; font-size: 12px; line-height: 1.5; }
+    .decision-stats { display: grid; gap: 0; margin-top: 20px; border: 1px solid rgba(255,255,255,.13); border-radius: 7px; overflow: hidden; }
+    .decision-row { display: flex; justify-content: space-between; gap: 12px; padding: 11px 12px; border-bottom: 1px solid rgba(255,255,255,.1); font-size: 11px; }
+    .decision-row:last-child { border-bottom: 0; }
+    .decision-row span:first-child { color: #9eb7b5; }
+    .decision-row span:last-child { color: #f1fcf8; font-family: var(--mono); text-align: right; }
+    .execution-card { margin-top: 16px; }
+    .execution-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .field-list { display: grid; gap: 0; }
+    .field { display: flex; justify-content: space-between; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 11px; }
+    .field:last-child { border-bottom: 0; }
+    .field dt { color: var(--ink-soft); }
+    .field dd { margin: 0; color: var(--ink); font-family: var(--mono); text-align: right; }
+    .field dd.good { color: var(--mint-dark); font-weight: 600; }
+    .fixture-note { padding: 10px 11px; margin-top: 12px; border-radius: 6px; background: var(--amber-wash); color: #7b5411; font-size: 11px; line-height: 1.45; }
+    .evidence-card { margin-top: 16px; }
+    .evidence-layout { display: grid; grid-template-columns: 190px 1fr; gap: 22px; align-items: center; }
+    .outcome { display: grid; place-items: center; min-height: 126px; border: 1px solid #b9e2d5; border-radius: 8px; background: var(--mint-wash); color: var(--mint-dark); text-align: center; }
+    .outcome-word { font: 700 26px var(--display); letter-spacing: -.06em; }
+    .outcome-caption { font: 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; margin-top: 3px; }
+    .fact-list { display: grid; gap: 9px; }
+    .fact { display: flex; gap: 9px; align-items: flex-start; color: var(--ink-soft); font-size: 12px; }
+    .fact::before { content: ""; width: 6px; height: 6px; margin-top: 6px; border-radius: 50%; background: var(--mint); flex: none; }
+    .transition-card { margin-top: 16px; }
+    .transition { display: grid; grid-template-columns: 1fr 46px 1fr; align-items: center; gap: 18px; }
+    .transition-box { border: 1px solid var(--line); background: var(--surface-2); border-radius: 8px; padding: 14px; }
+    .transition-label { color: var(--muted); font: 10px var(--mono); text-transform: uppercase; letter-spacing: .1em; }
+    .transition-value { display: block; margin-top: 8px; font: 700 28px var(--display); letter-spacing: -.06em; }
+    .transition-note { color: var(--ink-soft); margin-top: 3px; font-size: 11px; }
+    .transition-arrow { color: var(--mint); font: 24px var(--mono); text-align: center; }
+    .trace-intro { display: flex; justify-content: space-between; gap: 20px; align-items: end; margin-bottom: 16px; }
+    .trace-summary { color: var(--ink-soft); max-width: 540px; font-size: 13px; }
+    .trace-list { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow-tight); }
+    .trace-item { border-bottom: 1px solid var(--line); }
+    .trace-item:last-child { border-bottom: 0; }
+    .trace-item[open] { background: #fbfcfd; }
+    .trace-item > summary { list-style: none; }
+    .trace-item > summary::-webkit-details-marker { display: none; }
+    .trace-row { display: grid; grid-template-columns: 44px 11px minmax(160px, .6fr) minmax(0, 1.4fr) auto; gap: 14px; align-items: center; min-height: 62px; padding: 11px 17px; border-bottom: 1px solid var(--line); transition: background .18s var(--ease); }
+    .trace-row:hover { background: #fbfcfd; }
+    .trace-num { color: var(--muted); font: 11px var(--mono); }
+    .trace-dot { width: 9px; height: 9px; border: 2px solid var(--mint); border-radius: 50%; }
+    .trace-dot.fixture { border-color: var(--amber); background: var(--amber-wash); }
+    .trace-dot.stop { border-color: var(--red); background: var(--red-wash); }
+    .trace-title { font-weight: 800; font-size: 12px; }
+    .trace-detail { color: var(--ink-soft); font: 11px var(--mono); }
+    .trace-state { color: var(--mint-dark); font: 10px var(--mono); letter-spacing: .07em; text-transform: uppercase; }
+    .trace-state.fixture { color: var(--amber); }
+    .trace-state.stop { color: var(--red); }
+    .trace-extra { display: grid; grid-template-columns: 90px 1fr; gap: 8px 14px; margin: -1px 17px 14px 74px; padding: 12px 14px; border-left: 2px solid var(--line-dark); background: var(--surface-2); color: var(--ink-soft); font-size: 11px; }
+    .trace-extra strong { color: var(--ink); font: 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+    .architecture-card { display: grid; grid-template-columns: 1fr .85fr; gap: 28px; align-items: center; padding: 25px; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; box-shadow: var(--shadow-tight); }
+    .architecture-copy { max-width: 470px; }
+    .architecture-copy p { color: var(--ink-soft); font-size: 13px; margin-top: 11px; }
+    .architecture-copy strong { color: var(--ink); }
+    .diagram { display: grid; justify-items: center; gap: 0; }
+    .diagram-node { width: min(100%, 265px); padding: 13px 15px; border: 1px solid var(--line-dark); border-radius: 8px; background: var(--surface-2); text-align: center; font-size: 12px; font-weight: 800; }
+    .diagram-node.engine { background: #17383d; border-color: #17383d; color: #e4fff7; box-shadow: 0 10px 22px rgba(13,58,57,.16); }
+    .diagram-node.routes { width: 100%; display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; padding: 9px; background: transparent; border: 0; }
+    .diagram-node.routes span { padding: 10px 4px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); font: 10px var(--mono); }
+    .diagram-arrow { color: var(--mint); font: 18px var(--mono); line-height: 1.3; }
+    .routes span:first-child { color: var(--mint-dark); border-color: #9ed9ca; background: var(--mint-wash); }
+    .routes span:not(:first-child) { color: var(--muted); }
+    .rules-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-top: 16px; }
+    .rule { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 16px; }
+    .rule-index { color: var(--mint); font: 11px var(--mono); }
+    .rule h3 { margin-top: 9px; }
+    .rule p { color: var(--ink-soft); font-size: 12px; margin-top: 7px; }
+    .toast { position: fixed; right: 22px; bottom: 22px; z-index: 10; max-width: 340px; padding: 13px 16px; border: 1px solid var(--line-dark); border-radius: 8px; background: var(--ink); color: #fff; box-shadow: var(--shadow); font-size: 12px; opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity .2s var(--ease), transform .2s var(--ease); }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .footer-line { max-width: 1480px; margin: 24px auto 0; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); display: flex; justify-content: space-between; gap: 15px; font-size: 11px; }
+    .footer-line .mono { font-size: 10px; }
+    @media (max-width: 1100px) { .app-shell { grid-template-columns: 210px minmax(0,1fr); } .dashboard-grid { grid-template-columns: 1fr; } .decision-card { display: grid; grid-template-columns: .8fr 1.2fr; } .decision-card .panel-head { border-bottom: 0; } .decision-card .panel-body { padding-top: 18px; } }
+    @media (max-width: 760px) { .app-shell { display: block; } .sidebar { position: sticky; top: 0; z-index: 5; padding: 12px 15px; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; } .brand-sub, .nav-label, .sidebar-bottom { display: none; } .brand { padding: 0; } .nav { display: flex; } .nav-button { padding: 8px; } .nav-button span:not(.nav-icon) { display: none; } .main { padding: 20px 14px 40px; } .topbar { display: block; } .top-actions { margin-top: 15px; } .kpi-grid { grid-template-columns: repeat(2, 1fr); } .decision-card { display: block; } .decision-card .panel-head { border-bottom: 1px solid rgba(255,255,255,.12); } .cap-metrics { grid-template-columns: repeat(2,1fr); } .execution-layout, .evidence-layout, .architecture-card { grid-template-columns: 1fr; } .transition { grid-template-columns: 1fr; gap: 7px; } .transition-arrow { transform: rotate(90deg); } .trace-row { grid-template-columns: 29px 9px minmax(0,1fr) auto; gap: 9px; } .trace-detail { grid-column: 3 / -1; margin-top: -6px; } .trace-state { grid-column: 4; grid-row: 1; } .rules-grid { grid-template-columns: 1fr; } .footer-line { display: block; line-height: 1.8; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Radhanite navigation">
+      <a class="brand" href="#dashboard" data-view="dashboard">
+        <span class="brand-mark">R</span>
+        <span><span class="brand-name">Radhanite</span><span class="brand-sub">economic execution layer</span></span>
+      </a>
+      <div>
+        <div class="nav-label">Demo workspace</div>
+        <nav class="nav">
+          <button class="nav-button active" data-view="dashboard"><span class="nav-icon">◈</span><span>Live demo</span></button>
+          <button class="nav-button" data-view="trace"><span class="nav-icon">≋</span><span>Decision trace</span></button>
+          <button class="nav-button" data-view="how"><span class="nav-icon">◎</span><span>How it works</span></button>
+        </nav>
       </div>
-      <p class="fine">Prompts and findings committed verbatim &mdash; including the reviews where the process itself slipped.</p>
-    </div>
-    <div class="rec">
-      <div class="rr"><b>#6</b><span>Money and task inputs</span><em class="rej">Rejected &times;2</em></div>
-      <div class="rr"><b>#11</b><span>Strategy selection</span><em class="rej">Rejected &times;2</em></div>
-      <div class="rr"><b>#13</b><span>The loop and record</span><em class="rej">Rejected &times;2</em></div>
-      <div class="rr"><b>#21</b><span>Candidate model</span><em class="app">Approved</em></div>
-      <div class="rr"><b>#22</b><span>Eligibility</span><em class="app">Corrections</em></div>
-      <div class="rr"><b>#23</b><span>Ranking</span><em class="rej">Rejected</em></div>
-    </div>
-  </section>
+      <div class="sidebar-bottom">
+        <span class="mode-badge"><span class="mode-dot"></span><span id="sidebar-mode">FIXTURE</span></span>
+        <p class="sidebar-note">Deterministic benchmark data. No payment is performed in this build.</p>
+        <span class="mono" style="color:#6f8491;font-size:10px">TASK-016 · ETHONLINE 2026</span>
+      </div>
+    </aside>
 
-  <section class="card" id="c8">
-    <div class="idx">07 &middot; Direction</div>
-    <h2 style="max-width:24ch">A $50,000 contract, a $250 budget &mdash; and every piece of evidence has a price.</h2>
-    <div class="tracks">
-      <div class="tr"><b>Hedera</b><span>An independent second opinion, bought only when it pays for itself.</span><em>Not authorized</em></div>
-      <div class="tr"><b>Circle &amp; Arc</b><span>Tells the agent what it can buy, and how to pay for it.</span><em>Not authorized</em></div>
-      <div class="tr"><b>The Graph</b><span>Live onchain intelligence on the prospect &mdash; if it is worth the price.</span><em>Not authorized</em></div>
-    </div>
-    <p class="fine" style="max-width:52ch">Independent environments &mdash; no bridge, one budget above both. Testnet value is a test fixture, and we won&rsquo;t present it as anything else.</p>
-    <div class="close">
-      <span>Named for the merchants who ran the routes &mdash; and kept the ledgers.</span>
-      <a href="https://github.com/therealgulkorinaga/radhanite-ethonline">View the repository &rarr;</a>
-    </div>
-    <p class="asof">Every figure on this page describes <code>main</code> at <a href="https://github.com/therealgulkorinaga/radhanite-ethonline/commit/bce336e">bce336e</a>, 11 September 2026. If the repository has moved on and this page has not, the page is the stale one.</p>
-  </section>
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">Autonomous work / economic control</div>
+          <h1 id="page-title">Make the decision before you make the purchase.</h1>
+          <p class="topbar-sub" id="page-subtitle">Radhanite evaluates paid capabilities, executes only when justified, and records what changed.</p>
+        </div>
+        <div class="top-actions">
+          <button class="button ghost" id="reset-button">Reset</button>
+          <button class="button primary" id="run-button">Run fixture</button>
+        </div>
+      </header>
 
-</main>
+      <section class="view active" id="dashboard" aria-label="Live demo dashboard">
+        <div class="mode-banner"><div><strong>Fixture mode</strong><span> · backend-shaped benchmark output · no wallet, signature, or payment call</span></div><span class="mode-badge"><span class="mode-dot"></span>FIXTURE</span></div>
+        <div class="kpi-grid">
+          <article class="kpi"><span class="kpi-label">Opportunity value</span><strong class="kpi-value" data-value="opportunity">$50,000</strong><span class="kpi-foot">potential contract value</span></article>
+          <article class="kpi"><span class="kpi-label">Remaining budget</span><strong class="kpi-value" data-value="budget">$249.999</strong><span class="kpi-foot">permission ceiling · not a target</span></article>
+          <article class="kpi"><span class="kpi-label">Success probability</span><strong class="kpi-value mint" data-value="probability">8% <span style="font-size:16px;color:var(--muted)">→ 14%</span></strong><span class="kpi-foot">after validated evidence</span></article>
+          <article class="kpi"><span class="kpi-label">Current state</span><strong class="kpi-value" style="font-size:22px" data-value="state">NEXT DECISION</strong><span class="kpi-foot">market signal resolved</span></article>
+        </div>
+        <div class="stage-strip" aria-label="Radhanite execution stages">
+          <span class="stage-step done"><span class="stage-dot"></span>Task + value</span><span class="stage-arrow">→</span>
+          <span class="stage-step done"><span class="stage-dot"></span>Candidates</span><span class="stage-arrow">→</span>
+          <span class="stage-step done"><span class="stage-dot"></span>Evaluate</span><span class="stage-arrow">→</span>
+          <span class="stage-step done"><span class="stage-dot"></span>BUY / SKIP</span><span class="stage-arrow">→</span>
+          <span class="stage-step done"><span class="stage-dot"></span>Evidence</span><span class="stage-arrow">→</span>
+          <span class="stage-step current"><span class="stage-dot"></span>Next decision</span>
+        </div>
+        <div class="dashboard-grid">
+          <article class="panel">
+            <div class="panel-head"><div><div class="panel-kicker">TASK-008 → TASK-006</div><h2>Candidate capabilities</h2><p class="panel-sub">Exact prices enter the selector. Provider identity stays outside the economics.</p></div><span class="mono" style="color:var(--muted);font-size:11px">3 candidates</span></div>
+            <div class="panel-body"><div class="cap-list" id="capabilities"></div></div>
+          </article>
+          <article class="panel decision-card">
+            <div class="panel-head"><div><div class="panel-kicker">TASK-006 decision</div><h2>Selected capability</h2><p class="panel-sub">The economic engine decides what is worth buying.</p></div></div>
+            <div class="panel-body">
+              <div class="decision-verdict"><span class="verdict-mark">✓</span> BUY · Arc quote</div>
+              <p class="decision-reason">The selected quote improves the declared success probability and clears the exact net expected-value gate.</p>
+              <div class="decision-stats">
+                <div class="decision-row"><span>Cost</span><span>$0.001</span></div>
+                <div class="decision-row"><span>Current probability</span><span>8%</span></div>
+                <div class="decision-row"><span>Expected after action</span><span>14%</span></div>
+                <div class="decision-row"><span>Incremental expected value</span><span>$3,000.00</span></div>
+                <div class="decision-row"><span>Net expected value</span><span>$2,999.999</span></div>
+              </div>
+              <p style="color:#9eb7b5;font-size:11px;margin-top:16px">Skipped: Graph is not connected. Hedera is not connected.</p>
+            </div>
+          </article>
+        </div>
+        <article class="panel execution-card">
+          <div class="panel-head"><div><div class="panel-kicker">TASK-007 · selected-only execution</div><h2>Circle / Arc execution</h2><p class="panel-sub">Payment facts are rendered only when backed by runtime evidence. This screen is deliberately labelled fixture.</p></div><span class="status skip">FIXTURE MODE</span></div>
+          <div class="panel-body execution-layout">
+            <dl class="field-list">
+              <div class="field"><dt>Wallet model</dt><dd>Developer-Controlled EOA</dd></div>
+              <div class="field"><dt>Protocol</dt><dd>x402 exact</dd></div>
+              <div class="field"><dt>Network</dt><dd>Arc Testnet</dd></div>
+              <div class="field"><dt>Exact quote</dt><dd>0.001 USDC</dd></div>
+              <div class="field"><dt>Atomic amount</dt><dd>1,000 units</dd></div>
+            </dl>
+            <div>
+              <dl class="field-list">
+                <div class="field"><dt>Committed amount</dt><dd class="good">0.001 USDC</dd></div>
+                <div class="field"><dt>Execution status</dt><dd class="good">Fixture complete</dd></div>
+                <div class="field"><dt>Payment reference</dt><dd>fixture-ref-arc-001</dd></div>
+                <div class="field"><dt>Settlement</dt><dd>Not asserted</dd></div>
+              </dl>
+              <p class="fixture-note"><strong>Honesty boundary:</strong> this reference and committed amount are deterministic fixture output, not live settlement evidence. No real Arc payment occurred.</p>
+            </div>
+          </div>
+        </article>
+        <article class="panel evidence-card">
+          <div class="panel-head"><div><div class="panel-kicker">TASK-009 evidence</div><h2>Validated service result</h2><p class="panel-sub">The returned result becomes immutable evidence before the next decision.</p></div><span class="status buy">POSITIVE</span></div>
+          <div class="panel-body evidence-layout"><div class="outcome"><div><div class="outcome-word">Positive</div><div class="outcome-caption">market signal</div></div></div><div class="fact-list"><div class="fact">Circle Arc Testnet x402 demo result</div><div class="fact">Validated service result retained in evidence</div><div class="fact">TASK-009 resolves <span class="mono">market_signal</span></div></div></div>
+        </article>
+        <article class="panel transition-card">
+          <div class="panel-head"><div><div class="panel-kicker">State transition</div><h2>Evidence changes the next decision</h2></div><span class="mono" style="color:var(--muted);font-size:11px">TASK-009 → TASK-006</span></div>
+          <div class="panel-body"><div class="transition"><div class="transition-box"><span class="transition-label">Before</span><strong class="transition-value">8%</strong><p class="transition-note">$250 budget · market signal open</p></div><div class="transition-arrow">→</div><div class="transition-box" style="border-color:#9ed9ca;background:var(--mint-wash)"><span class="transition-label" style="color:var(--mint-dark)">After evidence</span><strong class="transition-value" style="color:var(--mint-dark)">14%</strong><p class="transition-note">$249.999 remaining · next decision ready</p></div></div></div>
+        </article>
+      </section>
 
-<script>
-(function(){
-  var dots=[].slice.call(document.querySelectorAll('.rail a'));
-  var cards=[].slice.call(document.querySelectorAll('.card'));
-  if(!('IntersectionObserver' in window)||!dots.length)return;
-  var io=new IntersectionObserver(function(es){
-    es.forEach(function(e){
-      if(!e.isIntersecting)return;
-      var i=cards.indexOf(e.target);
-      dots.forEach(function(d,n){d.setAttribute('aria-current',n===i?'true':'false');});
+      <section class="view" id="trace" aria-label="Decision trace">
+        <div class="trace-intro"><div><div class="eyebrow">Chronological run record</div><h1>Decision trace</h1><p class="topbar-sub">Every buy, skip, result, and stop has a reason attached.</p></div><span class="mode-badge" style="background:var(--mint-wash);color:var(--mint-dark);border-color:#b9e2d5"><span class="mode-dot"></span>FIXTURE TRACE</span></div>
+        <div class="mode-banner"><div><strong>Readable by design</strong><span> · open details show the exact economic and evidence facts behind each event</span></div><span class="mono" style="font-size:10px;color:var(--mint-dark)">9 events</span></div>
+        <div class="trace-list" id="trace-list"></div>
+      </section>
+
+      <section class="view" id="how" aria-label="How Radhanite works">
+        <div class="trace-intro"><div><div class="eyebrow">System boundary</div><h1>How Radhanite works</h1><p class="topbar-sub">Circle tells the agent what it can buy and how to pay. Radhanite decides what is worth buying.</p></div></div>
+        <div class="architecture-card">
+          <div class="architecture-copy"><div class="eyebrow">Economic execution layer</div><h2>Autonomous work needs a control plane, not a bigger wallet.</h2><p>Radhanite keeps <strong>value, budget, probability, and evidence</strong> in one provider-neutral decision loop. Integrations execute the selected capability; they do not rank themselves.</p><p>Radhanite does not predict outcomes. It controls the unit economics of autonomous work.</p></div>
+          <div class="diagram" aria-label="Radhanite architecture diagram"><div class="diagram-node">Autonomous agent task<br><span class="mono" style="font-size:10px;color:var(--ink-soft)">value + budget</span></div><div class="diagram-arrow">↓</div><div class="diagram-node">Capability candidates</div><div class="diagram-arrow">↓</div><div class="diagram-node engine">Radhanite economic engine<br><span class="mono" style="font-size:10px;color:#9ed9ca">BUY / SKIP / STOP</span></div><div class="diagram-arrow">↓</div><div class="diagram-node routes"><span>Circle / Arc<br><small>live path</small></span><span>The Graph<br><small>coming next</small></span><span>Hedera<br><small>coming next</small></span></div><div class="diagram-arrow">↓</div><div class="diagram-node">Evidence → updated task state → re-evaluate</div></div>
+        </div>
+        <div class="rules-grid"><article class="rule"><span class="rule-index">01</span><h3>Economics first</h3><p>TASK-006 ranks exact candidates before any wallet or provider call.</p></article><article class="rule"><span class="rule-index">02</span><h3>Selected-only execution</h3><p>TASK-007 receives one chosen capability and one authorization ceiling.</p></article><article class="rule"><span class="rule-index">03</span><h3>Evidence closes the loop</h3><p>TASK-009 turns the validated result into the next probability and state.</p></article></div>
+        <div class="panel" style="margin-top:16px"><div class="panel-head"><div><div class="panel-kicker">Connection status</div><h2>Integration honesty</h2></div></div><div class="panel-body"><div class="cap-list"><div class="cap-card selected"><div class="cap-top"><div><div class="cap-name">Circle / Arc</div><div class="cap-meta"><strong>Fixture-backed demo path</strong><span>Developer-Controlled Wallet · x402</span></div></div><span class="status buy">AVAILABLE</span></div><p class="cap-reason">Live Arc evidence can be shown only when actual runtime evidence is present. This build defaults to deterministic fixture mode.</p></div><div class="cap-card"><div class="cap-top"><div><div class="cap-name">The Graph</div><div class="cap-meta"><strong>Coming next</strong><span>Not connected in this build</span></div></div><span class="status skip">NOT CONNECTED</span></div></div><div class="cap-card"><div class="cap-top"><div><div class="cap-name">Hedera</div><div class="cap-meta"><strong>Coming next</strong><span>Not connected in this build</span></div></div><span class="status skip">NOT CONNECTED</span></div></div></div></div></div>
+      </section>
+
+      <div class="footer-line"><span>Radhanite · economic execution layer for autonomous agents</span><span class="mono">TASK-016 · fixture data · no payment performed</span></div>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module">
+    import { fixture, formatMoney, formatUsdc, formatPercent, formatAtomic, modeLabel } from "./demo-data.js";
+
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+    const toast = $("#toast");
+    let toastTimer;
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 2800);
+    }
+
+    function renderCapabilities() {
+      $("#capabilities").innerHTML = fixture.capabilities.map((cap) => `
+        <article class="cap-card ${cap.selected ? "selected" : ""}">
+          <div class="cap-top"><div><div class="cap-name">${cap.name}</div><div class="cap-meta"><strong>${cap.provider}</strong><span>${cap.network}</span></div></div><span class="status ${cap.status.toLowerCase()}">${cap.status}</span></div>
+          <div class="cap-metrics">
+            <div><span class="metric-label">Exact cost</span><span class="metric-value">${formatUsdc(cap.cost)}</span></div>
+            <div><span class="metric-label">Post-action p</span><span class="metric-value">${formatPercent(cap.expectedProbability)}</span></div>
+            <div><span class="metric-label">Incremental EV</span><span class="metric-value">${formatMoney(cap.incrementalExpectedValue)}</span></div>
+            <div><span class="metric-label">Net EV</span><span class="metric-value highlight">${formatMoney(cap.netExpectedValue, 3)}</span></div>
+          </div>
+          <p class="cap-reason">${cap.selected ? "Selected · " : "Skipped · "}${cap.reason}</p>
+        </article>`).join("");
+    }
+
+    function renderTrace() {
+      $("#trace-list").innerHTML = fixture.trace.map(([number, title, detail, state]) => `
+        <details class="trace-item" ${state === "stop" ? "open" : ""}>
+          <summary class="trace-row"><span class="trace-num">${number}</span><span class="trace-dot ${state}"></span><span class="trace-title">${title}</span><span class="trace-detail">${detail}</span><span class="trace-state ${state}">${state}</span></summary>
+          <div class="trace-extra"><strong>Event detail</strong><span>${detail}</span><strong>Authority</strong><span>${title === "Circle / Arc execution" ? "Fixture renderer · no payment performed" : "Backend-shaped Radhanite run record"}</span></div>
+        </details>`).join("");
+    }
+
+    function switchView(viewId) {
+      $$(".view").forEach((view) => view.classList.toggle("active", view.id === viewId));
+      $$(".nav-button").forEach((button) => button.classList.toggle("active", button.dataset.view === viewId));
+      const copy = {
+        dashboard: ["Make the decision before you make the purchase.", "Radhanite evaluates paid capabilities, executes only when justified, and records what changed."],
+        trace: ["Every decision leaves a record.", "A judge should be able to follow the money, the evidence, and the next action."],
+        how: ["The control layer for autonomous work.", "Circle tells the agent what it can buy and how to pay. Radhanite decides what is worth buying."],
+      }[viewId];
+      $("#page-title").textContent = copy[0];
+      $("#page-subtitle").textContent = copy[1];
+      history.replaceState(null, "", `#${viewId}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    $$("[data-view]").forEach((button) => button.addEventListener("click", () => switchView(button.dataset.view)));
+    $("#reset-button").addEventListener("click", () => showToast("Fixture reset · no external calls made"));
+    $("#run-button").addEventListener("click", () => {
+      const button = $("#run-button");
+      button.disabled = true;
+      button.textContent = "Running fixture…";
+      showToast("Running deterministic TASK-006 → TASK-009 fixture");
+      setTimeout(() => { button.disabled = false; button.textContent = "Run fixture"; showToast("Fixture complete · next decision: ECONOMIC STOP"); }, 900);
     });
-  },{threshold:.5});
-  cards.forEach(function(c){io.observe(c);});
-  dots[0].setAttribute('aria-current','true');
-})();
-</script>
+
+    renderCapabilities();
+    renderTrace();
+    const initial = window.location.hash.slice(1);
+    if (["dashboard", "trace", "how"].includes(initial)) switchView(initial);
+  </script>
+</body>
+</html>
