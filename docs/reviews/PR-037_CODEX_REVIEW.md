@@ -47,3 +47,11 @@ AI_BUILD_GOVERNANCE.md §7.3.
 The three findings above are the only authorized correction scope. No Arc
 integration, Circle wallet model change, Graph, Hedera, UI, persistence, retry,
 or generic payment abstraction was added.
+
+## 5. Authorized Arc phase
+
+The product owner separately authorized the Arc phase on the existing PR after the Base/Circle corrections. The selected implementation path is Circle's official EOA Developer-Controlled Wallet SDK plus the official x402 batching SDK, with Circle's Gateway approval/deposit flow and Arc Testnet binding. The Arc service is a separately identified demo seller derived from Circle's official Arc nanopayments example because current Circle Discovery did not establish an Arc listing for the selected resource.
+
+This phase preserves the existing findings and adds no generalized wallet abstraction, retry framework, wallet policy engine, or production credential persistence. It remains pending independent Codex re-review. The live smoke is configured as opt-in and currently blocked on human-supplied Circle credentials, a funded Arc EOA, Gateway balance, and seller URL; no Arc payment is claimed as successful.
+
+**Current implementation-agent status: Manus.**
