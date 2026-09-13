@@ -48,9 +48,11 @@ Two different claims appear on this screen, and the UI keeps them apart on purpo
 
 Reproduce it with `RADHANITE_GRAPH_API_KEY=... python3 -m radhanite.graph_smoke` from the repository root.
 
+**Expected 17%, actual 14%.** The selected candidate declared an expected post-action probability of `0.17`. TASK-009 interpreted the returned evidence and assigned `0.14`. The dashboard shows both, and the state transition shows the engine's actual output rather than the expectation.
+
 **BENCHMARK CAPABILITY PRICE — $0.40.** This is the price *Radhanite evaluated* for the capability inside the economic decision. **The Graph did not charge it.** The query ran under a Subgraph Studio Free plan and billed 0 GRT. The onchain facts are live; the price is a benchmark fixture, exactly like the declared probabilities. `demo-data.js` marks this with `costBasis: "benchmark"`, and a benchmark price is never rendered in USDC.
 
-**Circle / Arc is visible but not selected, and not settled.** The adapter is implemented and the Arc Testnet smoke ran, but it became unresolved after submission and no authoritative committed amount or payment reference was preserved. This build asserts **no Arc settlement**, and a test enforces that no payment reference appears in the data at all. Arc is shown as a priced candidate the economics ranked second — at $2,999.999 net expected value against The Graph's $4,499.60.
+**Circle / Arc is integrated, visible, and not selected.** The Circle Developer-Controlled Wallet, x402 and Arc Testnet path are implemented end to end. This build asserts **no settled Arc payment** and shows **no committed amount and no payment reference**; a test enforces that no payment reference appears in the data at all. Arc is shown as a priced candidate the economics ranked second — at $2,999.999 net expected value against The Graph's $4,499.60.
 
 **Hedera** remains **Coming next / Not connected in this build**.
 

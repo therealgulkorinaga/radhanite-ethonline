@@ -35,6 +35,11 @@ export const fixture = {
     budget: "250.00",
     remainingBudget: "249.60",
     probabilityBefore: "0.08",
+    // What the selected candidate declared it would achieve.
+    probabilityExpected: "0.17",
+    // What TASK-009 actually assigned after interpreting the returned
+    // evidence. These are different numbers and the UI shows both: the
+    // engine's real output is 14%, not the 17% that was hoped for.
     probabilityAfter: "0.14",
     stage: "Live onchain evidence acquired · next decision ready",
     finalState: "ECONOMIC STOP",
@@ -61,7 +66,7 @@ export const fixture = {
       id: "arc-demo-x402",
       name: "Premium market quote",
       provider: "Circle / Arc",
-      network: "Arc Testnet · fixture execution",
+      network: "Circle Developer-Controlled Wallet · x402 · Arc Testnet",
       cost: "0.001",
       costBasis: "usdc",
       expectedProbability: "0.14",
@@ -70,7 +75,7 @@ export const fixture = {
       status: "SKIP",
       selected: false,
       reason:
-        "Positive expected value, but below the selected capability. Not bought in this run.",
+        "Integrated · settlement not asserted. Positive expected value, but below the selected capability, so it was not bought in this run.",
       live: false,
     },
     {
@@ -113,13 +118,13 @@ export const fixture = {
   },
   trace: [
     ["01", "Opportunity created", "value=$50,000 · budget=$250 · p=8%", "complete"],
-    ["02", "Candidates generated", "3 priced capabilities · provider metadata retained outside selection", "complete"],
+    ["02", "Capabilities evaluated", "3 priced candidates · The Graph $4,499.60 · Circle/Arc $2,999.999 · Hedera not connected", "complete"],
     ["03", "Economic evaluation", "TASK-006 compares exact cost, probability, value, and remaining budget", "complete"],
-    ["04", "Capability selected", "Onchain liquidity snapshot · BUY · net expected value $4,499.60", "complete"],
-    ["05", "The Graph execution", "Live query served by the decentralized network gateway at block 25,969,369", "live"],
-    ["06", "Service result", "positive_market_signal · live onchain facts returned", "complete"],
+    ["04", "The Graph selected", "BUY · benchmark capability price $0.40 · net expected value $4,499.60", "complete"],
+    ["05", "Live Graph query executed", "Query served by the decentralized network gateway at block 25,969,369", "live"],
+    ["06", "Live evidence returned", "positive_market_signal · pools 72,855 · transactions 149,631,676", "live"],
     ["07", "Evidence recorded", "Immutable evidence passed to TASK-009", "complete"],
-    ["08", "TASK-009 update", "p=8% → 14% · market_signal resolved", "complete"],
+    ["08", "TASK-009 state updated", "p=8% → 14% · expected 17% · market_signal resolved", "complete"],
     ["09", "Next TASK-006 decision", "No remaining economically justified action · ECONOMIC STOP", "stop"],
   ],
 };
@@ -160,6 +165,15 @@ export function formatCapabilityCost(capability) {
 
 export function costBasisLabel(capability) {
   return capability.costBasis === "usdc" ? "Exact quote" : "Benchmark price";
+}
+
+/**
+ * Net expected value keeps a third decimal only when it carries information.
+ * $2,999.999 must not round to $3,000.00; $4,499.60 must not read $4,499.600.
+ */
+export function formatNetExpectedValue(value) {
+  const thousandths = Math.round(Number(value) * 1000) % 10;
+  return formatMoney(value, thousandths === 0 ? 2 : 3);
 }
 
 export function modeLabel(mode) {

@@ -7,6 +7,7 @@ import {
   formatAtomic,
   formatCapabilityCost,
   formatMoney,
+  formatNetExpectedValue,
   formatPercent,
   formatUsdc,
   modeLabel,
@@ -68,6 +69,21 @@ test("a benchmark price is never rendered as a settled USDC amount", () => {
   assert.equal(formatCapabilityCost(arc), "0.001 USDC");
 });
 
+test("net expected value keeps a third decimal only when it carries information", () => {
+  assert.equal(formatNetExpectedValue("4499.60"), "$4,499.60");
+  assert.equal(formatNetExpectedValue("2999.999"), "$2,999.999");
+  assert.equal(formatNetExpectedValue("999.60"), "$999.60");
+});
+
+test("the trace reads as the real sequence the engine ran", () => {
+  const titles = fixture.trace.map(([, title]) => title);
+  assert.ok(titles.includes("The Graph selected"));
+  assert.ok(titles.includes("Live Graph query executed"));
+  assert.ok(titles.includes("Live evidence returned"));
+  assert.ok(titles.includes("TASK-009 state updated"));
+  assert.ok(titles.includes("Next TASK-006 decision"));
+});
+
 test("no Arc settlement or payment reference is asserted anywhere", () => {
   const serialized = JSON.stringify(fixture);
   assert.ok(!serialized.includes("fixture-ref-arc-001"));
@@ -91,10 +107,14 @@ test("execution records the live query and labels its price basis", () => {
 });
 
 test("trace includes the probability transition and next stop decision", () => {
-  assert.ok(fixture.trace.some(([, title]) => title === "TASK-009 update"));
+  assert.ok(fixture.trace.some(([, title]) => title === "TASK-009 state updated"));
   assert.ok(fixture.trace.some(([, title, detail]) => title === "Next TASK-006 decision" && detail.includes("STOP")));
   assert.equal(fixture.opportunity.probabilityBefore, "0.08");
   assert.equal(fixture.opportunity.probabilityAfter, "0.14");
+  // The declared expectation and the engine's actual output are different
+  // numbers, and the UI must never quietly show the nicer one.
+  assert.equal(fixture.opportunity.probabilityExpected, "0.17");
+  assert.notEqual(fixture.opportunity.probabilityExpected, fixture.opportunity.probabilityAfter);
 });
 
 console.log("TASK-016 frontend fixture tests passed");

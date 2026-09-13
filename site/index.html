@@ -79,7 +79,7 @@
     .view { max-width: 1480px; margin: 0 auto; display: none; }
     .view.active { display: block; animation: enter .35s var(--ease) both; }
     @keyframes enter { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
-    .mode-banner { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 12px 15px; margin-bottom: 16px; border: 1px solid #c4e6db; background: var(--mint-wash); border-radius: 9px; color: #15594c; }
+    .mode-banner { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 10px 15px; margin-bottom: 11px; border: 1px solid #c4e6db; background: var(--mint-wash); border-radius: 9px; color: #15594c; }
     .mode-banner strong { font-size: 12px; }
     .mode-banner span { color: #357567; font-size: 12px; }
     .mode-banner .mode-badge { flex: none; border-color: rgba(11,143,120,.3); background: rgba(255,255,255,.45); color: var(--mint-dark); }
@@ -157,7 +157,11 @@
     .transition-value { display: block; margin-top: 8px; font: 700 28px var(--display); letter-spacing: -.06em; }
     .transition-note { color: var(--ink-soft); margin-top: 3px; font-size: 11px; }
     .transition-arrow { color: var(--mint); font: 24px var(--mono); text-align: center; }
-    .trace-intro { display: flex; justify-content: space-between; gap: 20px; align-items: end; margin-bottom: 16px; }
+    .trace-intro { display: flex; justify-content: space-between; gap: 20px; align-items: end; margin-bottom: 8px; }
+    /* The topbar already carries the headline on this view; keep the section
+       label present but compact so all nine events clear one viewport. */
+    .trace-intro h1 { font-size: clamp(22px, 2.1vw, 28px); }
+    .trace-intro .topbar-sub { font-size: 12px; }
     .trace-summary { color: var(--ink-soft); max-width: 540px; font-size: 13px; }
     .trace-list { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow-tight); }
     .trace-item { border-bottom: 1px solid var(--line); }
@@ -165,12 +169,26 @@
     .trace-item[open] { background: #fbfcfd; }
     .trace-item > summary { list-style: none; }
     .trace-item > summary::-webkit-details-marker { display: none; }
-    .trace-row { display: grid; grid-template-columns: 44px 11px minmax(160px, .6fr) minmax(0, 1.4fr) auto; gap: 14px; align-items: center; min-height: 62px; padding: 11px 17px; border-bottom: 1px solid var(--line); transition: background .18s var(--ease); }
+    .trace-row { display: grid; grid-template-columns: 44px 11px minmax(160px, .6fr) minmax(0, 1.4fr) auto; gap: 14px; align-items: center; min-height: 44px; padding: 5px 17px; border-bottom: 1px solid var(--line); transition: background .18s var(--ease); }
     .trace-row:hover { background: #fbfcfd; }
     .trace-num { color: var(--muted); font: 11px var(--mono); }
     .trace-dot { width: 9px; height: 9px; border: 2px solid var(--mint); border-radius: 50%; }
     .trace-dot.fixture { border-color: var(--amber); background: var(--amber-wash); }
     .trace-dot.live { border-color: var(--mint-dark); background: var(--mint-wash); }
+    .decision-headline { margin: 14px 0 10px; padding: 12px 14px; border-radius: 10px; background: rgba(158,217,202,.14); border: 1px solid rgba(158,217,202,.35); }
+    .decision-headline-label { display: block; font: 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: #9ed9ca; margin-bottom: 4px; }
+    .decision-headline-value { font-size: 34px; line-height: 1.05; letter-spacing: -.02em; color: #eafff8; }
+    .decision-principle { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.12); color: #cfe9e2; font-size: 12px; font-style: italic; }
+    .cap-card.selected { box-shadow: 0 0 0 2px var(--mint-dark), 0 8px 22px rgba(11,143,120,.14); }
+    .cap-card.selected .cap-name { font-size: 17px; }
+    .onchain-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .onchain-stat { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--mint-wash); }
+    .onchain-label { display: block; font: 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--mint-dark); margin-bottom: 5px; }
+    .onchain-value { font-size: 25px; letter-spacing: -.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .onchain-note { margin-top: 12px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .transition-caveat { margin-top: 14px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    @media (max-width: 760px) { .onchain-grid { grid-template-columns: 1fr; } }
+    .live-pill { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 8px; background: var(--mint-dark); color: #fff; font: 9px var(--mono); letter-spacing: .1em; }
     .trace-dot.stop { border-color: var(--red); background: var(--red-wash); }
     .trace-title { font-weight: 800; font-size: 12px; }
     .trace-detail { color: var(--ink-soft); font: 11px var(--mono); }
@@ -242,11 +260,11 @@
       </header>
 
       <section class="view active" id="dashboard" aria-label="Live demo dashboard">
-        <div class="mode-banner"><div><strong>Live data source · The Graph</strong><span> · the selected capability's query really ran; the $0.40 price is the benchmark figure Radhanite evaluated, not a provider charge</span></div><span class="mode-badge"><span class="mode-dot"></span>LIVE · THE GRAPH</span></div>
+        <div class="mode-banner"><div><strong>THE GRAPH · LIVE</strong><span> · the selected capability's query really ran. The $0.40 is a benchmark capability price Radhanite evaluated, not a provider charge.</span></div><span class="mode-badge"><span class="mode-dot"></span>LIVE · THE GRAPH</span></div>
         <div class="kpi-grid">
           <article class="kpi"><span class="kpi-label">Opportunity value</span><strong class="kpi-value" data-value="opportunity">$50,000</strong><span class="kpi-foot">potential contract value</span></article>
-          <article class="kpi"><span class="kpi-label">Remaining budget</span><strong class="kpi-value" data-value="budget" id="kpi-budget">$249.60</strong><span class="kpi-foot">permission ceiling · not a target</span></article>
-          <article class="kpi"><span class="kpi-label">Success probability</span><strong class="kpi-value mint" data-value="probability">8% <span style="font-size:16px;color:var(--muted)">→ 14%</span></strong><span class="kpi-foot">after validated evidence</span></article>
+          <article class="kpi"><span class="kpi-label">Agent budget</span><strong class="kpi-value" data-value="budget"><span style="color:var(--muted);font-size:22px">$250</span> <span style="font-size:18px;color:var(--muted)">→</span> <span id="kpi-budget">$249.60</span></strong><span class="kpi-foot">permission to spend · not a target</span></article>
+          <article class="kpi"><span class="kpi-label">Success probability</span><strong class="kpi-value mint" data-value="probability">8% <span style="font-size:20px;color:var(--muted)">→</span> 14%</strong><span class="kpi-foot">expected 17% · TASK-009 assigned 14%</span></article>
           <article class="kpi"><span class="kpi-label">Current state</span><strong class="kpi-value" style="font-size:22px" data-value="state">NEXT DECISION</strong><span class="kpi-foot">market signal resolved</span></article>
         </div>
         <div class="stage-strip" aria-label="Radhanite execution stages">
@@ -265,16 +283,17 @@
           <article class="panel decision-card">
             <div class="panel-head"><div><div class="panel-kicker">TASK-006 decision</div><h2>Selected capability</h2><p class="panel-sub">The economic engine decides what is worth buying.</p></div></div>
             <div class="panel-body">
-              <div class="decision-verdict"><span class="verdict-mark">✓</span> BUY · Onchain snapshot</div>
-              <p class="decision-reason">The Graph candidate carries the highest net expected value of the priced candidates, and clears the exact net expected-value gate.</p>
+              <div class="decision-verdict"><span class="verdict-mark">✓</span> BUY · THE GRAPH</div>
+              <div class="decision-headline"><span class="decision-headline-label">Net expected value</span><strong class="decision-headline-value">$4,499.60</strong></div>
+              <p class="decision-reason">Highest net expected value of the priced candidates, and it clears the exact net expected-value gate.</p>
               <div class="decision-stats">
-                <div class="decision-row"><span>Benchmark price</span><span>$0.40</span></div>
+                <div class="decision-row"><span>Benchmark capability price</span><span>$0.40</span></div>
                 <div class="decision-row"><span>Current probability</span><span>8%</span></div>
-                <div class="decision-row"><span>Expected after action</span><span>17%</span></div>
+                <div class="decision-row"><span>Expected post-action probability</span><span>17%</span></div>
                 <div class="decision-row"><span>Incremental expected value</span><span>$4,500.00</span></div>
-                <div class="decision-row"><span>Net expected value</span><span>$4,499.60</span></div>
               </div>
-              <p style="color:#9eb7b5;font-size:11px;margin-top:16px">Skipped: Circle / Arc at $2,999.999 net. Ineligible: Hedera is not connected.</p>
+              <p class="decision-principle">Budget is permission to spend, not a target to spend.</p>
+              <p style="color:#9eb7b5;font-size:11px;margin-top:12px">Skipped: Circle / Arc at $2,999.999 net. Ineligible: Hedera is not connected.</p>
             </div>
           </article>
         </div>
@@ -294,18 +313,19 @@
                 <div class="field"><dt>Execution status</dt><dd class="good">Live result returned</dd></div>
                 <div class="field"><dt>Evaluated price</dt><dd>$0.40 · benchmark</dd></div>
                 <div class="field"><dt>Charged by The Graph</dt><dd>0 GRT · Free plan</dd></div>
+                <div class="field"><dt>Benchmark spend</dt><dd class="good">$0.40</dd></div>
               </dl>
               <p class="fixture-note"><strong>Price basis:</strong> $0.40 is the capability price <em>Radhanite evaluated</em> in the economic decision. It is not an amount The Graph charged — this query ran under a Subgraph Studio Free plan and billed 0 GRT. The onchain facts are live; the price is a benchmark.</p>
             </div>
           </div>
         </article>
         <article class="panel evidence-card">
-          <div class="panel-head"><div><div class="panel-kicker">TASK-009 evidence</div><h2>Validated service result</h2><p class="panel-sub">The returned result becomes immutable evidence before the next decision.</p></div><span class="status buy">POSITIVE</span></div>
-          <div class="panel-body evidence-layout"><div class="outcome"><div><div class="outcome-word">Positive</div><div class="outcome-caption">market signal</div></div></div><div class="fact-list"><div class="fact">Live onchain liquidity and volume snapshot</div><div class="fact">poolCount <span class="mono">72,855</span></div><div class="fact">txCount <span class="mono">149,631,676</span></div><div class="fact">totalVolumeUSD <span class="mono">1,917,152,732,933.20</span></div><div class="fact">indexed at block <span class="mono">25,969,369</span></div><div class="fact">TASK-009 resolves <span class="mono">market_signal</span></div></div></div>
+          <div class="panel-head"><div><div class="panel-kicker">TASK-009 evidence</div><h2>THE GRAPH · LIVE</h2><p class="panel-sub">Live onchain commercial evidence returned by The Graph.</p></div><span class="status buy">POSITIVE</span></div>
+          <div class="panel-body evidence-layout"><div class="outcome"><div><div class="outcome-word">Positive</div><div class="outcome-caption">market signal</div></div></div><div><div class="onchain-grid"><div class="onchain-stat"><span class="onchain-label">Pools</span><strong class="onchain-value">72,855</strong></div><div class="onchain-stat"><span class="onchain-label">Transactions</span><strong class="onchain-value">149,631,676</strong></div><div class="onchain-stat"><span class="onchain-label">Block</span><strong class="onchain-value">25,969,369</strong></div></div><p class="onchain-note">Live onchain commercial evidence returned by The Graph. TASK-009 resolves <span class="mono">market_signal</span>. Total volume indexed: <span class="mono">$1,917,152,732,933.20</span>.</p></div></div>
         </article>
         <article class="panel transition-card">
           <div class="panel-head"><div><div class="panel-kicker">State transition</div><h2>Evidence changes the next decision</h2></div><span class="mono" style="color:var(--muted);font-size:11px">TASK-009 → TASK-006</span></div>
-          <div class="panel-body"><div class="transition"><div class="transition-box"><span class="transition-label">Before</span><strong class="transition-value">8%</strong><p class="transition-note">$250 budget · market signal open</p></div><div class="transition-arrow">→</div><div class="transition-box" style="border-color:#9ed9ca;background:var(--mint-wash)"><span class="transition-label" style="color:var(--mint-dark)">After evidence</span><strong class="transition-value" style="color:var(--mint-dark)">14%</strong><p class="transition-note">$249.60 remaining · next decision ready</p></div></div></div>
+          <div class="panel-body"><div class="transition"><div class="transition-box"><span class="transition-label">Before</span><strong class="transition-value">8%</strong><p class="transition-note">$250.00 budget · market signal open</p></div><div class="transition-arrow">→</div><div class="transition-box" style="border-color:#9ed9ca;background:var(--mint-wash)"><span class="transition-label" style="color:var(--mint-dark)">After live evidence</span><strong class="transition-value" style="color:var(--mint-dark)">14%</strong><p class="transition-note">$249.60 remaining · <strong>ECONOMIC STOP</strong></p></div></div><p class="transition-caveat">The selected capability declared an expected post-action probability of <strong>17%</strong>. TASK-009 interpreted the returned evidence and assigned <strong>14%</strong>. The engine's actual output is shown, not the expectation.</p></div>
         </article>
       </section>
 
@@ -319,10 +339,10 @@
         <div class="trace-intro"><div><div class="eyebrow">System boundary</div><h1>How Radhanite works</h1><p class="topbar-sub">Circle tells the agent what it can buy and how to pay. Radhanite decides what is worth buying.</p></div></div>
         <div class="architecture-card">
           <div class="architecture-copy"><div class="eyebrow">Economic execution layer</div><h2>Autonomous work needs a control plane, not a bigger wallet.</h2><p>Radhanite keeps <strong>value, budget, probability, and evidence</strong> in one provider-neutral decision loop. Integrations execute the selected capability; they do not rank themselves.</p><p>Radhanite does not predict outcomes. It controls the unit economics of autonomous work.</p></div>
-          <div class="diagram" aria-label="Radhanite architecture diagram"><div class="diagram-node">Autonomous agent task<br><span class="mono" style="font-size:10px;color:var(--ink-soft)">value + budget</span></div><div class="diagram-arrow">↓</div><div class="diagram-node">Capability candidates</div><div class="diagram-arrow">↓</div><div class="diagram-node engine">Radhanite economic engine<br><span class="mono" style="font-size:10px;color:#9ed9ca">BUY / SKIP / STOP</span></div><div class="diagram-arrow">↓</div><div class="diagram-node routes"><span>The Graph<br><small>live data source</small></span><span>Circle / Arc<br><small>fixture · smoke unresolved</small></span><span>Hedera<br><small>coming next</small></span></div><div class="diagram-arrow">↓</div><div class="diagram-node">Evidence → updated task state → re-evaluate</div></div>
+          <div class="diagram" aria-label="Radhanite architecture diagram"><div class="diagram-node">Autonomous agent task<br><span class="mono" style="font-size:10px;color:var(--ink-soft)">value + budget</span></div><div class="diagram-arrow">↓</div><div class="diagram-node">Capability candidates</div><div class="diagram-arrow">↓</div><div class="diagram-node engine">Radhanite economic engine<br><span class="mono" style="font-size:10px;color:#9ed9ca">BUY / SKIP / STOP</span></div><div class="diagram-arrow">↓</div><div class="diagram-node routes"><span>The Graph<br><small>LIVE</small></span><span>Circle / Arc<br><small>integrated</small></span><span>Hedera<br><small>not connected</small></span></div><div class="diagram-arrow">↓</div><div class="diagram-node">Evidence → updated task state → re-evaluate</div></div>
         </div>
         <div class="rules-grid"><article class="rule"><span class="rule-index">01</span><h3>Economics first</h3><p>TASK-006 ranks exact candidates before any wallet or provider call.</p></article><article class="rule"><span class="rule-index">02</span><h3>Selected-only execution</h3><p>TASK-007 receives one chosen capability and one authorization ceiling.</p></article><article class="rule"><span class="rule-index">03</span><h3>Evidence closes the loop</h3><p>TASK-009 turns the validated result into the next probability and state.</p></article></div>
-        <div class="panel" style="margin-top:16px"><div class="panel-head"><div><div class="panel-kicker">Connection status</div><h2>Integration honesty</h2></div></div><div class="panel-body"><div class="cap-list"><div class="cap-card selected"><div class="cap-top"><div><div class="cap-name">The Graph</div><div class="cap-meta"><strong>Live data source</strong><span>Decentralized Network gateway · GraphQL</span></div></div><span class="status buy">LIVE</span></div><p class="cap-reason">The query actually ran and returned onchain facts at block 25,969,369. The <strong>$0.40 is a benchmark capability price</strong> Radhanite evaluated, not an amount The Graph charged: the query ran under a Free plan and billed 0 GRT.</p></div><div class="cap-card"><div class="cap-top"><div><div class="cap-name">Circle / Arc</div><div class="cap-meta"><strong>Fixture execution · live smoke unresolved</strong><span>Developer-Controlled Wallet · x402</span></div></div><span class="status skip">NOT SETTLED</span></div><p class="cap-reason">The adapter is implemented and the Arc Testnet smoke ran, but it became unresolved after submission and no authoritative committed amount or payment reference was preserved. No Arc settlement is claimed.</p></div><div class="cap-card"><div class="cap-top"><div><div class="cap-name">Hedera</div><div class="cap-meta"><strong>Coming next</strong><span>Not connected in this build</span></div></div><span class="status skip">NOT CONNECTED</span></div></div></div></div></div>
+        <div class="panel" style="margin-top:16px"><div class="panel-head"><div><div class="panel-kicker">Connection status</div><h2>Integration honesty</h2></div></div><div class="panel-body"><div class="cap-list"><div class="cap-card selected"><div class="cap-top"><div><div class="cap-name">The Graph</div><div class="cap-meta"><strong>Live data source</strong><span>Decentralized Network gateway · GraphQL</span></div></div><span class="status buy">LIVE</span></div><p class="cap-reason">The query actually ran and returned onchain facts at block 25,969,369. The <strong>$0.40 is a benchmark capability price</strong> Radhanite evaluated, not an amount The Graph charged: the query ran under a Free plan and billed 0 GRT.</p></div><div class="cap-card"><div class="cap-top"><div><div class="cap-name">Circle / Arc</div><div class="cap-meta"><strong>Integrated · settlement not asserted</strong><span>Circle Developer-Controlled Wallet · x402 · Arc Testnet</span></div></div><span class="status skip">INTEGRATED</span></div><p class="cap-reason">The Developer-Controlled Wallet, x402 and Arc Testnet path are implemented end to end. This build asserts <strong>no settled Arc payment</strong>, and shows no committed amount and no payment reference.</p></div><div class="cap-card"><div class="cap-top"><div><div class="cap-name">Hedera</div><div class="cap-meta"><strong>Coming next</strong><span>Not connected in this build</span></div></div><span class="status skip">NOT CONNECTED</span></div></div></div></div></div>
       </section>
 
       <div class="footer-line"><span>Radhanite · economic execution layer for autonomous agents</span><span class="mono">TASK-011 live Graph query · benchmark prices · no payment performed</span></div>
@@ -330,7 +350,7 @@
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script type="module">
-    import { fixture, formatMoney, formatPercent, modeLabel, renderableState, formatCapabilityCost, costBasisLabel } from "./demo-data.js";
+    import { fixture, formatMoney, formatPercent, modeLabel, renderableState, formatCapabilityCost, costBasisLabel, formatNetExpectedValue } from "./demo-data.js";
 
     const $ = (selector, root = document) => root.querySelector(selector);
     const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -347,12 +367,12 @@
     function renderCapabilities() {
       $("#capabilities").innerHTML = fixture.capabilities.map((cap) => `
         <article class="cap-card ${cap.selected ? "selected" : ""}">
-          <div class="cap-top"><div><div class="cap-name">${cap.name}</div><div class="cap-meta"><strong>${cap.provider}</strong><span>${cap.network}</span>${cap.live ? '<span class="mono" style="color:var(--mint-dark)">· LIVE DATA</span>' : ""}</div></div><span class="status ${cap.status.toLowerCase()}">${cap.status}</span></div>
+          <div class="cap-top"><div><div class="cap-name">${cap.name}</div><div class="cap-meta"><strong>${cap.provider}</strong><span>${cap.network}</span>${cap.live ? '<span class="live-pill">LIVE</span>' : ""}</div></div><span class="status ${cap.status.toLowerCase()}">${cap.status}</span></div>
           <div class="cap-metrics">
             <div><span class="metric-label">${costBasisLabel(cap)}</span><span class="metric-value">${formatCapabilityCost(cap)}</span></div>
             <div><span class="metric-label">Post-action p</span><span class="metric-value">${formatPercent(cap.expectedProbability)}</span></div>
             <div><span class="metric-label">Incremental EV</span><span class="metric-value">${formatMoney(cap.incrementalExpectedValue)}</span></div>
-            <div><span class="metric-label">Net EV</span><span class="metric-value highlight">${formatMoney(cap.netExpectedValue, 3)}</span></div>
+            <div><span class="metric-label">Net EV</span><span class="metric-value highlight">${formatNetExpectedValue(cap.netExpectedValue)}</span></div>
           </div>
           <p class="cap-reason">${cap.selected ? "Selected · " : "Skipped · "}${cap.reason}</p>
         </article>`).join("");
