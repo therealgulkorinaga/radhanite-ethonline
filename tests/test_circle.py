@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import unittest
+from decimal import localcontext
 from unittest.mock import Mock, patch
 
 from radhanite.capability import Candidate
@@ -21,6 +22,8 @@ from radhanite.circle import (
     CircleDiscoveryError,
     CircleOffer,
     CirclePaymentReceipt,
+    CirclePaymentCommitmentUnresolvedError,
+    CirclePaymentMetadataError,
     catalog_from_circle_response,
     live_circle_discovery,
 )
@@ -38,6 +41,36 @@ from radhanite.runstate import RunStatus
 
 
 RESOURCE = "https://api.aisa.one/apis/v2/coingecko/simple/price"
+BASE_USDC = "0x833589fcd6edb6e08f4c7c32d4f71b54bdA02913"
+
+
+def cli_offer(**overrides) -> CircleOffer:
+    values = {
+        "descriptor_id": "circle:test",
+        "resource": RESOURCE,
+        "name": "Simple Price",
+        "method": "GET",
+        "network": "eip155:8453",
+        "quoted_cost": Money("0.012"),
+        "source_reference": RESOURCE,
+        "asset": BASE_USDC,
+        "scheme": "GatewayWalletBatched",
+        "atomic_amount": "12000",
+    }
+    values.update(overrides)
+    return CircleOffer(**values)
+
+
+def cli_success_json(**payment_overrides) -> str:
+    payment = {
+        "amount": "12000",
+        "network": "eip155:8453",
+        "chain": "BASE",
+        "scheme": "GatewayWalletBatched",
+        "asset": BASE_USDC,
+    }
+    payment.update(payment_overrides)
+    return json.dumps({"status": "success", "payment": payment, "response": {"price": "1"}})
 
 
 def discovery_payload(*, amount: str = "12000", supports_gateway: bool = True) -> dict:
@@ -308,24 +341,17 @@ class CircleTests(unittest.TestCase):
 
         runner = Mock(
             return_value=__import__("subprocess").CompletedProcess(
-                args=[], returncode=0, stdout='{"price":"0.012"}', stderr=""
+                args=[], returncode=0, stdout=cli_success_json(), stderr=""
             )
         )
         client = CircleCliPaymentClient(
             cli="circle",
             wallet_address="0xwallet",
             chain="BASE",
+            allow_mainnet=True,
             runner=runner,
         )
-        offer = CircleOffer(
-            descriptor_id="circle:test",
-            resource=RESOURCE,
-            name="Simple Price",
-            method="GET",
-            network="eip155:8453",
-            quoted_cost=Money("0.012"),
-            source_reference=RESOURCE,
-        )
+        offer = cli_offer()
         with patch("radhanite.circle.shutil.which", return_value="/usr/bin/circle"):
             receipt = client.pay(offer, Money("0.012"))
         command = runner.call_args.args[0]
@@ -338,6 +364,178 @@ class CircleTests(unittest.TestCase):
         self.assertIn("0.012", command)
         self.assertTrue(receipt.succeeded)
         self.assertEqual(receipt.committed_cost, Money("0.012"))
+
+    def test_cli_success_uses_authoritative_json_amount(self) -> None:
+        from radhanite.circle import CircleCliPaymentClient
+
+        runner = Mock(return_value=__import__("subprocess").CompletedProcess(
+            args=[], returncode=0, stdout=cli_success_json(amount="1"), stderr=""
+        ))
+        client = CircleCliPaymentClient(
+            cli="circle", wallet_address="0xwallet", allow_mainnet=True, runner=runner
+        )
+        with patch("radhanite.circle.shutil.which", return_value="/usr/bin/circle"):
+            with self.assertRaises(CirclePaymentMetadataError):
+                client.pay(cli_offer(), Money("0.012"))
+
+    def test_cli_success_rejects_network_mismatch(self) -> None:
+        from radhanite.circle import CircleCliPaymentClient
+
+        runner = Mock(return_value=__import__("subprocess").CompletedProcess(
+            args=[], returncode=0, stdout=cli_success_json(network="eip155:1"), stderr=""
+        ))
+        client = CircleCliPaymentClient(
+            cli="circle", wallet_address="0xwallet", allow_mainnet=True, runner=runner
+        )
+        with patch("radhanite.circle.shutil.which", return_value="/usr/bin/circle"):
+            with self.assertRaises(CirclePaymentMetadataError):
+                client.pay(cli_offer(), Money("0.012"))
+
+    def test_cli_success_rejects_scheme_mismatch(self) -> None:
+        from radhanite.circle import CircleCliPaymentClient
+
+        runner = Mock(return_value=__import__("subprocess").CompletedProcess(
+            args=[], returncode=0, stdout=cli_success_json(scheme="exact"), stderr=""
+        ))
+        client = CircleCliPaymentClient(
+            cli="circle", wallet_address="0xwallet", allow_mainnet=True, runner=runner
+        )
+        with patch("radhanite.circle.shutil.which", return_value="/usr/bin/circle"):
+            with self.assertRaises(CirclePaymentMetadataError):
+                client.pay(cli_offer(), Money("0.012"))
+
+    def test_cli_definite_pre_attempt_json_failure_records_no_spend(self) -> None:
+        from radhanite.circle import CircleCliPaymentClient, CirclePreAttemptError
+
+        runner = Mock(return_value=__import__("subprocess").CompletedProcess(
+            args=[], returncode=1,
+            stdout=json.dumps({"status": "error", "code": "PAYMENT_NOT_CHARGED"}),
+            stderr="",
+        ))
+        client = CircleCliPaymentClient(cli="circle", wallet_address="0xwallet", runner=runner)
+        with patch("radhanite.circle.shutil.which", return_value="/usr/bin/circle"):
+            with self.assertRaises(CirclePreAttemptError):
+                client.pay(cli_offer(), Money("0.012"))
+
+    def test_cli_definite_submitted_json_failure_uses_authoritative_amount(self) -> None:
+        from radhanite.circle import CircleCliPaymentClient
+
+        runner = Mock(return_value=__import__("subprocess").CompletedProcess(
+            args=[], returncode=1,
+            stdout=json.dumps({
+                "status": "error",
+                "code": "PAYMENT_SUBMITTED",
+                "paymentSubmitted": True,
+                "payment": {
+                    "amount": "12000",
+                    "network": "eip155:8453",
+                    "chain": "BASE",
+                    "scheme": "GatewayWalletBatched",
+                    "asset": BASE_USDC,
+                },
+            }),
+            stderr="",
+        ))
+        client = CircleCliPaymentClient(
+            cli="circle", wallet_address="0xwallet", allow_mainnet=True, runner=runner
+        )
+        with patch("radhanite.circle.shutil.which", return_value="/usr/bin/circle"):
+            receipt = client.pay(cli_offer(), Money("0.012"))
+        self.assertFalse(receipt.succeeded)
+        self.assertEqual(receipt.committed_cost, Money("0.012"))
+
+    def test_cli_ambiguous_submitted_failure_does_not_enter_exact_ledger(self) -> None:
+        from radhanite.circle import CircleCliPaymentClient
+
+        runner = Mock(return_value=__import__("subprocess").CompletedProcess(
+            args=[], returncode=1,
+            stdout=json.dumps({
+                "status": "error",
+                "code": "PAYMENT_SUBMITTED",
+                "paymentSubmitted": True,
+                "message": "Payment may have been submitted",
+            }),
+            stderr="",
+        ))
+        client = CircleCliPaymentClient(
+            cli="circle", wallet_address="0xwallet", allow_mainnet=True, runner=runner
+        )
+        with patch("radhanite.circle.shutil.which", return_value="/usr/bin/circle"):
+            with self.assertRaises(CirclePaymentCommitmentUnresolvedError):
+                client.pay(cli_offer(), Money("0.012"))
+
+    def test_unrelated_text_cannot_fabricate_submitted_spend(self) -> None:
+        from radhanite.circle import CircleCliPaymentClient, CirclePreAttemptError
+
+        runner = Mock(return_value=__import__("subprocess").CompletedProcess(
+            args=[], returncode=1, stdout="unrelated paymentSubmitted text", stderr=""
+        ))
+        client = CircleCliPaymentClient(
+            cli="circle", wallet_address="0xwallet", allow_mainnet=True, runner=runner
+        )
+        with patch("radhanite.circle.shutil.which", return_value="/usr/bin/circle"):
+            with self.assertRaises(CirclePreAttemptError):
+                client.pay(cli_offer(), Money("0.012"))
+
+    def test_chain_override_mismatch_is_rejected_before_runner(self) -> None:
+        from radhanite.circle import CircleCliPaymentClient
+
+        runner = Mock()
+        client = CircleCliPaymentClient(
+            cli="circle", wallet_address="0xwallet", chain="MATIC", allow_mainnet=True, runner=runner
+        )
+        with patch("radhanite.circle.shutil.which", return_value="/usr/bin/circle"):
+            with self.assertRaises(CirclePaymentMetadataError):
+                client.pay(cli_offer(), Money("0.012"))
+        runner.assert_not_called()
+
+    def test_unsupported_offer_network_is_rejected_before_runner(self) -> None:
+        from radhanite.circle import CircleCliPaymentClient
+
+        runner = Mock()
+        client = CircleCliPaymentClient(
+            cli="circle", wallet_address="0xwallet", allow_mainnet=True, runner=runner
+        )
+        with patch("radhanite.circle.shutil.which", return_value="/usr/bin/circle"):
+            with self.assertRaises(CirclePaymentMetadataError):
+                client.pay(cli_offer(network="eip155:1"), Money("0.012"))
+        runner.assert_not_called()
+
+    def test_mainnet_guard_uses_actual_payment_chain(self) -> None:
+        from radhanite.circle import CircleCliPaymentClient, CirclePreAttemptError
+
+        runner = Mock()
+        client = CircleCliPaymentClient(cli="circle", wallet_address="0xwallet", runner=runner)
+        with patch("radhanite.circle.shutil.which", return_value="/usr/bin/circle"):
+            with self.assertRaises(CirclePreAttemptError):
+                client.pay(cli_offer(), Money("0.012"))
+        runner.assert_not_called()
+
+    def test_atomic_amount_conversion_is_exact_under_tiny_context(self) -> None:
+        from radhanite.circle import _atomic_amount_to_money
+
+        with localcontext() as context:
+            context.prec = 3
+            self.assertEqual(_atomic_amount_to_money("12000"), Money("0.012"))
+            self.assertEqual(_atomic_amount_to_money("1"), Money("0.000001"))
+            self.assertEqual(_atomic_amount_to_money("123456789"), Money("123.456789"))
+
+    def test_atomic_amount_requires_positive_decimal_string(self) -> None:
+        from radhanite.circle import _atomic_amount_to_money
+
+        for value in ("", "1.5", "-1", "1e3", " 1", 1, 1.5, 0):
+            with self.subTest(value=value), self.assertRaises((TypeError, ValueError)):
+                _atomic_amount_to_money(value)
+
+    def test_wrong_asset_is_rejected_before_money_conversion(self) -> None:
+        payload = discovery_payload()
+        payload["items"][0]["accepts"][0]["asset"] = "0xwrong"
+        with self.assertRaises(CircleDiscoveryError):
+            catalog_from_circle_response(
+                payload,
+                expected_post_action_success_probability=Probability("0.14"),
+                network="eip155:8453",
+            )
 
     def test_cli_payment_failure_before_commit_is_not_recorded_as_spend(self) -> None:
         from radhanite.circle import CircleCliPaymentClient, CirclePreAttemptError
