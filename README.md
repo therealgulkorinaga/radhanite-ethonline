@@ -7,7 +7,7 @@ Radhanite is being built for ETHOnline 2026.
 **TASK-001 is implemented and merged.** It remains the active CLI/runtime path:
 the deterministic **two-tier economic kernel** makes an opening attempt and one
 optional escalation, with declared costs and declared success probabilities.
-The full suite currently passes **738 tests on Python 3.12** on this review branch.
+The full suite currently passes **751 tests on Python 3.12** on this review branch.
 
 The generalized capability-selection kernel in
 [TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) is implemented and
@@ -21,9 +21,11 @@ only the declared revenue-benchmark state, evidence contract, initializer, and
 updater. TASK-010 adds a provider-specific Circle Discovery adapter and an
 opt-in official Circle CLI x402/Gateway executor; live Discovery is available,
 while no payment smoke was run because this checkout has no Circle wallet
-credentials or CLI. The distinction between what runs, what is implemented in
-a review branch, and what is authorized to be built remains deliberate
-throughout this repository.
+credentials or CLI. Payment accounting is based on the official CLI JSON
+envelope, validates the selected offer's network, chain, scheme, and USDC asset,
+and fails closed when a possibly submitted payment has no exact amount. The
+distinction between what runs, what is implemented in a review branch, and what
+is authorized to be built remains deliberate throughout this repository.
 
 ---
 
@@ -91,13 +93,13 @@ hard-coded: a run that buys nothing is a correct run. See
 | Governance and planning scaffolding | Present |
 | Product code | **Present** — TASK-001’s active runtime plus the TASK-006 kernel, TASK-007 state/execution/final-loop foundations, and TASK-008 PR A acquisition/catalog boundary |
 | TASK-006 | **Implemented and closed.** All 22 acceptance criteria met |
-| Tests | **738 passing** on Python 3.12 |
+| Tests | **751 passing** on Python 3.12 |
 | Language | Python 3.12, standard library only — no external dependencies |
 | Capability selection engine | **Implemented and closed** — [TASK-006](tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) |
 | TASK-007 run loop | **Implemented and merged** — state model, executor/result boundary, injected candidate source/updater, terminal classification, immutable history, and repeated orchestration; provider-specific integrations remain incomplete |
 | TASK-008 acquisition | **PR A implemented** — normalization/catalog boundary; source-specific generation and adapters remain incomplete |
 | TASK-009 benchmark reasoning | **Implemented and merged** — immutable opportunity state, declared evidence transitions, benchmark initializer, and TASK-007 updater; provider adapters remain incomplete |
-| TASK-010 Circle adapter | **Implemented on this review branch** — live keyless Discovery normalization and opt-in official Circle CLI x402/Gateway execution boundary; payment smoke requires credentials and explicit network consent |
+| TASK-010 Circle adapter | **Implemented on this review branch** — live keyless Discovery normalization, exact supported-USDC conversion, selected-offer chain validation, and opt-in official Circle CLI x402/Gateway execution boundary; ambiguous payment commitment is not entered into the exact ledger |
 | Benchmark assembly and remaining adapters | **Specified, not implemented** — TASK-011 … TASK-014 |
 | External integrations (Circle Discovery/Gateway only) | **TASK-010 authorized on this review branch; other integrations not authorized** |
 | Privy | **Deprioritized** — superseded on the active path ([TASK-003](tasks/TASK-003_PROGRAMMABLE_AUTHORITY_VIA_PRIVY.md)) |
@@ -122,12 +124,16 @@ authenticating the official Circle CLI, an explicit smoke may be run with:
 PYTHONDONTWRITEBYTECODE=1 python3.12 -m radhanite.circle_smoke
 ```
 
-It requires `CIRCLE_WALLET_ADDRESS`. `CIRCLE_CHAIN` defaults to `BASE`, and
-`CIRCLE_DISCOVERY_NETWORK` defaults to `eip155:8453`. Because the current live
-selected Marketplace offer is Base mainnet, the command refuses to pay unless
+It requires `CIRCLE_WALLET_ADDRESS`. The payment chain is derived from the
+selected offer's supported network (`eip155:8453` maps to `BASE`); any explicit
+override must match exactly. Because the current live selected Marketplace offer
+is Base mainnet, the command refuses to pay unless
 `CIRCLE_SMOKE_ALLOW_MAINNET=1` is explicitly set. The current sandbox had no
 Circle CLI or wallet credentials, so live Discovery was checked separately but
-no payment was attempted. No secret is committed or printed.
+no payment was attempted. Successful and definitely submitted CLI responses
+must contain matching structured payment metadata. A possibly submitted
+response without an exact amount aborts with an unresolved-commitment error
+rather than inventing spend. No secret is committed or printed.
 
 ## Repository layout
 
@@ -139,7 +145,7 @@ docs/                      Product definition, architecture, rules, governance
   HACKATHON_RULES.md                 ETHOnline constraints we build under
   AI_BUILD_GOVERNANCE.md             How AI agents are permitted to build here
 radhanite/                 The economic kernel and generalized foundations
-  tests/                     The test suite — 738 tests, standard library only
+  tests/                     The test suite — 751 tests, standard library only
 tasks/                     Authorized work, one file per task
   TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md   Implemented and merged
   TASK-006                                  Kernel implemented and closed
