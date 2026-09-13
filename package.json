@@ -6,7 +6,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "arc:pay": "node scripts/arc_x402_pay.mjs"
+    "arc:pay": "node scripts/arc_x402_pay.mjs",
+    "arc:setup:test": "node scripts/arc_x402_contract_test.mjs"
   },
   "dependencies": {
     "@circle-fin/developer-controlled-wallets": "10.8.0",

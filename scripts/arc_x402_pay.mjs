@@ -32,6 +32,12 @@ const AUTHORIZATION_TYPES = [
   { name: "validBefore", type: "uint256" },
   { name: "nonce", type: "bytes32" },
 ];
+const EIP712_DOMAIN_TYPES = [
+  { name: "name", type: "string" },
+  { name: "version", type: "string" },
+  { name: "chainId", type: "uint256" },
+  { name: "verifyingContract", type: "address" },
+];
 
 function arg(name, fallback = undefined) {
   const index = process.argv.indexOf(name);
@@ -89,11 +95,41 @@ function jsonBigIntReplacer(_key, value) {
 
 function typedDataJson(params) {
   return JSON.stringify({
-    types: params.types,
+    types: {
+      EIP712Domain: EIP712_DOMAIN_TYPES,
+      ...params.types,
+    },
     domain: params.domain,
     primaryType: params.primaryType,
     message: params.message,
   }, jsonBigIntReplacer);
+}
+
+function errorText(error) {
+  return [
+    error?.message,
+    error?.response?.data?.message,
+    error?.response?.data?.error,
+  ].filter((value) => typeof value === "string").join(" ");
+}
+
+function isCircleTypedDataValidationRejection(error) {
+  const detail = errorText(error);
+  return detail.includes("there is extra data provided in the message (0 < 4)")
+    && detail.includes("Failed during the validation for typed data");
+}
+
+function signingFailureEnvelope(error, circleSigningAttempted, paymentSubmitted) {
+  const knownPreSignRejection = isCircleTypedDataValidationRejection(error);
+  const preSign = knownPreSignRejection || (!circleSigningAttempted && !paymentSubmitted);
+  return {
+    phase: preSign ? "pre_sign" : "post_submit",
+    status: "error",
+    signing_started: preSign ? false : circleSigningAttempted,
+    payment_submitted: paymentSubmitted,
+    commitment_status: preSign ? "not_committed" : "unresolved",
+    error: errorText(error) || String(error),
+  };
 }
 
 function validateTypedData(params, selected, walletAddress) {
@@ -281,12 +317,20 @@ async function main() {
       address: walletAddress,
       signTypedData: async (params) => {
         validateTypedData(params, selected, walletAddress);
+        let signed;
+        try {
+          signed = await circle.signTypedData({
+            walletId,
+            data: typedDataJson(params),
+            memo: "Radhanite Arc x402 capability payment",
+          });
+        } catch (error) {
+          // A known Circle schema rejection proves no signature was returned.
+          // Ambiguous provider failures remain unresolved by design.
+          if (!isCircleTypedDataValidationRejection(error)) circleSigningAttempted = true;
+          throw error;
+        }
         circleSigningAttempted = true;
-        const signed = await circle.signTypedData({
-          walletId,
-          data: typedDataJson(params),
-          memo: "Radhanite Arc x402 capability payment",
-        });
         return normalizeSignature(signed.data?.signature);
       },
     };
@@ -334,14 +378,7 @@ async function main() {
       process.exitCode = 1;
     }
   } catch (error) {
-    jsonLine({
-      phase: circleSigningAttempted || paymentSubmitted ? "post_submit" : "pre_sign",
-      status: "error",
-      signing_started: circleSigningAttempted,
-      payment_submitted: paymentSubmitted,
-      commitment_status: circleSigningAttempted || paymentSubmitted ? "unresolved" : "not_committed",
-      error: error instanceof Error ? error.message : String(error),
-    });
+    jsonLine(signingFailureEnvelope(error, circleSigningAttempted, paymentSubmitted));
     process.exitCode = 1;
   }
 }
@@ -368,4 +405,6 @@ export {
   validateSettlement,
   committedFailureEnvelope,
   validateTypedData,
+  isCircleTypedDataValidationRejection,
+  signingFailureEnvelope,
 };

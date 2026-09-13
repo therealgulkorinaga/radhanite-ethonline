@@ -12,6 +12,7 @@ import {
   validateServiceResult,
   validateSettlement,
   validateTypedData,
+  signingFailureEnvelope,
 } from "./arc_x402_pay.mjs";
 
 const walletId = "wallet-id-for-test";
@@ -39,6 +40,15 @@ const authorizationTypes = {
     { name: "nonce", type: "bytes32" },
   ],
 };
+const expectedTypedDataTypes = {
+  EIP712Domain: [
+    { name: "name", type: "string" },
+    { name: "version", type: "string" },
+    { name: "chainId", type: "uint256" },
+    { name: "verifyingContract", type: "address" },
+  ],
+  ...authorizationTypes,
+};
 const selected = { amount: requirements.amount };
 const circleCalls = [];
 const signer = {
@@ -62,7 +72,22 @@ assert.equal(typed.domain.chainId, 5042002);
 assert.equal(typed.domain.name, "GatewayWalletBatched");
 assert.equal(typed.domain.version, "1");
 assert.equal(typed.domain.verifyingContract.toLowerCase(), requirements.extra.verifyingContract.toLowerCase());
-assert.deepEqual(typed.types, authorizationTypes);
+assert.deepEqual(typed.types, expectedTypedDataTypes);
+assert.notDeepEqual(typed.types, authorizationTypes);
+
+const validationError = new Error(
+  "there is extra data provided in the message (0 < 4) with external msg: Failed during the validation for typed data",
+);
+assert.deepEqual(signingFailureEnvelope(validationError, false, false), {
+  phase: "pre_sign",
+  status: "error",
+  signing_started: false,
+  payment_submitted: false,
+  commitment_status: "not_committed",
+  error: validationError.message,
+});
+assert.equal(signingFailureEnvelope(new Error("request timed out"), true, false).commitment_status, "unresolved");
+assert.equal(signingFailureEnvelope(new Error("request timed out"), true, false).phase, "post_submit");
 
 const beforeMismatch = circleCalls.length;
 assert.throws(() => validateTypedData({
