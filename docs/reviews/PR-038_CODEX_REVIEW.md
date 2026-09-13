@@ -12,6 +12,8 @@
 
 Pending independent Codex review. The reviewer must verify the implementation against the authoritative task and architecture documents, confirm the selected wallet model is exactly the Circle Developer-Controlled Wallet EOA, confirm Arc-only network and asset validation, confirm selected-only execution and exact accounting, and check that no live Arc success is claimed without a successful explicit smoke.
 
+The pre-implementation SDK gate passed in an isolated mock spike. It confirmed that `GatewayClient` is private-key-only and is not used; the production route is `BatchEvmScheme({ address, signTypedData })` with `client.signTypedData({ walletId, data, memo })`. It also confirmed that Gateway deposit is a separate pre-funded setup prerequisite, not an automatic purchase-path operation.
+
 ## 2. Findings returned
 
 Pending Codex review.

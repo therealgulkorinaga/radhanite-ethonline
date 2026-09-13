@@ -19,7 +19,7 @@ TASK-015 adds one provider-specific execution edge below the existing Radhanite 
 
 ## Selected wallet model
 
-The runtime uses exactly one wallet model: a **Circle Developer-Controlled Wallet EOA**. It does not use Circle Agent Wallet CLI login or a generic wallet abstraction. This is the shortest current official Arc x402 path because Circle's current Arc examples pair Developer-Controlled Wallet signing with `@circle-fin/x402-batching`.
+The runtime uses exactly one wallet model: a **Circle Developer-Controlled Wallet EOA**. It does not use Circle Agent Wallet CLI login, raw private keys, `GatewayClient`, or a generic wallet abstraction. The pinned SDK gate proved the supported route: `client.signTypedData({ walletId, data, memo })` is adapted to `{ address, signTypedData }` for `BatchEvmScheme`, while `GatewayClient` is private-key-only. The pinned versions are `@circle-fin/developer-controlled-wallets@10.8.0` and `@circle-fin/x402-batching@3.4.0`.
 
 ## Arc contract
 
@@ -27,13 +27,15 @@ The only accepted payment environment is `ARC-TESTNET`, x402 network `eip155:504
 
 The seller's x402 v2 response must expose an exact requirement with `scheme=exact`, `extra.name=GatewayWalletBatched`, `extra.version=1`, and the authoritative Gateway verifying contract. The amount must equal the pre-purchase quote, not merely be below the authorization ceiling.
 
+`CIRCLE_ARC_WALLET_ID` must resolve to the same `ARC-TESTNET` EOA whose address is supplied as `CIRCLE_ARC_WALLET_ADDRESS`. The helper checks this correlation before signing. A read-only Gateway balance check must show enough available balance for the exact selected amount. Wallet creation, faucet funding, approval, and Gateway deposit are setup actions and are never initiated by the purchase runtime.
+
 ## Reference semantics
 
 The x402 response's successful Gateway transaction/payment reference is retained in evidence. The implementation labels immediate Gateway acceptance separately from later on-chain finality. It does not call an acceptance reference an on-chain final transaction unless a separate authoritative transfer lookup establishes that fact.
 
 ## Safety posture
 
-All network, asset, amount, scheme, version, batching name, verifying contract, selected-candidate, and authorization checks occur before signing or payment. If a signed/submitted payment may have committed but the exact amount or reference is unavailable, the adapter raises an unresolved-commitment error. The generic loop does not retry and does not fabricate zero spend.
+All network, asset, amount, scheme, version, batching name, verifying contract, EIP-712 primary type, authorization fields, selected-candidate, wallet correlation, and authorization checks occur before Circle signing or payment. If a signed/submitted payment may have committed but the exact amount or reference is unavailable, the adapter raises an unresolved-commitment error. The generic loop does not retry and does not fabricate zero spend.
 
 **Implementation agent: Manus.**
 

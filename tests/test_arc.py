@@ -22,6 +22,7 @@ from radhanite.arc import (
     ARC_TESTNET_USDC,
     ArcPaymentCommitmentUnresolvedError,
     CircleArcDeveloperWalletPaymentClient,
+    arc_setup_blockers,
     arc_demo_catalog,
 )
 from radhanite.capability_execution import ExecutionResult
@@ -58,6 +59,20 @@ def receipt_json(*, amount="0.001", asset=ARC_TESTNET_USDC, status="gateway_acce
 
 
 class ArcTests(unittest.TestCase):
+    def test_arc_setup_blockers_require_authorized_uppercase_configuration(self) -> None:
+        blockers = arc_setup_blockers({})
+        self.assertEqual(
+            blockers,
+            (
+                "missing CIRCLE_API_KEY",
+                "missing CIRCLE_ENTITY_SECRET",
+                "missing CIRCLE_ARC_WALLET_ID",
+                "missing CIRCLE_ARC_WALLET_ADDRESS",
+                "missing RADHANITE_ARC_RESOURCE",
+                "missing RADHANITE_ARC_PRICE",
+            ),
+        )
+
     def test_arc_constants_and_demo_offer_are_explicit(self) -> None:
         catalog = arc_offer_catalog()
         offer = catalog.offer_for(catalog.candidates[0].candidate_id)
@@ -71,21 +86,21 @@ class ArcTests(unittest.TestCase):
         self.assertIn("official Circle Arc", offer.source_reference)
 
     def test_base_offer_cannot_masquerade_as_arc(self) -> None:
-        client = CircleArcDeveloperWalletPaymentClient(runner=Mock(), wallet_address="0xarc", node="node")
+        client = CircleArcDeveloperWalletPaymentClient(runner=Mock(), wallet_id="wallet-id", wallet_address="0x1111111111111111111111111111111111111111", node="node")
         offer = replace(arc_offer_catalog().offers[0], network="eip155:8453")
         with self.assertRaises(ValueError):
             client.pay(offer, Money("0.001"))
 
     def test_wrong_network_is_rejected_before_signing(self) -> None:
         runner = Mock()
-        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_address="0xarc", node="node")
+        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id="wallet-id", wallet_address="0x1111111111111111111111111111111111111111", node="node")
         with self.assertRaises(ValueError):
             client.pay(arc_offer_catalog().offers[0], Money("0.002"))
         runner.assert_not_called()
 
     def test_malformed_arc_asset_is_rejected_before_signing(self) -> None:
         runner = Mock()
-        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_address="0xarc", node="node")
+        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id="wallet-id", wallet_address="0x1111111111111111111111111111111111111111", node="node")
         offer = replace(arc_offer_catalog().offers[0], asset="not-an-address")
         with self.assertRaises(ValueError):
             client.pay(offer, Money("0.001"))
@@ -93,7 +108,7 @@ class ArcTests(unittest.TestCase):
 
     def test_wrong_arc_asset_is_rejected_before_signing(self) -> None:
         runner = Mock()
-        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_address="0xarc", node="node")
+        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id="wallet-id", wallet_address="0x1111111111111111111111111111111111111111", node="node")
         offer = replace(arc_offer_catalog().offers[0], asset="0x" + "1" * 40)
         with self.assertRaises(ValueError):
             client.pay(offer, Money("0.001"))
@@ -103,7 +118,7 @@ class ArcTests(unittest.TestCase):
         runner = Mock(return_value=subprocess.CompletedProcess(
             args=[], returncode=0, stdout=receipt_json(reference="0xarc-payment-reference"), stderr=""
         ))
-        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_address="0xarc", node="node")
+        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id="wallet-id", wallet_address="0x1111111111111111111111111111111111111111", node="node")
         receipt = client.pay(arc_offer_catalog().offers[0], Money("0.001"))
         self.assertIsInstance(receipt, CirclePaymentReceipt)
         self.assertEqual(receipt.committed_cost, Money("0.001"))
@@ -112,6 +127,10 @@ class ArcTests(unittest.TestCase):
         self.assertIn(ARC_TESTNET_NETWORK, command)
         self.assertIn("0.001", command)
         self.assertIn("--wallet-address", command)
+        self.assertIn("--wallet-id", command)
+        self.assertIn("wallet-id", command)
+        self.assertIn("0x1111111111111111111111111111111111111111", command)
+        self.assertNotIn("--deposit", command)
 
     def test_non_selected_arc_capability_is_never_paid(self) -> None:
         first = arc_offer_catalog(price="0.001")
@@ -128,7 +147,7 @@ class ArcTests(unittest.TestCase):
         result = run_capability_loop(
             state=initialize_benchmark_run(),
             candidate_source=type("Source", (), {"get_candidates": lambda self, task_state, run_state: candidates})(),
-            executor=CircleCapabilityExecutor(catalog=catalog, payment_client=CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_address="0xarc", node="node")),
+            executor=CircleCapabilityExecutor(catalog=catalog, payment_client=CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id="wallet-id", wallet_address="0x1111111111111111111111111111111111111111", node="node")),
             updater=RevenueOpportunityUpdater(),
         )
         self.assertEqual(runner.call_count, 1)
@@ -140,7 +159,7 @@ class ArcTests(unittest.TestCase):
             stdout=json.dumps({"error": "seller response unavailable", "commitment_status": "unresolved"}),
             stderr="",
         ))
-        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_address="0xarc", node="node")
+        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id="wallet-id", wallet_address="0x1111111111111111111111111111111111111111", node="node")
         with self.assertRaises(ArcPaymentCommitmentUnresolvedError):
             client.pay(arc_offer_catalog().offers[0], Money("0.001"))
         self.assertEqual(runner.call_count, 1)
@@ -151,7 +170,7 @@ class ArcTests(unittest.TestCase):
         result = run_capability_loop(
             state=initialize_benchmark_run(),
             candidate_source=type("Source", (), {"get_candidates": lambda self, task_state, run_state: catalog.candidates})(),
-            executor=CircleCapabilityExecutor(catalog=catalog, payment_client=CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_address="0xarc", node="node")),
+            executor=CircleCapabilityExecutor(catalog=catalog, payment_client=CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id="wallet-id", wallet_address="0x1111111111111111111111111111111111111111", node="node")),
             updater=RevenueOpportunityUpdater(),
         )
         self.assertEqual(result.status, RunStatus.ECONOMIC_STOP)

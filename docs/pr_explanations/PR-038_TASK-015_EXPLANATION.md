@@ -17,7 +17,9 @@ PR #37's merged Base Discovery and CLI adapter is preserved. Arc is treated as a
 
 The Arc adapter now retains the x402 batching metadata required to validate an Arc offer: exact scheme, batching name and version, and Gateway verifying contract. It strictly validates the Arc Testnet network, EVM asset syntax, Arc Testnet USDC asset, exact quoted amount, and Gateway contract before invoking the buyer helper.
 
-The Node buyer helper uses only Circle's **Developer-Controlled Wallet EOA** model. It uses the pinned Circle Developer-Controlled Wallet SDK and Circle x402 batching SDK. It validates an x402 v2 `PAYMENT-REQUIRED` response and requires exactly one matching `GatewayWalletBatched` requirement. The helper records a Gateway acceptance reference and explicitly does not call that reference later on-chain finality.
+The Node buyer helper uses only Circle's **Developer-Controlled Wallet EOA** model. It uses `@circle-fin/developer-controlled-wallets@10.8.0` and `@circle-fin/x402-batching@3.4.0`. The pre-implementation gate proved that the pinned `GatewayClient` cannot accept a Circle signer because it requires a raw private key, so the implementation uses the supported lower-level `BatchEvmScheme({ address, signTypedData })` path. Circle signing uses `client.signTypedData({ walletId, data, memo })`; no private key is requested or exported.
+
+The helper validates that `CIRCLE_ARC_WALLET_ID` resolves to the configured `CIRCLE_ARC_WALLET_ADDRESS` on `ARC-TESTNET` before signing. It performs only a read-only Gateway available-balance check. Wallet creation, faucet funding, approval, and Gateway deposit are setup actions and are not performed in the purchase path.
 
 The helper now emits an explicit unresolved-commitment marker when a signed/submitted payment does not return trustworthy payment metadata. The Python adapter maps that marker to `ArcPaymentCommitmentUnresolvedError`. It does not return a zero-cost result and it does not retry.
 
@@ -58,8 +60,10 @@ The successful response is normalized into an exact `CirclePaymentReceipt` with 
 | `exact` + `GatewayWalletBatched` | x402 payment scheme and batching metadata |
 | six-decimal atomic units | Exact USDC payment accounting |
 | `CIRCLE_API_KEY`, `CIRCLE_ENTITY_SECRET` | Circle SDK credentials, environment-only |
-| `CIRCLE_ARC_WALLET_ADDRESS` | Optional safe address of an existing Arc EOA |
-| `Radhanite_ARC_RESOURCE` | Explicit x402 seller URL |
+| `CIRCLE_ARC_WALLET_ID` | Required pre-provisioned Circle wallet ID used for signing |
+| `CIRCLE_ARC_WALLET_ADDRESS` | Required matching Arc EOA signer address |
+| `RADHANITE_ARC_RESOURCE` | Explicit x402 seller URL |
+| `RADHANITE_ARC_PRICE` | Exact pre-purchase decimal quote |
 
 The Radhanite budget is an economic permission ceiling. The Circle Gateway balance is a separate wallet/payment fact. Neither replaces the other.
 
@@ -77,7 +81,7 @@ A setup failure before the x402 payment request is signed is reported as a pre-a
 
 ## 9. Tests and verification
 
-The focused Arc/Circle suite passes **43 tests**. The full Python 3.12 suite passes **768 tests** with:
+The focused Arc/Circle suite passes **44 tests**. The full Python 3.12 suite passes **769 tests** with:
 
 ```text
 PYTHONDONTWRITEBYTECODE=1 python3.12 -m unittest discover -q
@@ -85,7 +89,7 @@ PYTHONDONTWRITEBYTECODE=1 python3.12 -m unittest discover -q
 
 Python compilation and Node `--check` syntax validation pass for the changed runtime and helper files. The pinned SDK package declarations were inspected from the npm registry. The repository's `node_modules` directory was not required for syntax validation.
 
-The explicit smoke was run without credentials or a seller URL. It returned a safe blocker report requiring `CIRCLE_API_KEY`, `CIRCLE_ENTITY_SECRET`, an Arc Testnet EOA, Circle Faucet testnet USDC, Gateway balance, and `Radhanite_ARC_RESOURCE`. It exited before payment. **No live Arc payment, committed amount, or settlement reference has been observed in this checkout.**
+The explicit smoke was run without credentials or a seller URL. It returned a safe blocker report requiring `CIRCLE_API_KEY`, `CIRCLE_ENTITY_SECRET`, `CIRCLE_ARC_WALLET_ID`, `CIRCLE_ARC_WALLET_ADDRESS`, `RADHANITE_ARC_RESOURCE`, `RADHANITE_ARC_PRICE`, an Arc Testnet EOA, Circle Faucet testnet USDC, and Gateway balance. It exited before payment. **No live Arc payment, committed amount, or settlement reference has been observed in this checkout.**
 
 ## 10. Assumptions
 

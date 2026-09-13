@@ -16,6 +16,7 @@ helper from the process environment.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 from collections.abc import Callable, Mapping
@@ -47,6 +48,8 @@ __all__ = [
     "CircleArcDeveloperWalletPaymentClient",
     "ArcPaymentError",
     "ArcPaymentCommitmentUnresolvedError",
+    "ARC_REQUIRED_ENVIRONMENT",
+    "arc_setup_blockers",
     "arc_demo_catalog",
 ]
 
@@ -62,6 +65,14 @@ ARC_X402_BATCHING_NAME = "GatewayWalletBatched"
 ARC_X402_BATCHING_VERSION = "1"
 ARC_DEMO_SOURCE_REFERENCE = (
     "official Circle Arc nanopayments sample / separate demo seller"
+)
+ARC_REQUIRED_ENVIRONMENT = (
+    "CIRCLE_API_KEY",
+    "CIRCLE_ENTITY_SECRET",
+    "CIRCLE_ARC_WALLET_ID",
+    "CIRCLE_ARC_WALLET_ADDRESS",
+    "RADHANITE_ARC_RESOURCE",
+    "RADHANITE_ARC_PRICE",
 )
 
 
@@ -81,6 +92,7 @@ class CircleArcDeveloperWalletPaymentClient:
 
     node: str = "node"
     helper: str = "scripts/arc_x402_pay.mjs"
+    wallet_id: str | None = None
     wallet_address: str | None = None
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run
     environment: Mapping[str, str] | None = None
@@ -110,6 +122,16 @@ class CircleArcDeveloperWalletPaymentClient:
         if not offer.payable_url.startswith(("http://", "https://")):
             raise ValueError("Arc x402 seller URL must be an HTTP(S) URL.")
 
+        wallet_id = self.wallet_id or _environment_value(self.environment, "CIRCLE_ARC_WALLET_ID")
+        wallet_address = self.wallet_address or _environment_value(
+            self.environment, "CIRCLE_ARC_WALLET_ADDRESS"
+        )
+        if not wallet_id or not wallet_address:
+            raise ArcPaymentError(
+                "Arc wallet readiness requires CIRCLE_ARC_WALLET_ID and "
+                "CIRCLE_ARC_WALLET_ADDRESS."
+            )
+
         command = [
             self.node,
             self.helper,
@@ -125,9 +147,11 @@ class CircleArcDeveloperWalletPaymentClient:
             ARC_TESTNET_USDC,
             "--gateway-wallet",
             ARC_TESTNET_GATEWAY_WALLET,
+            "--wallet-id",
+            wallet_id,
+            "--wallet-address",
+            wallet_address,
         ]
-        if self.wallet_address:
-            command.extend(["--wallet-address", self.wallet_address])
         completed = self.runner(
             command,
             capture_output=True,
@@ -238,6 +262,37 @@ def _normalize_evm_address(value: object, label: str) -> str:
             f"{label} must have a 0x prefix and exactly 40 hexadecimal characters."
         )
     return value.lower()
+
+
+def arc_setup_blockers(environment: Mapping[str, str] | None = None) -> tuple[str, ...]:
+    """Return pure configuration blockers without initializing Circle or paying."""
+    values = os.environ if environment is None else environment
+    blockers = [f"missing {name}" for name in ARC_REQUIRED_ENVIRONMENT if not values.get(name)]
+    address = values.get("CIRCLE_ARC_WALLET_ADDRESS")
+    if address:
+        try:
+            _normalize_evm_address(address, "CIRCLE_ARC_WALLET_ADDRESS")
+        except ValueError as exc:
+            blockers.append(str(exc))
+    price = values.get("RADHANITE_ARC_PRICE")
+    if price:
+        try:
+            parsed = Money(price)
+            if not parsed.is_positive:
+                blockers.append("RADHANITE_ARC_PRICE must be positive")
+            _money_to_atomic(parsed)
+        except (TypeError, ValueError) as exc:
+            blockers.append(f"invalid RADHANITE_ARC_PRICE: {exc}")
+    resource = values.get("RADHANITE_ARC_RESOURCE")
+    if resource and not resource.startswith(("http://", "https://")):
+        blockers.append("RADHANITE_ARC_RESOURCE must be an HTTP(S) URL")
+    return tuple(blockers)
+
+
+def _environment_value(environment: Mapping[str, str] | None, name: str) -> str | None:
+    if environment is None:
+        return os.environ.get(name)
+    return environment.get(name)
 
 
 def _parse_result(stdout: str | None) -> Mapping[str, Any] | None:

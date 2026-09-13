@@ -32,7 +32,8 @@ Implemented so far:
 - ``radhanite.circle`` — live Circle Discovery normalization and an opt-in
   Circle CLI x402/Gateway executor boundary (TASK-010)
 - ``radhanite.arc`` — the opt-in official Circle Developer-Controlled Wallet
-  and Arc Testnet x402 executor boundary (TASK-010)
+  and Arc Testnet x402 executor boundary (TASK-015); wallet identity and
+  Gateway funding are readiness-checked setup, never automatic purchases
 
 TASK-001 is complete. TASK-006 — choosing among candidate capabilities rather
 than escalating through two fixed tiers — is implemented: the candidate model,
@@ -42,8 +43,9 @@ PR A and PR B provide the immutable run-state and one-execution foundations;
 the final-loop branch adds provider-neutral candidate sourcing, task-state
 updating, terminal classification, and repeated orchestration. TASK-009 adds
 only the declared revenue-benchmark state and updater fixtures. TASK-010 adds
-the Circle Discovery and opt-in x402/Gateway adapter boundary; no credentials
-are stored and no payment runs automatically.
+the Circle Discovery and opt-in x402/Gateway adapter boundary. TASK-015 adds
+the Arc Testnet lower-level BatchEvmScheme bridge; no credentials are stored,
+no private key is requested, and no payment runs automatically.
 
 Intended behaviour, once complete: Radhanite is given a task, a budget, a task
 value, constraints and a measurable success condition. It selects an execution
@@ -73,7 +75,9 @@ from radhanite.arc import (
     ARC_X402_VERSION,
     ArcPaymentCommitmentUnresolvedError,
     ArcPaymentError,
+    ARC_REQUIRED_ENVIRONMENT,
     CircleArcDeveloperWalletPaymentClient,
+    arc_setup_blockers,
     arc_demo_catalog,
 )
 from radhanite.capability import DECLARED_CANDIDATES, Candidate, validate_candidates
@@ -152,6 +156,7 @@ __all__ = [
     "ARC_X402_VERSION",
     "ArcPaymentCommitmentUnresolvedError",
     "ArcPaymentError",
+    "ARC_REQUIRED_ENVIRONMENT",
     "CapabilityCatalog",
     "CapabilityDescriptor",
     "CapabilityExecutor",
@@ -197,6 +202,7 @@ __all__ = [
     "__version__",
     "acquire",
     "arc_demo_catalog",
+    "arc_setup_blockers",
     "benchmark_opportunity",
     "initialize_benchmark_run",
     "make_evidence",

@@ -4,12 +4,13 @@
  *
  * **Implementation agent: Manus.**
  *
- * Uses Circle's official Developer-Controlled Wallet SDK to sign the
- * GatewayWalletBatched EIP-3009 authorization and Circle's official x402
- * batching SDK to perform the 402 challenge/retry. No secret is printed.
+ * The helper deliberately uses the lower-level BatchEvmScheme because the
+ * pinned GatewayClient requires a raw private key. Circle signs the EIP-712
+ * authorization through a pre-provisioned Developer-Controlled Wallet ID.
+ * Wallet creation, funding, approval, and Gateway deposit are setup actions
+ * and are intentionally not performed here.
  */
 
-import { randomUUID } from "node:crypto";
 import { initiateDeveloperControlledWalletsClient } from "@circle-fin/developer-controlled-wallets";
 import { BatchEvmScheme } from "@circle-fin/x402-batching/client";
 
@@ -22,6 +23,15 @@ const X402_VERSION = 2;
 const X402_SCHEME = "exact";
 const X402_BATCHING_NAME = "GatewayWalletBatched";
 const X402_BATCHING_VERSION = "1";
+const AUTHORIZATION_FIELDS = ["from", "to", "value", "validAfter", "validBefore", "nonce"];
+const AUTHORIZATION_TYPES = [
+  { name: "from", type: "address" },
+  { name: "to", type: "address" },
+  { name: "value", type: "uint256" },
+  { name: "validAfter", type: "uint256" },
+  { name: "validBefore", type: "uint256" },
+  { name: "nonce", type: "bytes32" },
+];
 
 function arg(name, fallback = undefined) {
   const index = process.argv.indexOf(name);
@@ -66,104 +76,91 @@ function normalizeEvmAddress(value, label) {
   return value.toLowerCase();
 }
 
-function normalizeTypedData(params) {
-  const domain = { ...params.domain, chainId: String(params.domain.chainId) };
-  const types = {
-    EIP712Domain: [
-      { name: "name", type: "string" },
-      { name: "version", type: "string" },
-      { name: "chainId", type: "uint256" },
-      { name: "verifyingContract", type: "address" },
-    ],
-    ...params.types,
-  };
-  return JSON.stringify({ types, domain, primaryType: params.primaryType, message: params.message });
-}
-
-async function getOrCreateWallet(circle, requestedAddress) {
-  if (requestedAddress) return normalizeEvmAddress(requestedAddress, "Arc wallet address");
-  const listed = await circle.listWallets({ pageSize: 50 });
-  const wallets = listed.data?.wallets ?? [];
-  const existing = wallets.find(
-    (wallet) => wallet.blockchain === ARC_CHAIN && wallet.accountType === "EOA",
-  );
-  if (existing?.address) return normalizeEvmAddress(existing.address, "Circle Arc wallet address");
-
-  let walletSetId = process.env.CIRCLE_WALLET_SET_ID;
-  if (!walletSetId) {
-    const createdSet = await circle.createWalletSet({ name: "Radhanite Arc Testnet", idempotencyKey: randomUUID() });
-    walletSetId = createdSet.data?.walletSet?.id;
+function normalizeSignature(value) {
+  if (typeof value !== "string" || !/^0x[0-9a-fA-F]{130}$/.test(value)) {
+    throw new Error("Circle returned an invalid EIP-712 signature.");
   }
-  if (!walletSetId) throw new Error("Circle did not return a wallet-set id.");
-  const created = await circle.createWallets({
-    walletSetId,
-    blockchains: [ARC_CHAIN],
-    count: 1,
-    accountType: "EOA",
-    idempotencyKey: randomUUID(),
-  });
-  const wallet = created.data?.wallets?.[0];
-  if (!wallet?.address) throw new Error("Circle did not return the created Arc wallet address.");
-  return normalizeEvmAddress(wallet.address, "created Circle Arc wallet address");
+  return value;
 }
 
-async function getGatewayBalance(walletAddress) {
+function jsonBigIntReplacer(_key, value) {
+  return typeof value === "bigint" ? value.toString() : value;
+}
+
+function typedDataJson(params) {
+  return JSON.stringify({
+    types: params.types,
+    domain: params.domain,
+    primaryType: params.primaryType,
+    message: params.message,
+  }, jsonBigIntReplacer);
+}
+
+function validateTypedData(params, selected, walletAddress) {
+  if (params.primaryType !== "TransferWithAuthorization") {
+    throw new Error("Circle signing refused: wrong EIP-712 primaryType.");
+  }
+  const domain = params.domain ?? {};
+  if (domain.name !== X402_BATCHING_NAME || domain.version !== X402_BATCHING_VERSION) {
+    throw new Error("Circle signing refused: wrong GatewayWalletBatched EIP-712 domain.");
+  }
+  if (Number(domain.chainId) !== 5042002) {
+    throw new Error("Circle signing refused: wrong Arc EVM chain ID.");
+  }
+  if (normalizeEvmAddress(domain.verifyingContract, "EIP-712 verifying contract") !== DEFAULT_GATEWAY_WALLET.toLowerCase()) {
+    throw new Error("Circle signing refused: wrong GatewayWallet verifying contract.");
+  }
+  const actualTypes = params.types?.TransferWithAuthorization;
+  if (JSON.stringify(actualTypes) !== JSON.stringify(AUTHORIZATION_TYPES)) {
+    throw new Error("Circle signing refused: wrong TransferWithAuthorization field schema.");
+  }
+  const message = params.message ?? {};
+  if (JSON.stringify(Object.keys(message).sort()) !== JSON.stringify(AUTHORIZATION_FIELDS.sort())) {
+    throw new Error("Circle signing refused: wrong authorization fields.");
+  }
+  if (normalizeEvmAddress(message.from, "authorization.from") !== walletAddress.toLowerCase()) {
+    throw new Error("Circle signing refused: authorization.from does not match wallet address.");
+  }
+  normalizeEvmAddress(message.to, "authorization.to");
+  if (BigInt(message.value) !== BigInt(selected.amount)) {
+    throw new Error("Circle signing refused: authorization.value does not match exact quote.");
+  }
+  if (!/^\d+$/.test(String(message.validAfter)) || !/^\d+$/.test(String(message.validBefore))) {
+    throw new Error("Circle signing refused: authorization validity bounds are invalid.");
+  }
+  if (BigInt(message.validBefore) <= BigInt(message.validAfter)) {
+    throw new Error("Circle signing refused: authorization validity window is invalid.");
+  }
+  if (typeof message.nonce !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(message.nonce)) {
+    throw new Error("Circle signing refused: authorization.nonce is invalid.");
+  }
+}
+
+async function verifyWalletIdentity(circle, walletId, walletAddress) {
+  const response = await circle.getWallet({ id: walletId });
+  const wallet = response.data?.wallet;
+  if (!wallet) throw new Error("Arc wallet ID does not resolve to a Circle wallet.");
+  if (normalizeEvmAddress(wallet.address, "Circle wallet address") !== walletAddress.toLowerCase()) {
+    throw new Error("wallet ID/address mismatch");
+  }
+  if (wallet.blockchain !== ARC_CHAIN) throw new Error("Circle wallet is not on ARC-TESTNET.");
+  if (wallet.accountType && wallet.accountType !== "EOA") throw new Error("Circle wallet is not an EOA.");
+  return wallet;
+}
+
+async function getGatewayAvailableBalance(walletAddress) {
   const response = await fetch("https://gateway-api-testnet.circle.com/v1/balances", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token: "USDC", sources: [{ domain: ARC_GATEWAY_DOMAIN, depositor: walletAddress }] }),
   });
-  if (!response.ok) throw new Error(`Gateway balance request failed: ${response.status}`);
-  const result = await response.json();
-  const balance = result.balances?.find(({ domain }) => domain === ARC_GATEWAY_DOMAIN)?.balance ?? "0";
-  return usdcToAtomic(String(balance));
-}
-
-async function waitForCircleTransaction(circle, transactionId) {
-  const terminalStates = new Set(["COMPLETE", "CONFIRMED", "FAILED", "DENIED", "CANCELLED"]);
-  while (true) {
-    const response = await circle.getTransaction({ id: transactionId });
-    const state = response.data?.transaction?.state;
-    if (state && terminalStates.has(state)) {
-      if (state !== "COMPLETE" && state !== "CONFIRMED") throw new Error(`Circle Wallet transaction ended in state: ${state}`);
-      return;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-  }
-}
-
-async function ensureGatewayBalance(circle, walletAddress, depositAmount, gatewayWallet) {
-  const depositAtomic = usdcToAtomic(depositAmount);
-  const current = await getGatewayBalance(walletAddress);
-  if (current >= depositAtomic) return current;
-  const approval = await circle.createContractExecutionTransaction({
-    walletAddress,
-    blockchain: ARC_CHAIN,
-    contractAddress: ARC_USDC,
-    abiFunctionSignature: "approve(address,uint256)",
-    abiParameters: [gatewayWallet, String(depositAtomic)],
-    fee: { type: "level", config: { feeLevel: "MEDIUM" } },
-  });
-  const approvalId = approval.data?.id;
-  if (!approvalId) throw new Error("Circle USDC approval was not created.");
-  await waitForCircleTransaction(circle, approvalId);
-  const deposit = await circle.createContractExecutionTransaction({
-    walletAddress,
-    blockchain: ARC_CHAIN,
-    contractAddress: gatewayWallet,
-    abiFunctionSignature: "deposit(address,uint256)",
-    abiParameters: [ARC_USDC, String(depositAtomic)],
-    fee: { type: "level", config: { feeLevel: "MEDIUM" } },
-  });
-  const depositId = deposit.data?.id;
-  if (!depositId) throw new Error("Circle Gateway deposit was not created.");
-  await waitForCircleTransaction(circle, depositId);
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    const available = await getGatewayBalance(walletAddress);
-    if (available >= depositAtomic) return available;
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-  }
-  throw new Error("Gateway balance did not become available after deposit.");
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(`Gateway balance check failed: ${result.message ?? response.status}`);
+  const row = result.balances?.find(({ domain }) => domain === ARC_GATEWAY_DOMAIN);
+  if (!row) throw new Error("Gateway balance missing; complete the Arc Gateway deposit setup.");
+  const available = row.available ?? row.balance;
+  if (available === undefined) throw new Error("Gateway balance response omitted available balance.");
+  return usdcToAtomic(String(available));
 }
 
 function parsePaymentRequired(header) {
@@ -198,40 +195,28 @@ function selectAuthorizedRequirement(paymentRequired, expectedAsset, expectedAmo
 }
 
 async function main() {
-  const url = requiredArgOrEnv("--url", "Radhanite_ARC_RESOURCE");
+  const url = requiredArgOrEnv("--url", "RADHANITE_ARC_RESOURCE");
+  const expectedPrice = requiredArgOrEnv("--amount", "RADHANITE_ARC_PRICE");
   const method = arg("--method", "GET").toUpperCase();
-  const maxAmount = requiredArgOrEnv("--amount", "Radhanite_ARC_MAX_AMOUNT");
   const expectedNetwork = arg("--network", ARC_NETWORK);
   const expectedAsset = arg("--asset", ARC_USDC);
   const gatewayWallet = arg("--gateway-wallet", DEFAULT_GATEWAY_WALLET);
+  const walletId = requiredArgOrEnv("--wallet-id", "CIRCLE_ARC_WALLET_ID");
+  const walletAddress = normalizeEvmAddress(requiredArgOrEnv("--wallet-address", "CIRCLE_ARC_WALLET_ADDRESS"), "CIRCLE_ARC_WALLET_ADDRESS");
   if (expectedNetwork !== ARC_NETWORK) throw new Error("Arc helper only accepts eip155:5042002.");
   if (normalizeEvmAddress(expectedAsset, "Arc asset") !== ARC_USDC.toLowerCase()) throw new Error("Arc helper only accepts the Arc Testnet USDC asset.");
   if (normalizeEvmAddress(gatewayWallet, "Arc GatewayWallet") !== DEFAULT_GATEWAY_WALLET.toLowerCase()) throw new Error("Arc helper only accepts the Arc Testnet GatewayWallet.");
   if (method !== "GET") throw new Error("The Arc demo helper currently supports GET only.");
-  const expectedAmountAtomic = usdcToAtomic(maxAmount);
+  const expectedAmountAtomic = usdcToAtomic(expectedPrice);
 
   const apiKey = requiredEnv("CIRCLE_API_KEY");
   const entitySecret = requiredEnv("CIRCLE_ENTITY_SECRET");
   const circle = initiateDeveloperControlledWalletsClient({ apiKey, entitySecret });
-  const walletAddress = await getOrCreateWallet(circle, arg("--wallet-address", process.env.CIRCLE_ARC_WALLET_ADDRESS));
-  const depositAmount = arg("--deposit-amount", process.env.Radhanite_ARC_DEPOSIT_AMOUNT ?? "1");
-  const gatewayBalance = await ensureGatewayBalance(circle, walletAddress, depositAmount, gatewayWallet);
+  await verifyWalletIdentity(circle, walletId, walletAddress);
+  const gatewayAvailable = await getGatewayAvailableBalance(walletAddress);
+  if (gatewayAvailable < expectedAmountAtomic) throw new Error("insufficient Gateway balance; complete the Arc Gateway deposit setup");
 
-  const signer = {
-    address: walletAddress,
-    signTypedData: async (params) => {
-      const signed = await circle.signTypedData({
-        walletAddress,
-        blockchain: ARC_CHAIN,
-        data: normalizeTypedData(params),
-        memo: "Radhanite Arc x402 capability payment",
-      });
-      const signature = signed.data?.signature;
-      if (!signature) throw new Error("Circle returned no typed-data signature.");
-      return signature.startsWith("0x") ? signature : `0x${signature}`;
-    },
-  };
-
+  let circleSigningAttempted = false;
   let paymentSubmitted = false;
   try {
     const response = await fetch(url, { method });
@@ -239,10 +224,22 @@ async function main() {
     const paymentRequiredHeader = response.headers.get("PAYMENT-REQUIRED");
     if (!paymentRequiredHeader) throw new Error("Arc seller omitted PAYMENT-REQUIRED.");
     const paymentRequired = parsePaymentRequired(paymentRequiredHeader);
-    const selected = selectAuthorizedRequirement(paymentRequired, expectedAsset, maxAmount);
-    if (expectedAmountAtomic > gatewayBalance) throw new Error("Gateway balance is below the exact selected Arc payment amount.");
+    const selected = selectAuthorizedRequirement(paymentRequired, expectedAsset, expectedPrice);
+    const signer = {
+      address: walletAddress,
+      signTypedData: async (params) => {
+        validateTypedData(params, selected, walletAddress);
+        circleSigningAttempted = true;
+        const signed = await circle.signTypedData({
+          walletId,
+          data: typedDataJson(params),
+          memo: "Radhanite Arc x402 capability payment",
+        });
+        return normalizeSignature(signed.data?.signature);
+      },
+    };
     const batchScheme = new BatchEvmScheme(signer);
-    const paymentPayload = await batchScheme.createPaymentPayload(paymentRequired.x402Version, selected);
+    const paymentPayload = await batchScheme.createPaymentPayload(X402_VERSION, selected);
     paymentSubmitted = true;
     const paid = await fetch(url, {
       method,
@@ -267,18 +264,32 @@ async function main() {
       asset: expectedAsset,
       amount: atomicToUsdc(selected.amount),
       amount_atomic: String(selected.amount),
+      wallet_id: walletId,
       wallet_address: walletAddress,
+      gateway_available: atomicToUsdc(gatewayAvailable),
       payment_reference: settle.transaction,
       response_status: paid.status,
       result: bodyText ? JSON.parse(bodyText) : null,
     });
   } catch (error) {
-    jsonLine({ error: error instanceof Error ? error.message : String(error), ...(paymentSubmitted ? { commitment_status: "unresolved" } : {}) });
+    jsonLine({
+      error: error instanceof Error ? error.message : String(error),
+      ...((circleSigningAttempted || paymentSubmitted) ? { commitment_status: "unresolved" } : {}),
+    });
     process.exitCode = 1;
   }
 }
 
-main().catch((error) => {
-  jsonLine({ error: error instanceof Error ? error.message : String(error) });
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === new URL(process.argv[1], "file:").href) {
+  main().catch((error) => {
+    jsonLine({ error: error instanceof Error ? error.message : String(error) });
+    process.exitCode = 1;
+  });
+}
+
+export {
+  normalizeEvmAddress,
+  selectAuthorizedRequirement,
+  typedDataJson,
+  validateTypedData,
+};

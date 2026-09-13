@@ -28,7 +28,7 @@ Radhanite owns the decision to buy. Circle's wallet and Gateway/x402 systems own
 
 ## 2. Selected wallet model
 
-The only wallet model authorized by this task is the **Circle Developer-Controlled Wallet EOA**. The runtime uses the pinned `@circle-fin/developer-controlled-wallets` SDK with `CIRCLE_API_KEY` and `CIRCLE_ENTITY_SECRET`. The wallet is selected or created through Circle's API, and Circle signs the EIP-712 authorization on behalf of the EOA. The runtime does not use Circle Agent Wallet CLI login, email OTP, private keys, or a generic wallet abstraction.
+The only wallet model authorized by this task is the **Circle Developer-Controlled Wallet EOA**. The runtime uses `@circle-fin/developer-controlled-wallets@10.8.0` with `CIRCLE_API_KEY` and `CIRCLE_ENTITY_SECRET`, and uses `CIRCLE_ARC_WALLET_ID` to identify a pre-provisioned wallet. Circle signs the EIP-712 authorization on behalf of the EOA. The runtime does not use Circle Agent Wallet CLI login, email OTP, private keys, GatewayClient, or a generic wallet abstraction.
 
 This model is selected because Circle's current official Arc x402 examples use the Developer-Controlled Wallet with `@circle-fin/x402-batching`, while Circle Agent Wallet is a separate CLI/email-OTP product. Mixing those models would obscure custody and authentication semantics.
 
@@ -38,13 +38,15 @@ Required runtime setup is supplied through the environment only:
 |---|---|
 | `CIRCLE_API_KEY` | Circle Developer-Controlled Wallet API credential |
 | `CIRCLE_ENTITY_SECRET` | Circle entity secret used by the SDK |
-| `CIRCLE_ARC_WALLET_ADDRESS` | Optional existing Arc EOA address; absent means the helper may provision one through Circle |
-| `CIRCLE_WALLET_SET_ID` | Optional existing Circle wallet-set identifier |
-| `Radhanite_ARC_RESOURCE` | Explicit Arc x402 seller URL |
-| `Radhanite_ARC_PRICE` | Exact pre-purchase decimal USDC quote used by the demo catalog |
+| `CIRCLE_ARC_WALLET_ID` | Required pre-provisioned Circle wallet resource ID used for signing |
+| `CIRCLE_ARC_WALLET_ADDRESS` | Required Arc EOA address; the helper verifies it matches the wallet ID |
+| `RADHANITE_ARC_RESOURCE` | Explicit Arc x402 seller URL |
+| `RADHANITE_ARC_PRICE` | Exact pre-purchase decimal USDC quote used by the demo catalog |
 | `CIRCLE_ARC_SELLER_ADDRESS` | Seller address when running the separate local demo seller |
 
-Secrets are never committed or printed. The Radhanite budget remains an economic permission ceiling; it is not represented as a Circle wallet spending limit.
+Secrets are never committed or printed. Wallet creation, faucet funding, approval, and Gateway deposit are setup actions and are not performed inside the purchase path. The Radhanite budget remains an economic permission ceiling; it is not represented as a Circle wallet spending limit.
+
+The pre-implementation SDK gate established the exact supported composition: `client.signTypedData({ walletId, data, memo })` is injected as `{ address, signTypedData }` into `new BatchEvmScheme(...)`, followed by `createPaymentPayload(2, paymentRequirements)`. The pinned `GatewayClient` is intentionally not used because it constructs a viem account from a raw private key.
 
 ## 3. Official Arc identifiers and exact units
 
@@ -65,7 +67,7 @@ The implementation encodes only these current official values:
 
 Arc native gas accounting uses 18 decimals, but this payment slice records the purchased capability's USDC amount in 6-decimal atomic units. Those units must not be conflated.
 
-Before signing or payment, the adapter and buyer helper validate the exact network, strict EVM asset syntax, exact Arc Testnet USDC address, exact positive atomic amount, x402 v2, exact scheme, batching name, batching version, and Gateway verifying contract. There is no Base fallback.
+Before signing or payment, the adapter and buyer helper validate the exact network, strict EVM asset syntax, exact Arc Testnet USDC address, exact positive atomic amount, x402 v2, exact scheme, batching name, batching version, Gateway verifying contract, EIP-712 primary type, and authorization fields. The wallet ID is resolved and checked against the configured EOA address, and Gateway available balance is checked read-only. There is no Base fallback and no automatic funding or deposit.
 
 ## 4. Capability provenance and seller identity
 
@@ -105,7 +107,7 @@ npm install
 PYTHONDONTWRITEBYTECODE=1 python3.12 -m radhanite.arc_smoke
 ```
 
-It must report wallet model and safe address, Arc network, capability and exact quote, current probability, incremental expected value, TASK-006 decision, x402 execution, Gateway settlement reference, exact committed testnet-USDC, service result, and TASK-009 state/probability. Missing credentials, wallet funding, Gateway balance, or seller URL produces an actionable blocker report and performs no payment. Arc Testnet USDC is testnet value, not production value.
+Before signing it reports wallet model/address, Arc network, resource, exact quote, current and expected post-action probability, incremental expected value, maximum authorization, and TASK-006 selection. After execution it reports the Gateway reference, exact committed testnet-USDC, service-result summary, and TASK-009 state/probability. Missing credentials, wallet mismatch, wallet funding, Gateway balance, or seller URL produces an actionable blocker report and performs no payment. Arc Testnet USDC is testnet value, not production value.
 
 ## 8. Out of scope
 
