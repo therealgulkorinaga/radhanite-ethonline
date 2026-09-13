@@ -234,6 +234,18 @@ function validateServiceResult(serviceResult, responseStatus) {
   return "service_failure";
 }
 
+function committedFailureEnvelope(committed, reason) {
+  return {
+    phase: "post_submit",
+    status: "error",
+    commitment_status: "committed",
+    ...committed,
+    service_outcome: "service_failure",
+    service_result: { error: reason },
+    error: reason,
+  };
+}
+
 async function main() {
   const url = requiredArgOrEnv("--url", "RADHANITE_ARC_RESOURCE");
   const expectedPrice = requiredArgOrEnv("--amount", "RADHANITE_ARC_PRICE");
@@ -287,19 +299,12 @@ async function main() {
         "PAYMENT-SIGNATURE": Buffer.from(JSON.stringify({ ...paymentPayload, accepted: selected, resource: paymentRequired.resource })).toString("base64"),
       },
     });
-    const bodyText = await paid.text();
     const settleHeader = paid.headers.get("PAYMENT-RESPONSE");
     if (!settleHeader) throw new Error("Arc seller omitted PAYMENT-RESPONSE after signed payment.");
     let settle;
     try { settle = JSON.parse(Buffer.from(settleHeader, "base64").toString("utf8")); } catch (error) { throw new Error(`PAYMENT-RESPONSE is not valid base64 JSON: ${error.message}`); }
     validateSettlement(settle, selected, walletAddress);
-    const serviceResult = parseJsonServiceBody(bodyText);
-    const serviceOutcome = validateServiceResult(serviceResult, paid.status);
-
-    jsonLine({
-      phase: "complete",
-      status: "gateway_accepted",
-      commitment_status: "committed",
+    const committed = {
       settlement_status: "gateway_accepted",
       network: ARC_NETWORK,
       asset: expectedAsset,
@@ -310,9 +315,24 @@ async function main() {
       gateway_available: atomicToUsdc(gatewayAvailable),
       payment_reference: settle.transaction,
       response_status: paid.status,
-      service_outcome: serviceOutcome,
-      service_result: serviceResult,
-    });
+    };
+    try {
+      const bodyText = await paid.text();
+      const serviceResult = parseJsonServiceBody(bodyText);
+      const serviceOutcome = validateServiceResult(serviceResult, paid.status);
+      jsonLine({
+        phase: "complete",
+        status: "gateway_accepted",
+        commitment_status: "committed",
+        ...committed,
+        service_outcome: serviceOutcome,
+        service_result: serviceResult,
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      jsonLine(committedFailureEnvelope(committed, reason));
+      process.exitCode = 1;
+    }
   } catch (error) {
     jsonLine({
       phase: circleSigningAttempted || paymentSubmitted ? "post_submit" : "pre_sign",
@@ -346,5 +366,6 @@ export {
   typedDataJson,
   validateServiceResult,
   validateSettlement,
+  committedFailureEnvelope,
   validateTypedData,
 };

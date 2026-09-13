@@ -173,10 +173,11 @@ class CircleArcDeveloperWalletPaymentClient:
             if _is_affirmative_pre_sign_failure(payload):
                 detail = _safe_error(payload, completed.stderr, completed.stdout)
                 raise ArcPaymentError(f"Arc x402 payment failed before signing: {detail}")
-            raise ArcPaymentCommitmentUnresolvedError(
-                "Arc helper may have signed or submitted payment; commitment is unresolved."
-            )
-        if payload.get("phase") != "complete":
+            if not _is_committed_failure_envelope(payload):
+                raise ArcPaymentCommitmentUnresolvedError(
+                    "Arc helper may have signed or submitted payment; commitment is unresolved."
+                )
+        elif payload.get("phase") != "complete":
             raise ArcPaymentCommitmentUnresolvedError(
                 "Arc helper returned no trustworthy completed payment envelope."
             )
@@ -357,6 +358,15 @@ def _is_affirmative_pre_sign_failure(payload: Mapping[str, Any]) -> bool:
         and payload.get("status") == "error"
         and payload.get("signing_started") is False
         and payload.get("payment_submitted") is False
+        and payload.get("commitment_status") == "not_committed"
+    )
+
+
+def _is_committed_failure_envelope(payload: Mapping[str, Any]) -> bool:
+    return (
+        payload.get("phase") == "post_submit"
+        and payload.get("status") == "error"
+        and payload.get("commitment_status") == "committed"
     )
 
 
@@ -369,7 +379,8 @@ def _validate_result(
 ) -> tuple[Money, str, Mapping[str, Any]]:
     if payload.get("commitment_status") != "committed":
         raise ArcPaymentError("Arc helper returned a non-committed completion envelope.")
-    if payload.get("status") != "gateway_accepted":
+    committed_failure = _is_committed_failure_envelope(payload)
+    if payload.get("status") != "gateway_accepted" and not committed_failure:
         raise ArcPaymentError(f"Arc helper did not report Gateway acceptance: {payload!r}")
     if payload.get("settlement_status") != "gateway_accepted":
         raise ArcPaymentError("Arc helper returned an unsupported settlement status.")
@@ -401,17 +412,20 @@ def _validate_result(
     if not isinstance(service_result, Mapping):
         raise ArcPaymentError("Arc helper returned no structured demo service result.")
     response_status = payload.get("response_status")
-    if response_status in {200, 201, 202}:
+    service_outcome = payload.get("service_outcome")
+    if service_outcome == "service_failure":
+        if not isinstance(service_result.get("error"), str) or not service_result["error"].strip():
+            raise ArcPaymentError("Arc helper returned no structured service failure result.")
+    elif response_status in {200, 201, 202}:
         if service_result.get("capability") != "arc-demo-quote":
             raise ArcPaymentError("Arc helper returned an unrecognized demo capability result.")
         if service_result.get("result") != "Circle Arc Testnet x402 demo result":
             raise ArcPaymentError("Arc helper returned an unrecognized demo service result.")
     elif not isinstance(service_result.get("error"), str) or not service_result["error"].strip():
         raise ArcPaymentError("Arc helper returned no structured service failure result.")
-    service_outcome = payload.get("service_outcome")
     if service_outcome not in {"positive_market_signal", "neutral", "negative", "service_failure"}:
         raise ArcPaymentError("Arc helper returned an invalid service outcome.")
-    if response_status in {200, 201, 202} and service_result.get("outcome") != service_outcome:
+    if service_outcome != "service_failure" and response_status in {200, 201, 202} and service_result.get("outcome") != service_outcome:
         raise ArcPaymentError("Arc helper returned contradictory service outcome metadata.")
     return actual, reference, service_result
 

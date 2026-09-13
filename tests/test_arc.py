@@ -54,6 +54,7 @@ def receipt_json(
     *, amount="0.001", asset=ARC_TESTNET_USDC, status="gateway_accepted",
     reference="ref", response_status=200, service_result=None,
     service_outcome="positive_market_signal", commitment_status="committed",
+    phase="complete",
     wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS,
 ):
     if service_result is None:
@@ -63,7 +64,7 @@ def receipt_json(
             else {"error": f"service failed with HTTP {response_status}"}
         )
     return json.dumps({
-        "phase": "complete",
+        "phase": phase,
         "status": status,
         "commitment_status": commitment_status,
         "settlement_status": "gateway_accepted",
@@ -196,6 +197,30 @@ class ArcTests(unittest.TestCase):
             client.pay(arc_offer_catalog().offers[0], Money("0.001"))
         self.assertNotIsInstance(caught.exception, ArcPaymentCommitmentUnresolvedError)
 
+    def test_incomplete_or_contradictory_pre_sign_envelope_is_unresolved(self) -> None:
+        base = {
+            "phase": "pre_sign", "status": "error",
+            "signing_started": False, "payment_submitted": False,
+            "commitment_status": "not_committed", "error": "setup failure",
+        }
+        for mutation in (
+            {"commitment_status": "unresolved"},
+            {"commitment_status": None},
+            {"payment_submitted": True},
+            {"signing_started": True},
+            {"phase": "unexpected"},
+            {"status": "not_error"},
+        ):
+            payload = {**base, **mutation}
+            runner = Mock(return_value=subprocess.CompletedProcess(
+                args=[], returncode=1, stdout=json.dumps(payload), stderr="",
+            ))
+            client = CircleArcDeveloperWalletPaymentClient(
+                runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS
+            )
+            with self.assertRaises(ArcPaymentCommitmentUnresolvedError):
+                client.pay(arc_offer_catalog().offers[0], Money("0.001"))
+
     def test_success_with_unresolved_commitment_is_rejected(self) -> None:
         runner = Mock(return_value=subprocess.CompletedProcess(
             args=[], returncode=0,
@@ -215,11 +240,14 @@ class ArcTests(unittest.TestCase):
             with self.assertRaises(ArcPaymentCommitmentUnresolvedError):
                 client.pay(arc_offer_catalog().offers[0], Money("0.001"))
 
-    def test_payment_accepted_service_500_and_404_retain_exact_commitment(self) -> None:
+    def test_committed_failure_service_500_and_404_retain_exact_commitment(self) -> None:
         for response_status in (500, 404):
             runner = Mock(return_value=subprocess.CompletedProcess(
-                args=[], returncode=0,
-                stdout=receipt_json(response_status=response_status), stderr="",
+                args=[], returncode=1,
+                stdout=receipt_json(
+                    phase="post_submit", status="error", response_status=response_status,
+                    service_outcome="service_failure",
+                ), stderr="",
             ))
             receipt = CircleArcDeveloperWalletPaymentClient(
                 runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS
@@ -228,6 +256,39 @@ class ArcTests(unittest.TestCase):
             self.assertEqual(receipt.committed_cost, Money("0.001"))
             self.assertIn(f"service_status={response_status}", receipt.evidence["facts"])
             self.assertIn(f' service_result={{"error": "service failed with HTTP {response_status}"}}'.strip(), receipt.evidence["facts"])
+
+    def test_committed_failure_malformed_or_unexpected_service_body_retains_reference(self) -> None:
+        for service_result in (
+            {"error": "Arc seller returned non-JSON service result"},
+            {"error": "Arc seller returned an unrecognized demo service result"},
+        ):
+            runner = Mock(return_value=subprocess.CompletedProcess(
+                args=[], returncode=1,
+                stdout=receipt_json(
+                    phase="post_submit", status="error", response_status=200,
+                    service_outcome="service_failure", service_result=service_result,
+                ), stderr="",
+            ))
+            receipt = CircleArcDeveloperWalletPaymentClient(
+                runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS
+            ).pay(arc_offer_catalog().offers[0], Money("0.001"))
+            self.assertFalse(receipt.succeeded)
+            self.assertEqual(receipt.committed_cost, Money("0.001"))
+            self.assertIn("payment_reference=ref", receipt.evidence["facts"])
+
+    def test_missing_settlement_reference_remains_unresolved(self) -> None:
+        runner = Mock(return_value=subprocess.CompletedProcess(
+            args=[], returncode=1,
+            stdout=receipt_json(
+                phase="post_submit", status="error", response_status=500,
+                service_outcome="service_failure", reference="",
+            ), stderr="",
+        ))
+        client = CircleArcDeveloperWalletPaymentClient(
+            runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS
+        )
+        with self.assertRaises(ArcPaymentCommitmentUnresolvedError):
+            client.pay(arc_offer_catalog().offers[0], Money("0.001"))
 
     def test_neutral_service_result_does_not_emit_positive_outcome(self) -> None:
         payload = receipt_json(

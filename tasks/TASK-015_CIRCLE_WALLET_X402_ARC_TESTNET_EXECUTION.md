@@ -90,15 +90,15 @@ The adapter creates immutable `make_evidence(...)` only. It does not select cand
 The following rules are mandatory:
 
 1. A wrong network, malformed asset, wrong asset, unsupported x402 requirement, wrong amount, or mismatched quote fails before signing.
-2. Only a structured helper envelope with `phase: pre_sign`, `signing_started: false`, and `payment_submitted: false` may be classified as pre-attempt.
+2. Only a complete structured helper envelope with `phase: pre_sign`, `status: error`, `signing_started: false`, `payment_submitted: false`, and `commitment_status: not_committed` may be classified as pre-attempt.
 3. Killed, timed-out, nonzero/no-JSON, malformed, or contradictory helper output defaults to unresolved commitment and is never zero spend or retried.
 4. A payment response is parsed and validated before service HTTP status. Accepted payment plus service 2xx returns success only for the deterministic demo result and explicit positive outcome.
-5. Accepted payment plus service 4xx/5xx returns failed execution with exact committed cost, reference, status, and structured service failure; it is not unresolved.
-6. Any amount, wallet, commitment, reference, or service-result mismatch after signing is unresolved. No automatic retry engine exists in TASK-015.
+5. After settlement amount/reference validation, service parsing or validation failure returns a committed `post_submit` failure envelope and failed execution with exact committed cost, reference, status, and structured service failure; it is not unresolved.
+6. Settlement amount/reference missing or any payment mismatch before settlement validation is unresolved. No automatic retry engine exists in TASK-015.
 
 ## 7. Tests and smoke
 
-Ordinary Python and Node contract tests mock external wallet, HTTP, seller, and subprocess behavior. They cover valid Arc requirements, wrong network/Base masquerade, strict asset validation, hostile Decimal precision and exact six-decimal amounts, selected-only invocation, helper failure phases, exact committed cost/reference, accepted-payment service failures, unresolved commitment fail-closed behavior, validated service-result evidence, and a subsequent TASK-006 decision after the TASK-009 probability update.
+Ordinary Python and Node contract tests mock external wallet, HTTP, seller, and subprocess behavior. They cover valid Arc requirements, wrong network/Base masquerade, strict asset validation, hostile Decimal precision and exact six-decimal amounts, selected-only invocation, complete helper failure phases, exact committed cost/reference, settlement-validated malformed and HTTP-failed services, unresolved commitment fail-closed behavior, validated service-result evidence, and a subsequent TASK-006 decision after the TASK-009 probability update.
 
 The only live payment command is explicit opt-in:
 

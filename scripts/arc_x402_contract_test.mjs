@@ -7,6 +7,7 @@
 import assert from "node:assert/strict";
 import { BatchEvmScheme } from "@circle-fin/x402-batching/client";
 import {
+  committedFailureEnvelope,
   typedDataJson,
   validateServiceResult,
   validateSettlement,
@@ -107,6 +108,23 @@ assert.equal(validateServiceResult({
 }, 200), "neutral");
 assert.throws(() => validateServiceResult({ unexpected: true }, 200), /unrecognized|structured/);
 assert.equal(validateServiceResult({ error: "service failed" }, 500), "service_failure");
+const committedFailure = committedFailureEnvelope({
+  settlement_status: "gateway_accepted",
+  network: "eip155:5042002",
+  asset: requirements.asset,
+  amount: "0.001000",
+  amount_atomic: "1000",
+  wallet_id: walletId,
+  wallet_address: walletAddress,
+  payment_reference: "gateway-ref",
+  response_status: 500,
+}, "Arc seller returned non-JSON service result");
+assert.equal(committedFailure.phase, "post_submit");
+assert.equal(committedFailure.commitment_status, "committed");
+assert.equal(committedFailure.amount_atomic, "1000");
+assert.equal(committedFailure.payment_reference, "gateway-ref");
+assert.equal(committedFailure.response_status, 500);
+assert.equal(committedFailure.service_result.error, "Arc seller returned non-JSON service result");
 
 console.log(JSON.stringify({
   status: "passed",
@@ -116,4 +134,5 @@ console.log(JSON.stringify({
   mismatch_rejected_before_circle_signing: true,
   payment_response_amount_and_wallet_validated: true,
   service_result_contract_validated: true,
+  committed_failure_envelope_validated: true,
 }));

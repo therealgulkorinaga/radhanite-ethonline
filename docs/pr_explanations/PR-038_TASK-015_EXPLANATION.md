@@ -21,11 +21,11 @@ The Node buyer helper uses only Circle's **Developer-Controlled Wallet EOA** mod
 
 The helper validates that `CIRCLE_ARC_WALLET_ID` resolves to the configured `CIRCLE_ARC_WALLET_ADDRESS` on `ARC-TESTNET` before signing. It performs only a read-only Gateway available-balance check. Wallet creation, faucet funding, approval, and Gateway deposit are setup actions and are not performed in the purchase path.
 
-The helper now emits an explicit phase envelope: `pre_sign` with affirmative `signing_started=false` and `payment_submitted=false` is the only structured state that permits a pre-attempt failure. Completed payments use `phase=complete` and `commitment_status=committed`. Missing, malformed, contradictory, killed, timed-out, or nonzero/no-JSON helper output defaults to `ArcPaymentCommitmentUnresolvedError`; it is never treated as zero spend or retried.
+The helper now emits an explicit phase envelope. Only the complete affirmative envelope `phase=pre_sign`, `status=error`, `signing_started=false`, `payment_submitted=false`, and `commitment_status=not_committed` permits a pre-attempt failure. Missing, malformed, contradictory, killed, timed-out, or nonzero/no-JSON helper output defaults to `ArcPaymentCommitmentUnresolvedError`; it is never treated as zero spend or retried.
 
 The Arc price-to-atomic conversion uses the Decimal coefficient/exponent tuple directly. It does not multiply, quantize, round, or use float under the ambient Decimal context, and rejects values that are not exactly representable at six USDC decimal places.
 
-After the signed paid request returns, the helper parses and validates `PAYMENT-RESPONSE` before branching on service HTTP status. An accepted payment with a 2xx service response requires the deterministic demo service-result contract and an explicit `positive_market_signal`, `neutral`, or `negative` outcome. An accepted payment with HTTP 500 or 404 returns a failed receipt with the exact committed cost, reference, status, and structured service failure. It is not unresolved. The validated service result is retained in immutable evidence.
+After the signed paid request returns, the helper parses and validates `PAYMENT-RESPONSE` before branching on service HTTP status. Once settlement amount and reference are validated, later service parsing failures emit a committed `phase=post_submit` failure envelope with exact amount, reference, HTTP status, and service failure reason. An accepted payment with a 2xx service response requires the deterministic demo service-result contract and an explicit `positive_market_signal`, `neutral`, or `negative` outcome. An accepted payment with HTTP 500 or 404 returns a failed receipt with the exact committed cost, reference, status, and structured service failure. It is not unresolved. The validated service result is retained in immutable evidence.
 
 The opt-in smoke report now includes the wallet model and safe address, quote, current probability, incremental expected value, TASK-006 decision, execution status, committed testnet-USDC amount, payment reference, service result, and TASK-009 state/probability. Missing setup still blocks before payment.
 
@@ -81,11 +81,11 @@ A successful output contains the validated service result, exact committed testn
 
 A malformed or wrong Arc asset, Base network, wrong network, wrong scheme, wrong batching metadata, wrong Gateway contract, wrong quote, or wrong authorization is rejected before signing or payment. A seller that does not expose exactly one matching x402 v2 requirement is rejected.
 
-A setup or validation failure before signing is reported as a pre-attempt blocker only through the affirmative `phase=pre_sign` envelope. If the helper crashes, times out, is killed, emits no JSON, emits malformed JSON, or returns contradictory metadata after startup, the adapter raises `ArcPaymentCommitmentUnresolvedError`. The generic run does not record invented zero spend and does not retry.
+A setup or validation failure before signing is reported as a pre-attempt blocker only through the complete affirmative `phase=pre_sign` envelope. If the helper crashes, times out, is killed, emits no JSON, emits malformed JSON, or returns contradictory metadata after startup, the adapter raises `ArcPaymentCommitmentUnresolvedError`. If settlement is already validated, service parsing failure follows the committed failed-execution path instead. The generic run does not record invented zero spend and does not retry.
 
 ## 9. Tests and verification
 
-The focused Arc suite passes **21 tests**, and the focused Arc + Circle suite passes **54 tests** after the Codex corrections. The full Python 3.12 suite passes **779 tests**. The Node contract test covers the exact wallet ID, signer address, payment-response amount/wallet validation, and service-result contract.
+The focused Arc suite passes **24 tests**, and the focused Arc + Circle suite passes **57 tests** after the Codex corrections. The full Python 3.12 suite passes **782 tests**. The Node contract test covers the exact wallet ID, signer address, payment-response amount/wallet validation, service-result contract, and committed-failure envelope.
 
 ```text
 PYTHONDONTWRITEBYTECODE=1 python3.12 -m unittest discover -q
@@ -118,9 +118,9 @@ A successful live smoke requires human setup and explicit opt-in. A future task 
 | Finding | Status |
 |---|---|
 | `CODEX-PR038-01` — context-independent exact atomic conversion | Resolved with coefficient/exponent decomposition and hostile Decimal-context tests |
-| `CODEX-PR038-02` — helper crash and explicit failure phase | Resolved with affirmative `pre_sign` envelope and unresolved-by-default failures |
+| `CODEX-PR038-02` — helper crash and explicit failure phase | Resolved with the complete affirmative `pre_sign` envelope and unresolved-by-default failures |
 | `CODEX-PR038-03` — service-result validation and evidence retention | Resolved with deterministic demo contract, outcome mapping, and full service-result evidence |
-| `CODEX-PR038-04` — payment response before service status | Resolved with payment/reference validation before 2xx/4xx/5xx branching |
+| `CODEX-PR038-04` — payment response before service status | Resolved with settlement-first parsing and committed failure envelopes after validated payment |
 
 Independent Codex review remains pending; this correction commit does not merge the PR.
 
