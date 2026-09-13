@@ -51,6 +51,7 @@ export const fixture = {
       name: "Onchain liquidity and volume snapshot",
       provider: "The Graph",
       network: "Decentralized Network",
+      liveLabel: "LIVE",
       cost: "0.40",
       costBasis: "benchmark",
       expectedProbability: "0.17",
@@ -67,6 +68,7 @@ export const fixture = {
       name: "Premium market quote",
       provider: "Circle / Arc",
       network: "Circle Developer-Controlled Wallet · x402 · Arc Testnet",
+      liveLabel: "LIVE ARC TESTNET",
       cost: "0.001",
       costBasis: "usdc",
       expectedProbability: "0.14",
@@ -75,8 +77,8 @@ export const fixture = {
       status: "SKIP",
       selected: false,
       reason:
-        "Integrated · settlement not asserted. Positive expected value, but below the selected capability, so it was not bought in this run.",
-      live: false,
+        "Live x402 execution verified on Arc Testnet in its own run. Positive expected value, but below the selected capability, so it was not bought in this run.",
+      live: true,
     },
     {
       id: "hedera-commercial-fit",
@@ -103,6 +105,40 @@ export const fixture = {
     evaluatedPrice: "0.40",
     priceLabel: "Benchmark capability price · not an amount charged by The Graph",
     status: "Live query served",
+    liveEvidence: true,
+  },
+  /**
+   * Circle/Arc live x402 execution.
+   *
+   * Every value here is copied verbatim from the preserved record of the one
+   * authorized smoke: runs/arc_testnet_live_smoke_20260913T153540Z.json, run at
+   * commit c93759d, one attempt, no retry. Nothing here is a placeholder.
+   *
+   * This was a SEPARATE run from the Graph run the dashboard narrates: Arc was
+   * the only candidate offered to it, so TASK-006 selected it there. It is not
+   * a second purchase inside the run shown above, and the UI must not imply so.
+   */
+  arcLiveExecution: {
+    provider: "Circle / Arc",
+    walletModel: "Circle Developer-Controlled Wallet EOA",
+    protocol: "x402",
+    network: "eip155:5042002",
+    networkLabel: "Arc Testnet",
+    quotedTestnetUsdc: "0.001",
+    committedTestnetUsdc: "0.001000",
+    paymentReference: "5255d5c3-23f8-4131-aded-084edf821bcd",
+    settlementStatus: "gateway_accepted",
+    referenceSemantics: "Gateway acceptance; on-chain finality not asserted",
+    serviceStatus: "200",
+    serviceResult: "Circle Arc Testnet x402 demo result",
+    serviceOutcome: "positive_market_signal",
+    task009ProbabilityBefore: "0.08",
+    task009ProbabilityAfter: "0.14",
+    runStatus: "economic_stop",
+    attempts: 1,
+    retried: false,
+    recordPath: "runs/arc_testnet_live_smoke_20260913T153540Z.json",
+    separateRun: true,
     liveEvidence: true,
   },
   evidence: {
@@ -177,7 +213,7 @@ export function formatNetExpectedValue(value) {
 }
 
 export function modeLabel(mode) {
-  return mode === "live" ? "LIVE · THE GRAPH" : "FIXTURE";
+  return mode === "live" ? "LIVE" : "FIXTURE";
 }
 
 export function renderableState(data = fixture) {

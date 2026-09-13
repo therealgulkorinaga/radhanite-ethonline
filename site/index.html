@@ -240,8 +240,8 @@
         </nav>
       </div>
       <div class="sidebar-bottom">
-        <span class="mode-badge"><span class="mode-dot"></span><span id="sidebar-mode">LIVE · THE GRAPH</span></span>
-        <p class="sidebar-note">Live onchain facts from The Graph. Prices are benchmark figures. No payment is performed in this build.</p>
+        <span class="mode-badge"><span class="mode-dot"></span><span id="sidebar-mode">LIVE</span></span>
+        <p class="sidebar-note">Live onchain facts from The Graph. Live x402 execution on Arc Testnet. Graph prices are benchmark figures.</p>
         <span class="mono" style="color:#6f8491;font-size:10px">TASK-016 · ETHONLINE 2026</span>
       </div>
     </aside>
@@ -260,7 +260,7 @@
       </header>
 
       <section class="view active" id="dashboard" aria-label="Live demo dashboard">
-        <div class="mode-banner"><div><strong>THE GRAPH · LIVE</strong><span> · the selected capability's query really ran. The $0.40 is a benchmark capability price Radhanite evaluated, not a provider charge.</span></div><span class="mode-badge"><span class="mode-dot"></span>LIVE · THE GRAPH</span></div>
+        <div class="mode-banner"><div><strong>THE GRAPH · LIVE onchain evidence &nbsp;·&nbsp; CIRCLE / ARC · LIVE x402 execution</strong><span> · Radhanite decides which capability is economically worth buying. The $0.40 Graph figure is a benchmark capability price, not a provider charge.</span></div><span class="mode-badge"><span class="mode-dot"></span>LIVE</span></div>
         <div class="kpi-grid">
           <article class="kpi"><span class="kpi-label">Opportunity value</span><strong class="kpi-value" data-value="opportunity">$50,000</strong><span class="kpi-foot">potential contract value</span></article>
           <article class="kpi"><span class="kpi-label">Agent budget</span><strong class="kpi-value" data-value="budget"><span style="color:var(--muted);font-size:22px">$250</span> <span style="font-size:18px;color:var(--muted)">→</span> <span id="kpi-budget">$249.60</span></strong><span class="kpi-foot">permission to spend · not a target</span></article>
@@ -319,6 +319,27 @@
             </div>
           </div>
         </article>
+        <article class="panel execution-card" id="arc-execution">
+          <div class="panel-head"><div><div class="panel-kicker">Circle / Arc · x402 execution</div><h2>CIRCLE / ARC · LIVE</h2><p class="panel-sub">A separate verified run. Arc was the only candidate offered to it, so it was the selected capability there — not a second purchase inside the run above.</p></div><span class="status buy">LIVE ARC TESTNET</span></div>
+          <div class="panel-body execution-layout">
+            <dl class="field-list">
+              <div class="field"><dt>Wallet model</dt><dd>Circle Developer-Controlled Wallet EOA</dd></div>
+              <div class="field"><dt>Protocol</dt><dd>x402</dd></div>
+              <div class="field"><dt>Network</dt><dd>Arc Testnet <span class="mono" style="font-size:10px;color:var(--muted)">eip155:5042002</span></dd></div>
+              <div class="field"><dt>Exact quote</dt><dd>0.001 testnet-USDC</dd></div>
+              <div class="field"><dt>Committed amount</dt><dd class="good">0.001000 testnet-USDC</dd></div>
+            </dl>
+            <div>
+              <dl class="field-list">
+                <div class="field"><dt>Payment reference</dt><dd class="mono" style="font-size:10px;word-break:break-all">5255d5c3-23f8-4131-aded-084edf821bcd</dd></div>
+                <div class="field"><dt>Settlement status</dt><dd class="good">gateway_accepted</dd></div>
+                <div class="field"><dt>Service result</dt><dd>HTTP 200 · Circle Arc Testnet x402 demo result</dd></div>
+                <div class="field"><dt>TASK-009 in that run</dt><dd>8% → 14% · <span class="mono">economic_stop</span></dd></div>
+              </dl>
+              <p class="fixture-note"><strong>What this reference is:</strong> Gateway acceptance. <strong>On-chain finality is not asserted</strong> — <span class="mono">5255d5c3-…</span> is a Circle Gateway payment reference, not a transaction hash. One attempt, no retry.</p>
+            </div>
+          </div>
+        </article>
         <article class="panel evidence-card">
           <div class="panel-head"><div><div class="panel-kicker">TASK-009 evidence</div><h2>THE GRAPH · LIVE</h2><p class="panel-sub">Live onchain commercial evidence returned by The Graph.</p></div><span class="status buy">POSITIVE</span></div>
           <div class="panel-body evidence-layout"><div class="outcome"><div><div class="outcome-word">Positive</div><div class="outcome-caption">market signal</div></div></div><div><div class="onchain-grid"><div class="onchain-stat"><span class="onchain-label">Pools</span><strong class="onchain-value">72,855</strong></div><div class="onchain-stat"><span class="onchain-label">Transactions</span><strong class="onchain-value">149,631,676</strong></div><div class="onchain-stat"><span class="onchain-label">Block</span><strong class="onchain-value">25,969,369</strong></div></div><p class="onchain-note">Live onchain commercial evidence returned by The Graph. TASK-009 resolves <span class="mono">market_signal</span>. Total volume indexed: <span class="mono">$1,917,152,732,933.20</span>.</p></div></div>
@@ -330,7 +351,7 @@
       </section>
 
       <section class="view" id="trace" aria-label="Decision trace">
-        <div class="trace-intro"><div><div class="eyebrow">Chronological run record</div><h1>Decision trace</h1><p class="topbar-sub">Every buy, skip, result, and stop has a reason attached.</p></div><span class="mode-badge" style="background:var(--mint-wash);color:var(--mint-dark);border-color:#b9e2d5"><span class="mode-dot"></span>LIVE GRAPH TRACE</span></div>
+        <div class="trace-intro"><div><div class="eyebrow">Chronological run record</div><h1>Decision trace</h1><p class="topbar-sub">Every buy, skip, result, and stop has a reason attached.</p></div><span class="mode-badge" style="background:var(--mint-wash);color:var(--mint-dark);border-color:#b9e2d5"><span class="mode-dot"></span>LIVE TRACE</span></div>
         <div class="mode-banner"><div><strong>Readable by design</strong><span> · open details show the exact economic and evidence facts behind each event</span></div><span class="mono" style="font-size:10px;color:var(--mint-dark)">9 events</span></div>
         <div class="trace-list" id="trace-list"></div>
       </section>
@@ -339,13 +360,13 @@
         <div class="trace-intro"><div><div class="eyebrow">System boundary</div><h1>How Radhanite works</h1><p class="topbar-sub">Circle tells the agent what it can buy and how to pay. Radhanite decides what is worth buying.</p></div></div>
         <div class="architecture-card">
           <div class="architecture-copy"><div class="eyebrow">Economic execution layer</div><h2>Autonomous work needs a control plane, not a bigger wallet.</h2><p>Radhanite keeps <strong>value, budget, probability, and evidence</strong> in one provider-neutral decision loop. Integrations execute the selected capability; they do not rank themselves.</p><p>Radhanite does not predict outcomes. It controls the unit economics of autonomous work.</p></div>
-          <div class="diagram" aria-label="Radhanite architecture diagram"><div class="diagram-node">Autonomous agent task<br><span class="mono" style="font-size:10px;color:var(--ink-soft)">value + budget</span></div><div class="diagram-arrow">↓</div><div class="diagram-node">Capability candidates</div><div class="diagram-arrow">↓</div><div class="diagram-node engine">Radhanite economic engine<br><span class="mono" style="font-size:10px;color:#9ed9ca">BUY / SKIP / STOP</span></div><div class="diagram-arrow">↓</div><div class="diagram-node routes"><span>The Graph<br><small>LIVE</small></span><span>Circle / Arc<br><small>integrated</small></span><span>Hedera<br><small>not connected</small></span></div><div class="diagram-arrow">↓</div><div class="diagram-node">Evidence → updated task state → re-evaluate</div></div>
+          <div class="diagram" aria-label="Radhanite architecture diagram"><div class="diagram-node">Autonomous agent task<br><span class="mono" style="font-size:10px;color:var(--ink-soft)">value + budget</span></div><div class="diagram-arrow">↓</div><div class="diagram-node">Capability candidates</div><div class="diagram-arrow">↓</div><div class="diagram-node engine">Radhanite economic engine<br><span class="mono" style="font-size:10px;color:#9ed9ca">BUY / SKIP / STOP</span></div><div class="diagram-arrow">↓</div><div class="diagram-node routes"><span>The Graph<br><small>LIVE</small></span><span>Circle / Arc<br><small>live x402</small></span><span>Hedera<br><small>not connected</small></span></div><div class="diagram-arrow">↓</div><div class="diagram-node">Evidence → updated task state → re-evaluate</div></div>
         </div>
         <div class="rules-grid"><article class="rule"><span class="rule-index">01</span><h3>Economics first</h3><p>TASK-006 ranks exact candidates before any wallet or provider call.</p></article><article class="rule"><span class="rule-index">02</span><h3>Selected-only execution</h3><p>TASK-007 receives one chosen capability and one authorization ceiling.</p></article><article class="rule"><span class="rule-index">03</span><h3>Evidence closes the loop</h3><p>TASK-009 turns the validated result into the next probability and state.</p></article></div>
-        <div class="panel" style="margin-top:16px"><div class="panel-head"><div><div class="panel-kicker">Connection status</div><h2>Integration honesty</h2></div></div><div class="panel-body"><div class="cap-list"><div class="cap-card selected"><div class="cap-top"><div><div class="cap-name">The Graph</div><div class="cap-meta"><strong>Live data source</strong><span>Decentralized Network gateway · GraphQL</span></div></div><span class="status buy">LIVE</span></div><p class="cap-reason">The query actually ran and returned onchain facts at block 25,969,369. The <strong>$0.40 is a benchmark capability price</strong> Radhanite evaluated, not an amount The Graph charged: the query ran under a Free plan and billed 0 GRT.</p></div><div class="cap-card"><div class="cap-top"><div><div class="cap-name">Circle / Arc</div><div class="cap-meta"><strong>Integrated · settlement not asserted</strong><span>Circle Developer-Controlled Wallet · x402 · Arc Testnet</span></div></div><span class="status skip">INTEGRATED</span></div><p class="cap-reason">The Developer-Controlled Wallet, x402 and Arc Testnet path are implemented end to end. This build asserts <strong>no settled Arc payment</strong>, and shows no committed amount and no payment reference.</p></div><div class="cap-card"><div class="cap-top"><div><div class="cap-name">Hedera</div><div class="cap-meta"><strong>Coming next</strong><span>Not connected in this build</span></div></div><span class="status skip">NOT CONNECTED</span></div></div></div></div></div>
+        <div class="panel" style="margin-top:16px"><div class="panel-head"><div><div class="panel-kicker">Connection status</div><h2>Integration honesty</h2></div></div><div class="panel-body"><div class="cap-list"><div class="cap-card selected"><div class="cap-top"><div><div class="cap-name">The Graph</div><div class="cap-meta"><strong>Live data source</strong><span>Decentralized Network gateway · GraphQL</span></div></div><span class="status buy">LIVE</span></div><p class="cap-reason">The query actually ran and returned onchain facts at block 25,969,369. The <strong>$0.40 is a benchmark capability price</strong> Radhanite evaluated, not an amount The Graph charged: the query ran under a Free plan and billed 0 GRT.</p></div><div class="cap-card selected"><div class="cap-top"><div><div class="cap-name">Circle / Arc</div><div class="cap-meta"><strong>Live x402 execution</strong><span>Circle Developer-Controlled Wallet · x402 · Arc Testnet</span></div></div><span class="status buy">LIVE ARC TESTNET</span></div><p class="cap-reason">One authorized smoke, one attempt, no retry. Quoted <strong>0.001</strong> and committed <strong>0.001000</strong> testnet-USDC, payment reference <span class="mono">5255d5c3-23f8-4131-aded-084edf821bcd</span>, <span class="mono">gateway_accepted</span>, service returned HTTP 200. <strong>On-chain finality is not asserted</strong> — that reference is Gateway acceptance, not a transaction hash.</p></div><div class="cap-card"><div class="cap-top"><div><div class="cap-name">Hedera</div><div class="cap-meta"><strong>Coming next</strong><span>Not connected in this build</span></div></div><span class="status skip">NOT CONNECTED</span></div></div></div></div></div>
       </section>
 
-      <div class="footer-line"><span>Radhanite · economic execution layer for autonomous agents</span><span class="mono">TASK-011 live Graph query · benchmark prices · no payment performed</span></div>
+      <div class="footer-line"><span>Radhanite · economic execution layer for autonomous agents</span><span class="mono">live Graph query · live Arc Testnet x402 · Graph price is a benchmark figure</span></div>
     </main>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -367,7 +388,7 @@
     function renderCapabilities() {
       $("#capabilities").innerHTML = fixture.capabilities.map((cap) => `
         <article class="cap-card ${cap.selected ? "selected" : ""}">
-          <div class="cap-top"><div><div class="cap-name">${cap.name}</div><div class="cap-meta"><strong>${cap.provider}</strong><span>${cap.network}</span>${cap.live ? '<span class="live-pill">LIVE</span>' : ""}</div></div><span class="status ${cap.status.toLowerCase()}">${cap.status}</span></div>
+          <div class="cap-top"><div><div class="cap-name">${cap.name}</div><div class="cap-meta"><strong>${cap.provider}</strong><span>${cap.network}</span>${cap.live ? `<span class="live-pill">${cap.liveLabel ?? "LIVE"}</span>` : ""}</div></div><span class="status ${cap.status.toLowerCase()}">${cap.status}</span></div>
           <div class="cap-metrics">
             <div><span class="metric-label">${costBasisLabel(cap)}</span><span class="metric-value">${formatCapabilityCost(cap)}</span></div>
             <div><span class="metric-label">Post-action p</span><span class="metric-value">${formatPercent(cap.expectedProbability)}</span></div>
