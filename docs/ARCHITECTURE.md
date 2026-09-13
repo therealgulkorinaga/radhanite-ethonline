@@ -47,7 +47,7 @@ authoritative for the implementation.**
 
 Every acceptance criterion in TASK-001 and every field in the run record
 documented in [`RUN_RECORDS.md`](RUN_RECORDS.md) were written against this
-model. It remains the active runtime. The repository now contains **725 passing
+model. It remains the active runtime. The repository now contains **764 passing
 tests**; the TASK-001 two-tier model is no longer the only implemented layer.
 
 #### 2.2.2 Authorized migration direction — partially implemented
@@ -94,14 +94,17 @@ which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION
 **What does not exist.** The generalized loop is implemented as a provider-
 neutral library boundary, but it does not replace the active CLI path.
 `python -m radhanite` still runs TASK-001's two-tier loop, as §2.2.1 describes.
-The TASK-010 review branch now contains one provider-specific Circle Discovery
-and official-CLI x402/Gateway adapter; no payment smoke has been run because
-credentials are unavailable, and no credentials are stored. Its payment boundary
-uses the official CLI JSON envelope as the accounting source of truth, derives
-`BASE` from the supported Base network, validates the selected offer's chain,
-scheme, and USDC asset, and refuses to enter an ambiguous possibly-submitted
-payment into the exact TASK-007 ledger. No other provider-specific candidate
-generation, payment, network, or external adapter exists.
+The TASK-010 review branch contains the historical provider-specific Circle
+Discovery and official-CLI Base adapter plus an explicit Arc Testnet path using
+Circle's official EOA Developer-Controlled Wallet and x402 batching SDKs. The
+Arc boundary prepares Gateway balance through Circle's approval/deposit
+transactions, binds payment to `eip155:5042002`, and hands exact committed cost
+and immutable evidence into TASK-007/TASK-009. Circle Discovery currently has no
+Arc listing for the selected live resource, so a separately identified demo
+seller is used for the Arc smoke and is not represented as a Marketplace offer.
+No credentials are stored, no Base fallback is allowed, and the live Arc smoke
+remains explicitly opt-in. No other provider-specific candidate generation,
+payment, network, or external adapter exists.
 TASK-009 provides the declared revenue-opportunity state, evidence contract,
 benchmark initializer, and provider-neutral TASK-007 updater; it does not
 provide a live adapter. TASK-008 PR A provides
@@ -176,8 +179,8 @@ the only thing Radhanite is uniquely qualified to own.
 | Inference execution | OpenRouter | **Not authorized yet** |
 | Programmable authority over the agent, and its wallet | Privy | **Not authorized — deprioritized**, §3.2 |
 | Onchain information as a purchasable capability | The Graph | **Not authorized yet** |
-| Agent economic budget | Arc / USDC | **Not authorized yet** |
-| Agent payments, outbound and inbound | Hedera / x402 | **Not authorized yet** |
+| Agent economic budget | Arc / USDC | **Arc Testnet payment slice authorized on this review branch; production budget not authorized** |
+| Agent payments, outbound and inbound | Hedera / x402 | **Hedera not authorized; Circle Gateway x402 outbound slice authorized by TASK-010** |
 | Capability discovery and marketplace settlement | Circle Agent Marketplace / Gateway | **TASK-010 authorized on this review branch** |
 
 **Every system in this table sits beneath Radhanite, not beside it.** Radhanite
@@ -240,8 +243,12 @@ Radhanite must **not** implement custody, key management, or an authentication
 system. It holds authority; it does not issue it.
 
 ### 3.3 Arc / USDC — the agent's economic budget
-Intended later to make the budget real value rather than an internal number.
-Radhanite must **not** implement token accounting, transfers, or settlement.
+TASK-010 authorizes a bounded **Arc Testnet** outbound payment slice, not a
+production budget. Radhanite must **not** implement token accounting, custody,
+transfers, Gateway settlement, or wallet signing. Circle's official
+Developer-Controlled Wallet and x402 SDKs own those operations; Radhanite owns
+the pre-purchase economic decision, authorization ceiling, exact-cost ledger,
+and evidence handoff.
 
 Specified in [TASK-005](../tasks/TASK-005_BUDGET_IN_REAL_USDC_ON_ARC.md), which
 is where the prohibition in §6 item 8 is lifted — and only for values that are
@@ -253,10 +260,9 @@ in a second token would split every cost into the price of the thing and the
 price of paying for it, and "what did this task cost" would stop having a single
 answer.
 
-Until Arc is authorized, budget and task value are **USD-denominated decimal
-numbers** internal to Radhanite. They must not be named, labelled, or described
-as USDC. Simulated numbers are not a currency, and calling them one before real
-USDC exists would misrepresent what the system does.
+The benchmark budget and task value remain **USD-denominated decimal numbers**
+internal to Radhanite. The Arc Testnet smoke's USDC is a payment-rail fixture,
+not production value and not a replacement for the economic model.
 
 ### 3.4 Hedera / x402 — payments, in both directions
 
