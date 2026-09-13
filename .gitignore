@@ -8,6 +8,10 @@ dist/
 # Test and environment
 .venv/
 venv/
+node_modules/
+.env.arc.local
+.env.graph.local
+.arc-demo-private/
 
 # macOS
 .DS_Store

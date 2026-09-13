@@ -2,8 +2,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  costBasisLabel,
   fixture,
   formatAtomic,
+  formatCapabilityCost,
   formatMoney,
   formatPercent,
   formatUsdc,
@@ -11,8 +13,8 @@ import {
   renderableState,
 } from "./demo-data.js";
 
-test("fixture mode is explicit and cannot become live without evidence", () => {
-  assert.equal(modeLabel(fixture.mode), "FIXTURE");
+test("live mode is explicit and cannot be claimed without evidence", () => {
+  assert.equal(modeLabel(fixture.mode), "LIVE · THE GRAPH");
   assert.equal(renderableState({ ...fixture, mode: "live", execution: { liveEvidence: false } }).mode, "fixture");
   assert.equal(renderableState({ ...fixture, mode: "live", execution: { liveEvidence: true } }).mode, "live");
 });
@@ -25,22 +27,67 @@ test("exact monetary and atomic formatting is stable", () => {
   assert.equal(formatPercent("0.14"), "14%");
 });
 
-test("selected capability and skipped integrations are backend-shaped fixture data", () => {
+test("the selected capability is the one the economics actually rank first", () => {
   const selected = fixture.capabilities.filter((capability) => capability.selected);
   assert.equal(selected.length, 1);
-  assert.equal(selected[0].id, "arc-demo-x402");
+  assert.equal(selected[0].id, "graph-onchain-liquidity-001");
   assert.equal(selected[0].status, "BUY");
-  assert.equal(fixture.capabilities.find((capability) => capability.provider === "The Graph").live, false);
+  // Selection must follow net expected value, not presentation preference.
+  const best = [...fixture.capabilities].sort(
+    (a, b) => Number(b.netExpectedValue) - Number(a.netExpectedValue),
+  )[0];
+  assert.equal(selected[0].id, best.id);
+});
+
+test("net expected value equals uplift times task value minus cost", () => {
+  const value = Number(fixture.opportunity.value);
+  const before = Number(fixture.opportunity.probabilityBefore);
+  for (const capability of fixture.capabilities) {
+    const incremental = (Number(capability.expectedProbability) - before) * value;
+    assert.equal(incremental.toFixed(2), Number(capability.incrementalExpectedValue).toFixed(2));
+    assert.equal(
+      (incremental - Number(capability.cost)).toFixed(3),
+      Number(capability.netExpectedValue).toFixed(3),
+    );
+  }
+});
+
+test("only the integration that actually ran is marked live", () => {
+  assert.equal(fixture.capabilities.find((capability) => capability.provider === "The Graph").live, true);
+  assert.equal(fixture.capabilities.find((capability) => capability.provider === "Circle / Arc").live, false);
   assert.equal(fixture.capabilities.find((capability) => capability.provider === "Hedera").live, false);
 });
 
-test("execution and evidence retain exact fixture amount and reference", () => {
-  assert.equal(fixture.execution.committedAmount, "0.001");
-  assert.equal(fixture.execution.amountAtomic, "1000");
-  assert.equal(fixture.execution.reference, "fixture-ref-arc-001");
-  assert.match(fixture.execution.referenceLabel, /not settlement evidence/);
+test("a benchmark price is never rendered as a settled USDC amount", () => {
+  const graph = fixture.capabilities.find((capability) => capability.provider === "The Graph");
+  assert.equal(graph.costBasis, "benchmark");
+  assert.equal(formatCapabilityCost(graph), "$0.40");
+  assert.equal(costBasisLabel(graph), "Benchmark price");
+  assert.ok(!formatCapabilityCost(graph).includes("USDC"));
+  const arc = fixture.capabilities.find((capability) => capability.provider === "Circle / Arc");
+  assert.equal(formatCapabilityCost(arc), "0.001 USDC");
+});
+
+test("no Arc settlement or payment reference is asserted anywhere", () => {
+  const serialized = JSON.stringify(fixture);
+  assert.ok(!serialized.includes("fixture-ref-arc-001"));
+  assert.ok(!/committedAmount/.test(serialized));
+  const arc = fixture.capabilities.find((capability) => capability.provider === "Circle / Arc");
+  assert.equal(arc.selected, false);
+});
+
+test("execution records the live query and labels its price basis", () => {
+  assert.equal(fixture.execution.liveEvidence, true);
+  assert.equal(fixture.execution.provider, "The Graph");
+  assert.equal(fixture.execution.block, "25969369");
+  assert.equal(fixture.execution.evaluatedPrice, "0.40");
+  assert.match(fixture.execution.priceLabel, /not an amount charged by The Graph/);
   assert.equal(fixture.evidence.outcomeKey, "positive_market_signal");
-  assert.equal(fixture.evidence.serviceResult, "Circle Arc Testnet x402 demo result");
+  assert.equal(fixture.evidence.serviceResult, "Live onchain liquidity and volume snapshot");
+  // The facts must be the ones the live query actually returned.
+  assert.ok(fixture.evidence.facts.some((fact) => fact.includes("72,855")));
+  assert.ok(fixture.evidence.facts.some((fact) => fact.includes("149,631,676")));
+  assert.ok(fixture.evidence.facts.some((fact) => fact.includes("25,969,369")));
 });
 
 test("trace includes the probability transition and next stop decision", () => {
