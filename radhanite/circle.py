@@ -22,6 +22,7 @@ import urllib.parse
 import urllib.request
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, Protocol
 
 from radhanite.acquisition import CapabilityCatalog, CapabilityDescriptor, normalize
@@ -255,22 +256,24 @@ class CircleCliPaymentClient:
         output = (completed.stdout or "").strip()
         error = (completed.stderr or "").strip()
         if completed.returncode != 0:
-            payload = _parse_json_envelope(output)
-            if payload is not None and payload.get("paymentSubmitted") is True:
-                metadata = _payment_metadata(payload)
-                if metadata is None or "amount" not in metadata:
-                    raise CirclePaymentCommitmentUnresolvedError(
-                        "payment may have been submitted; exact commitment unresolved; "
-                        "inspect Circle payment records"
+            payload = _first_json_payload(output, error)
+            if payload is not None:
+                error_fields = _structured_error_fields(payload)
+                if _payment_may_have_been_submitted(error_fields):
+                    metadata = _payment_metadata(payload)
+                    if metadata is None or "amount" not in metadata:
+                        raise CirclePaymentCommitmentUnresolvedError(
+                            "payment may have been submitted; exact commitment unresolved; "
+                            "inspect Circle payment records"
+                        )
+                    committed_cost = _validate_payment_metadata(offer, metadata)
+                    return CirclePaymentReceipt(
+                        succeeded=False,
+                        committed_cost=committed_cost,
+                        evidence=self._evidence(
+                            offer, output or error, "payment submitted but service failed"
+                        ),
                     )
-                committed_cost = _validate_payment_metadata(offer, metadata)
-                return CirclePaymentReceipt(
-                    succeeded=False,
-                    committed_cost=committed_cost,
-                    evidence=self._evidence(
-                        offer, output, "payment submitted but service failed"
-                    ),
-                )
             raise CirclePreAttemptError(
                 "Circle CLI failed before payment commitment; no spend was recorded: "
                 + (error or output or "unknown CLI error")
@@ -315,14 +318,40 @@ def _parse_json_envelope(response: str) -> Mapping[str, Any] | None:
     return payload if isinstance(payload, Mapping) else None
 
 
-def _payment_metadata(payload: Mapping[str, Any]) -> Mapping[str, Any] | None:
-    for key in ("payment", "paymentMetadata", "paymentDetails", "receipt"):
-        value = payload.get(key)
-        if isinstance(value, Mapping):
-            return value
-    if any(key in payload for key in ("amount", "network", "chain", "scheme", "asset")):
-        return payload
+def _first_json_payload(*responses: str) -> Mapping[str, Any] | None:
+    for response in responses:
+        payload = _parse_json_envelope(response)
+        if payload is not None:
+            return payload
     return None
+
+
+def _payment_metadata(payload: Mapping[str, Any]) -> Mapping[str, Any] | None:
+    data = payload.get("data")
+    if not isinstance(data, Mapping):
+        return None
+    payment = data.get("payment")
+    return payment if isinstance(payment, Mapping) else None
+
+
+def _structured_error_fields(payload: Mapping[str, Any]) -> tuple[str, ...]:
+    error = payload.get("error")
+    if not isinstance(error, Mapping):
+        return ()
+    return tuple(
+        value.strip()
+        for key in ("message", "hint")
+        if isinstance(value := error.get(key), str) and value.strip()
+    )
+
+
+def _payment_may_have_been_submitted(fields: Sequence[str]) -> bool:
+    normalized = tuple(re.sub(r"\s+", " ", field).casefold() for field in fields)
+    return any(
+        "payment may have been submitted" in field
+        or "payment was submitted" in field
+        for field in normalized
+    )
 
 
 def _cli_chain_for_network(network: str) -> str:
@@ -350,16 +379,19 @@ def _validate_payment_metadata(
     offer: CircleOffer, metadata: Mapping[str, Any]
 ) -> Money:
     amount = metadata.get("amount")
-    committed_cost = _atomic_amount_to_money(amount)
+    committed_cost = _cli_amount_to_money(amount)
     expected_cost = _atomic_amount_to_money(offer.atomic_amount)
     expected_asset = offer.asset
     expected_chain = _cli_chain_for_network(offer.network)
-    checks = (
-        (metadata.get("network"), offer.network, "network"),
-        (metadata.get("chain"), expected_chain, "chain"),
-        (metadata.get("scheme"), offer.scheme, "scheme"),
-        (metadata.get("asset"), expected_asset, "asset"),
-    )
+    actual_chain = _normalize_cli_chain(metadata.get("chain"))
+    checks = [(actual_chain, expected_chain, "chain")]
+    for field, expected in (
+        ("network", offer.network),
+        ("scheme", offer.scheme),
+        ("asset", expected_asset),
+    ):
+        if field in metadata:
+            checks.append((metadata[field], expected, field))
     for actual, expected, label in checks:
         if actual != expected:
             raise CirclePaymentMetadataError(
@@ -371,6 +403,31 @@ def _validate_payment_metadata(
             f"atomic units, got {amount!r}."
         )
     return committed_cost
+
+
+def _normalize_cli_chain(value: object) -> str:
+    if not isinstance(value, str):
+        raise CirclePaymentMetadataError("Circle payment metadata must include a chain.")
+    normalized = value.strip().casefold()
+    if normalized == "base":
+        return "BASE"
+    raise CirclePaymentMetadataError(f"Unsupported Circle payment chain {value!r}.")
+
+
+def _cli_amount_to_money(value: object) -> Money:
+    if not isinstance(value, str):
+        raise CirclePaymentMetadataError(
+            "Circle payment amount must be formatted as '$<amount> USDC'."
+        )
+    match = re.fullmatch(r"\$(?P<amount>[0-9]+(?:\.[0-9]+)?)\s+USDC", value.strip())
+    if match is None:
+        raise CirclePaymentMetadataError(
+            "Circle payment amount must be formatted as '$<amount> USDC'."
+        )
+    amount = match.group("amount")
+    if Decimal(amount) <= 0:
+        raise CirclePaymentMetadataError("Circle payment amount must be positive.")
+    return Money(amount)
 
 
 def live_circle_discovery(
