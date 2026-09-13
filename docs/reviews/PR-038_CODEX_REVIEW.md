@@ -14,6 +14,8 @@ Pending independent Codex review. The reviewer must verify the implementation ag
 
 The pre-implementation SDK gate passed in an isolated mock spike. It confirmed that `GatewayClient` is private-key-only and is not used; the production route is `BatchEvmScheme({ address, signTypedData })` with `client.signTypedData({ walletId, data, memo })`. It also confirmed that Gateway deposit is a separate pre-funded setup prerequisite, not an automatic purchase-path operation.
 
+The authorized narrow correction set is tracked as `CODEX-PR038-01` through `CODEX-PR038-04`: exact context-independent atomic conversion; unresolved-by-default helper crash/phase semantics; deterministic service-result validation with full evidence retention; and payment-response parsing before service HTTP status. Independent Codex sign-off remains pending. **Implementation agent: Manus.**
+
 ## 2. Findings returned
 
 Pending Codex review.

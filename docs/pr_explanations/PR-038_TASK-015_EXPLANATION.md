@@ -21,7 +21,11 @@ The Node buyer helper uses only Circle's **Developer-Controlled Wallet EOA** mod
 
 The helper validates that `CIRCLE_ARC_WALLET_ID` resolves to the configured `CIRCLE_ARC_WALLET_ADDRESS` on `ARC-TESTNET` before signing. It performs only a read-only Gateway available-balance check. Wallet creation, faucet funding, approval, and Gateway deposit are setup actions and are not performed in the purchase path.
 
-The helper now emits an explicit unresolved-commitment marker when a signed/submitted payment does not return trustworthy payment metadata. The Python adapter maps that marker to `ArcPaymentCommitmentUnresolvedError`. It does not return a zero-cost result and it does not retry.
+The helper now emits an explicit phase envelope: `pre_sign` with affirmative `signing_started=false` and `payment_submitted=false` is the only structured state that permits a pre-attempt failure. Completed payments use `phase=complete` and `commitment_status=committed`. Missing, malformed, contradictory, killed, timed-out, or nonzero/no-JSON helper output defaults to `ArcPaymentCommitmentUnresolvedError`; it is never treated as zero spend or retried.
+
+The Arc price-to-atomic conversion uses the Decimal coefficient/exponent tuple directly. It does not multiply, quantize, round, or use float under the ambient Decimal context, and rejects values that are not exactly representable at six USDC decimal places.
+
+After the signed paid request returns, the helper parses and validates `PAYMENT-RESPONSE` before branching on service HTTP status. An accepted payment with a 2xx service response requires the deterministic demo service-result contract and an explicit `positive_market_signal`, `neutral`, or `negative` outcome. An accepted payment with HTTP 500 or 404 returns a failed receipt with the exact committed cost, reference, status, and structured service failure. It is not unresolved. The validated service result is retained in immutable evidence.
 
 The opt-in smoke report now includes the wallet model and safe address, quote, current probability, incremental expected value, TASK-006 decision, execution status, committed testnet-USDC amount, payment reference, service result, and TASK-009 state/probability. Missing setup still blocks before payment.
 
@@ -71,17 +75,17 @@ The Radhanite budget is an economic permission ceiling. The Circle Gateway balan
 
 The system makes two independent decisions. TASK-006 decides whether the exact quoted capability is economically worth buying. Circle's x402/Gateway system decides whether the signed payment can be accepted and settled. Radhanite does not rank by wallet or provider identity.
 
-A successful output contains the service result, exact committed testnet-USDC amount, and Gateway payment/transaction reference. Evidence also records that the reference means Gateway acceptance and does not assert later on-chain finality without separate transfer evidence.
+A successful output contains the validated service result, exact committed testnet-USDC amount, and Gateway payment/transaction reference. Evidence also records that the reference means Gateway acceptance and does not assert later on-chain finality without separate transfer evidence. Neutral or negative service results are retained as non-success evidence and do not emit `positive_market_signal`.
 
 ## 8. Failure modes
 
 A malformed or wrong Arc asset, Base network, wrong network, wrong scheme, wrong batching metadata, wrong Gateway contract, wrong quote, or wrong authorization is rejected before signing or payment. A seller that does not expose exactly one matching x402 v2 requirement is rejected.
 
-A setup failure before the x402 payment request is signed is reported as a pre-attempt blocker. If the signed request may have been submitted but exact payment metadata is missing, the helper returns `commitment_status: unresolved`; the adapter raises `ArcPaymentCommitmentUnresolvedError`. The generic run does not record invented zero spend and does not retry.
+A setup or validation failure before signing is reported as a pre-attempt blocker only through the affirmative `phase=pre_sign` envelope. If the helper crashes, times out, is killed, emits no JSON, emits malformed JSON, or returns contradictory metadata after startup, the adapter raises `ArcPaymentCommitmentUnresolvedError`. The generic run does not record invented zero spend and does not retry.
 
 ## 9. Tests and verification
 
-The focused Arc/Circle suite passes **44 tests**. The full Python 3.12 suite passes **769 tests** with:
+The focused Arc suite passes **21 tests**, and the focused Arc + Circle suite passes **54 tests** after the Codex corrections. The full Python 3.12 suite passes **779 tests**. The Node contract test covers the exact wallet ID, signer address, payment-response amount/wallet validation, and service-result contract.
 
 ```text
 PYTHONDONTWRITEBYTECODE=1 python3.12 -m unittest discover -q
@@ -109,7 +113,18 @@ This PR does not change TASK-006 economics, add a generic wallet abstraction, ad
 
 A successful live smoke requires human setup and explicit opt-in. A future task may add authoritative post-acceptance transfer verification if the product owner wants that distinction demonstrated on-chain. No such work is silently included here.
 
-## 14. How to explain this to a judge
+## 14. Codex correction status
+
+| Finding | Status |
+|---|---|
+| `CODEX-PR038-01` — context-independent exact atomic conversion | Resolved with coefficient/exponent decomposition and hostile Decimal-context tests |
+| `CODEX-PR038-02` — helper crash and explicit failure phase | Resolved with affirmative `pre_sign` envelope and unresolved-by-default failures |
+| `CODEX-PR038-03` — service-result validation and evidence retention | Resolved with deterministic demo contract, outcome mapping, and full service-result evidence |
+| `CODEX-PR038-04` — payment response before service status | Resolved with payment/reference validation before 2xx/4xx/5xx branching |
+
+Independent Codex review remains pending; this correction commit does not merge the PR.
+
+## 15. How to explain this to a judge
 
 Radhanite does not blindly spend because a wallet exists. It first receives an exact Arc Testnet price, puts only the economic fields into the generalized selector, and pays only if TASK-006 says the purchase is worth it. Circle's Developer-Controlled Wallet EOA signs the selected x402 payment, Gateway returns the service result and acceptance reference, and TASK-007 records the exact testnet-USDC amount. TASK-009 then turns the result into evidence for the next economic decision. The repository tests that safety path with mocks; the live smoke is deliberately opt-in and honestly reports setup blockers rather than pretending a payment occurred.
 

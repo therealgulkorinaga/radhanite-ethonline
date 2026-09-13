@@ -81,7 +81,7 @@ The Arc offer enters TASK-008 with an exact positive `Money` quote known before 
 
 TASK-007 receives the selected Candidate and passes the exact authorization ceiling to the executor. The executor resolves the selected Candidate back to the exact retained Arc offer. It refuses mismatched network, asset, quote, or authorization before invoking Circle or signing. Only the selected candidate may invoke the wallet/payment client; non-selected offers are never paid.
 
-A successful payment result must contain the exact selected atomic amount, the successful service response, and an authoritative payment or transaction reference. The reference is retained as evidence. A Gateway acceptance/reference is not described as later on-chain finality unless separate transfer evidence proves that finality.
+A successful payment result must contain the exact selected atomic amount, the validated demo service result, and an authoritative payment or transaction reference. The reference and full service result are retained as evidence. A Gateway acceptance/reference is not described as later on-chain finality unless separate transfer evidence proves that finality. Atomic conversion uses the Decimal coefficient/exponent representation directly, independent of ambient precision, and rejects values not exactly representable at six USDC decimal places.
 
 The adapter creates immutable `make_evidence(...)` only. It does not select candidates, change declared probability, mark the benchmark complete, or choose the next action. TASK-009 interprets the evidence, and the next TASK-006 decision receives the updater's resulting probability and state.
 
@@ -90,15 +90,15 @@ The adapter creates immutable `make_evidence(...)` only. It does not select cand
 The following rules are mandatory:
 
 1. A wrong network, malformed asset, wrong asset, unsupported x402 requirement, wrong amount, or mismatched quote fails before signing.
-2. A payment attempt that returns an authoritative successful Gateway response records the exact selected cost and reference.
-3. A service response after a signed payment that lacks authoritative settlement/reference metadata is **unresolved**, not zero spend.
-4. Any helper result explicitly marked `commitment_status: unresolved` becomes an unresolved-commitment error. It is never converted into a normal `ExecutionResult` and is never retried.
-5. A pre-attempt setup failure may abort without a spend record only when no x402 payment request has been signed/submitted.
-6. No automatic retry engine exists in TASK-015.
+2. Only a structured helper envelope with `phase: pre_sign`, `signing_started: false`, and `payment_submitted: false` may be classified as pre-attempt.
+3. Killed, timed-out, nonzero/no-JSON, malformed, or contradictory helper output defaults to unresolved commitment and is never zero spend or retried.
+4. A payment response is parsed and validated before service HTTP status. Accepted payment plus service 2xx returns success only for the deterministic demo result and explicit positive outcome.
+5. Accepted payment plus service 4xx/5xx returns failed execution with exact committed cost, reference, status, and structured service failure; it is not unresolved.
+6. Any amount, wallet, commitment, reference, or service-result mismatch after signing is unresolved. No automatic retry engine exists in TASK-015.
 
 ## 7. Tests and smoke
 
-Ordinary Python and Node contract tests mock external wallet, HTTP, seller, and subprocess behavior. They cover valid Arc requirements, wrong network/Base masquerade, strict asset validation, exact six-decimal amounts, selected-only invocation, exact committed cost/reference, unresolved commitment fail-closed behavior, evidence handoff, and a subsequent TASK-006 decision after the TASK-009 probability update.
+Ordinary Python and Node contract tests mock external wallet, HTTP, seller, and subprocess behavior. They cover valid Arc requirements, wrong network/Base masquerade, strict asset validation, hostile Decimal precision and exact six-decimal amounts, selected-only invocation, helper failure phases, exact committed cost/reference, accepted-payment service failures, unresolved commitment fail-closed behavior, validated service-result evidence, and a subsequent TASK-006 decision after the TASK-009 probability update.
 
 The only live payment command is explicit opt-in:
 
@@ -119,9 +119,9 @@ TASK-015 does not add a generic wallet interface, multichain routing, payment-po
 2. TASK-006 makes the purchase decision before any wallet or payment call.
 3. Only the selected candidate reaches TASK-007 execution and the Circle client.
 4. Wrong network, Base network, malformed asset, wrong asset, wrong x402 scheme, wrong x402 version, wrong batching name/version, and wrong verifying contract are rejected before signing.
-5. Exact six-decimal atomic amount is preserved through selection, authorization, receipt, and ledger accounting.
-6. Successful Arc execution retains the service result and payment/transaction reference.
-7. Ambiguous post-attempt commitment fails closed, records no invented zero spend, and cannot retry.
+5. Exact six-decimal atomic amount is preserved through selection, authorization, receipt, and ledger accounting independent of ambient Decimal precision.
+6. Successful Arc execution retains the validated service result and payment/transaction reference.
+7. Ambiguous post-attempt commitment fails closed, records no invented zero spend, and cannot retry; accepted payment plus service failure retains exact committed cost.
 8. Evidence reaches TASK-009, whose declared probability/state update is visible to the next TASK-006 decision.
 9. Normal tests use mocks and never trigger payment automatically.
 10. The explicit smoke reports a precise human setup blocker when live execution cannot run.

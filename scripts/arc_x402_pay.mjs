@@ -194,6 +194,46 @@ function selectAuthorizedRequirement(paymentRequired, expectedAsset, expectedAmo
   return acceptable[0];
 }
 
+function parseJsonServiceBody(bodyText) {
+  try {
+    return JSON.parse(bodyText);
+  } catch (error) {
+    throw new Error(`Arc seller returned non-JSON service result: ${error.message}`);
+  }
+}
+
+function validateSettlement(settle, selected, walletAddress) {
+  if (settle.success !== true) throw new Error("Arc Gateway did not report successful payment acceptance.");
+  if (settle.network !== ARC_NETWORK) throw new Error("Arc Gateway response returned a non-Arc network.");
+  if (typeof settle.transaction !== "string" || !settle.transaction.trim()) {
+    throw new Error("Arc Gateway response omitted its transaction/payment reference.");
+  }
+  if (settle.amount !== undefined && String(settle.amount) !== String(selected.amount)) {
+    throw new Error("Arc Gateway response amount does not match the exact authorized amount.");
+  }
+  if (settle.walletAddress !== undefined && normalizeEvmAddress(settle.walletAddress, "Arc Gateway wallet address") !== walletAddress.toLowerCase()) {
+    throw new Error("Arc Gateway response wallet does not match the configured signer.");
+  }
+}
+
+function validateServiceResult(serviceResult, responseStatus) {
+  if (!serviceResult || typeof serviceResult !== "object" || Array.isArray(serviceResult)) {
+    throw new Error("Arc seller returned no structured service result.");
+  }
+  if (responseStatus >= 200 && responseStatus < 300) {
+    if (serviceResult.capability !== "arc-demo-quote") throw new Error("Arc seller returned an unrecognized demo capability result.");
+    if (serviceResult.result !== "Circle Arc Testnet x402 demo result") throw new Error("Arc seller returned an unrecognized demo service result.");
+    if (!["positive_market_signal", "neutral", "negative"].includes(serviceResult.outcome)) {
+      throw new Error("Arc seller returned no supported demo service outcome.");
+    }
+    return serviceResult.outcome;
+  }
+  if (typeof serviceResult.error !== "string" || !serviceResult.error.trim()) {
+    throw new Error("Arc seller returned no structured service failure result.");
+  }
+  return "service_failure";
+}
+
 async function main() {
   const url = requiredArgOrEnv("--url", "RADHANITE_ARC_RESOURCE");
   const expectedPrice = requiredArgOrEnv("--amount", "RADHANITE_ARC_PRICE");
@@ -248,17 +288,18 @@ async function main() {
       },
     });
     const bodyText = await paid.text();
-    if (!paid.ok) throw new Error(`Arc x402 seller rejected payment with HTTP ${paid.status}: ${bodyText.slice(0, 200)}`);
     const settleHeader = paid.headers.get("PAYMENT-RESPONSE");
     if (!settleHeader) throw new Error("Arc seller omitted PAYMENT-RESPONSE after signed payment.");
     let settle;
     try { settle = JSON.parse(Buffer.from(settleHeader, "base64").toString("utf8")); } catch (error) { throw new Error(`PAYMENT-RESPONSE is not valid base64 JSON: ${error.message}`); }
-    if (settle.success !== true) throw new Error("Arc Gateway did not report successful payment acceptance.");
-    if (settle.network !== ARC_NETWORK) throw new Error("Arc Gateway response returned a non-Arc network.");
-    if (typeof settle.transaction !== "string" || !settle.transaction.trim()) throw new Error("Arc Gateway response omitted its transaction/payment reference.");
+    validateSettlement(settle, selected, walletAddress);
+    const serviceResult = parseJsonServiceBody(bodyText);
+    const serviceOutcome = validateServiceResult(serviceResult, paid.status);
 
     jsonLine({
+      phase: "complete",
       status: "gateway_accepted",
+      commitment_status: "committed",
       settlement_status: "gateway_accepted",
       network: ARC_NETWORK,
       asset: expectedAsset,
@@ -269,12 +310,17 @@ async function main() {
       gateway_available: atomicToUsdc(gatewayAvailable),
       payment_reference: settle.transaction,
       response_status: paid.status,
-      result: bodyText ? JSON.parse(bodyText) : null,
+      service_outcome: serviceOutcome,
+      service_result: serviceResult,
     });
   } catch (error) {
     jsonLine({
+      phase: circleSigningAttempted || paymentSubmitted ? "post_submit" : "pre_sign",
+      status: "error",
+      signing_started: circleSigningAttempted,
+      payment_submitted: paymentSubmitted,
+      commitment_status: circleSigningAttempted || paymentSubmitted ? "unresolved" : "not_committed",
       error: error instanceof Error ? error.message : String(error),
-      ...((circleSigningAttempted || paymentSubmitted) ? { commitment_status: "unresolved" } : {}),
     });
     process.exitCode = 1;
   }
@@ -282,7 +328,14 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === new URL(process.argv[1], "file:").href) {
   main().catch((error) => {
-    jsonLine({ error: error instanceof Error ? error.message : String(error) });
+    jsonLine({
+      phase: "pre_sign",
+      status: "error",
+      signing_started: false,
+      payment_submitted: false,
+      commitment_status: "not_committed",
+      error: error instanceof Error ? error.message : String(error),
+    });
     process.exitCode = 1;
   });
 }
@@ -291,5 +344,7 @@ export {
   normalizeEvmAddress,
   selectAuthorizedRequirement,
   typedDataJson,
+  validateServiceResult,
+  validateSettlement,
   validateTypedData,
 };

@@ -6,7 +6,12 @@
 
 import assert from "node:assert/strict";
 import { BatchEvmScheme } from "@circle-fin/x402-batching/client";
-import { typedDataJson, validateTypedData } from "./arc_x402_pay.mjs";
+import {
+  typedDataJson,
+  validateServiceResult,
+  validateSettlement,
+  validateTypedData,
+} from "./arc_x402_pay.mjs";
 
 const walletId = "wallet-id-for-test";
 const walletAddress = "0x1111111111111111111111111111111111111111";
@@ -71,10 +76,44 @@ assert.throws(() => validateTypedData({
 }, selected, walletAddress), /does not match wallet address/);
 assert.equal(circleCalls.length, beforeMismatch);
 
+validateSettlement({
+  success: true,
+  network: "eip155:5042002",
+  transaction: "gateway-ref",
+  amount: "1000",
+  walletAddress,
+}, requirements, walletAddress);
+assert.throws(() => validateSettlement({
+  success: true,
+  network: "eip155:5042002",
+  transaction: "gateway-ref",
+  amount: "1001",
+}, requirements, walletAddress), /amount/);
+assert.throws(() => validateSettlement({
+  success: true,
+  network: "eip155:5042002",
+  transaction: "gateway-ref",
+  walletAddress: "0x3333333333333333333333333333333333333333",
+}, requirements, walletAddress), /wallet/);
+assert.equal(validateServiceResult({
+  capability: "arc-demo-quote",
+  result: "Circle Arc Testnet x402 demo result",
+  outcome: "positive_market_signal",
+}, 200), "positive_market_signal");
+assert.equal(validateServiceResult({
+  capability: "arc-demo-quote",
+  result: "Circle Arc Testnet x402 demo result",
+  outcome: "neutral",
+}, 200), "neutral");
+assert.throws(() => validateServiceResult({ unexpected: true }, 200), /unrecognized|structured/);
+assert.equal(validateServiceResult({ error: "service failed" }, 500), "service_failure");
+
 console.log(JSON.stringify({
   status: "passed",
   circle_signTypedData_wallet_id: circleCalls[0].walletId,
   x402_signer_address: signer.address,
   exact_payload_created: true,
   mismatch_rejected_before_circle_signing: true,
+  payment_response_amount_and_wallet_validated: true,
+  service_result_contract_validated: true,
 }));

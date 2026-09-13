@@ -14,14 +14,17 @@ import json
 import subprocess
 import unittest
 from dataclasses import replace
+from decimal import Decimal, localcontext
 from unittest.mock import Mock
 
 from radhanite.arc import (
     ARC_TESTNET_GATEWAY_WALLET,
     ARC_TESTNET_NETWORK,
     ARC_TESTNET_USDC,
+    ArcPaymentError,
     ArcPaymentCommitmentUnresolvedError,
     CircleArcDeveloperWalletPaymentClient,
+    _money_to_atomic,
     arc_setup_blockers,
     arc_demo_catalog,
 )
@@ -35,6 +38,8 @@ from radhanite.runstate import RunStatus
 
 
 RESOURCE = "https://arc-demo.example.test/api/premium/quote"
+WALLET_ID = "wallet-id"
+WALLET_ADDRESS = "0x1111111111111111111111111111111111111111"
 
 
 def arc_offer_catalog(*, price: str = "0.001", probability: str = "0.14", resource: str = RESOURCE):
@@ -45,20 +50,46 @@ def arc_offer_catalog(*, price: str = "0.001", probability: str = "0.14", resour
     )
 
 
-def receipt_json(*, amount="0.001", asset=ARC_TESTNET_USDC, status="gateway_accepted", reference="ref"):
+def receipt_json(
+    *, amount="0.001", asset=ARC_TESTNET_USDC, status="gateway_accepted",
+    reference="ref", response_status=200, service_result=None,
+    service_outcome="positive_market_signal", commitment_status="committed",
+    wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS,
+):
+    if service_result is None:
+        service_result = (
+            {"capability": "arc-demo-quote", "result": "Circle Arc Testnet x402 demo result", "outcome": service_outcome}
+            if response_status in {200, 201, 202}
+            else {"error": f"service failed with HTTP {response_status}"}
+        )
     return json.dumps({
+        "phase": "complete",
         "status": status,
+        "commitment_status": commitment_status,
         "settlement_status": "gateway_accepted",
         "network": ARC_TESTNET_NETWORK,
         "asset": asset,
         "amount": amount,
+        "amount_atomic": str(int(Decimal(amount) * Decimal(10**6))),
+        "wallet_id": wallet_id,
+        "wallet_address": wallet_address,
         "payment_reference": reference,
-        "response_status": 200,
-        "result": {"quote": "42"},
+        "response_status": response_status,
+        "service_outcome": service_outcome,
+        "service_result": service_result,
     })
 
 
 class ArcTests(unittest.TestCase):
+    def test_arc_atomic_conversion_is_context_independent_and_exact(self) -> None:
+        with localcontext() as context:
+            context.prec = 3
+            self.assertEqual(_money_to_atomic(Money("123.456789")), "123456789")
+            self.assertEqual(_money_to_atomic(Money("0.000001")), "1")
+            self.assertEqual(_money_to_atomic(Money("0.012")), "12000")
+            with self.assertRaises(ValueError):
+                _money_to_atomic(Money("0.0000001"))
+
     def test_arc_setup_blockers_require_authorized_uppercase_configuration(self) -> None:
         blockers = arc_setup_blockers({})
         self.assertEqual(
@@ -86,21 +117,21 @@ class ArcTests(unittest.TestCase):
         self.assertIn("official Circle Arc", offer.source_reference)
 
     def test_base_offer_cannot_masquerade_as_arc(self) -> None:
-        client = CircleArcDeveloperWalletPaymentClient(runner=Mock(), wallet_id="wallet-id", wallet_address="0x1111111111111111111111111111111111111111", node="node")
+        client = CircleArcDeveloperWalletPaymentClient(runner=Mock(), wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS, node="node")
         offer = replace(arc_offer_catalog().offers[0], network="eip155:8453")
         with self.assertRaises(ValueError):
             client.pay(offer, Money("0.001"))
 
     def test_wrong_network_is_rejected_before_signing(self) -> None:
         runner = Mock()
-        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id="wallet-id", wallet_address="0x1111111111111111111111111111111111111111", node="node")
+        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS, node="node")
         with self.assertRaises(ValueError):
             client.pay(arc_offer_catalog().offers[0], Money("0.002"))
         runner.assert_not_called()
 
     def test_malformed_arc_asset_is_rejected_before_signing(self) -> None:
         runner = Mock()
-        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id="wallet-id", wallet_address="0x1111111111111111111111111111111111111111", node="node")
+        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS, node="node")
         offer = replace(arc_offer_catalog().offers[0], asset="not-an-address")
         with self.assertRaises(ValueError):
             client.pay(offer, Money("0.001"))
@@ -108,7 +139,7 @@ class ArcTests(unittest.TestCase):
 
     def test_wrong_arc_asset_is_rejected_before_signing(self) -> None:
         runner = Mock()
-        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id="wallet-id", wallet_address="0x1111111111111111111111111111111111111111", node="node")
+        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS, node="node")
         offer = replace(arc_offer_catalog().offers[0], asset="0x" + "1" * 40)
         with self.assertRaises(ValueError):
             client.pay(offer, Money("0.001"))
@@ -118,11 +149,12 @@ class ArcTests(unittest.TestCase):
         runner = Mock(return_value=subprocess.CompletedProcess(
             args=[], returncode=0, stdout=receipt_json(reference="0xarc-payment-reference"), stderr=""
         ))
-        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id="wallet-id", wallet_address="0x1111111111111111111111111111111111111111", node="node")
+        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS, node="node")
         receipt = client.pay(arc_offer_catalog().offers[0], Money("0.001"))
         self.assertIsInstance(receipt, CirclePaymentReceipt)
         self.assertEqual(receipt.committed_cost, Money("0.001"))
         self.assertIn("payment_reference=0xarc-payment-reference", receipt.evidence["facts"])
+        self.assertIn('service_result={"capability": "arc-demo-quote", "outcome": "positive_market_signal", "result": "Circle Arc Testnet x402 demo result"}', receipt.evidence["facts"])
         command = runner.call_args.args[0]
         self.assertIn(ARC_TESTNET_NETWORK, command)
         self.assertIn("0.001", command)
@@ -131,6 +163,91 @@ class ArcTests(unittest.TestCase):
         self.assertIn("wallet-id", command)
         self.assertIn("0x1111111111111111111111111111111111111111", command)
         self.assertNotIn("--deposit", command)
+
+    def test_nonzero_no_json_is_unresolved(self) -> None:
+        runner = Mock(return_value=subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="killed"))
+        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS)
+        with self.assertRaises(ArcPaymentCommitmentUnresolvedError):
+            client.pay(arc_offer_catalog().offers[0], Money("0.001"))
+
+    def test_malformed_json_is_unresolved(self) -> None:
+        runner = Mock(return_value=subprocess.CompletedProcess(args=[], returncode=1, stdout="not-json", stderr=""))
+        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS)
+        with self.assertRaises(ArcPaymentCommitmentUnresolvedError):
+            client.pay(arc_offer_catalog().offers[0], Money("0.001"))
+
+    def test_helper_process_exception_is_unresolved(self) -> None:
+        runner = Mock(side_effect=subprocess.TimeoutExpired(cmd="node", timeout=1))
+        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS)
+        with self.assertRaises(ArcPaymentCommitmentUnresolvedError):
+            client.pay(arc_offer_catalog().offers[0], Money("0.001"))
+
+    def test_structured_pre_sign_validation_failure_is_pre_attempt(self) -> None:
+        runner = Mock(return_value=subprocess.CompletedProcess(
+            args=[], returncode=1,
+            stdout=json.dumps({
+                "phase": "pre_sign", "status": "error",
+                "signing_started": False, "payment_submitted": False,
+                "commitment_status": "not_committed", "error": "wrong Arc asset",
+            }), stderr="",
+        ))
+        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS)
+        with self.assertRaises(ArcPaymentError) as caught:
+            client.pay(arc_offer_catalog().offers[0], Money("0.001"))
+        self.assertNotIsInstance(caught.exception, ArcPaymentCommitmentUnresolvedError)
+
+    def test_success_with_unresolved_commitment_is_rejected(self) -> None:
+        runner = Mock(return_value=subprocess.CompletedProcess(
+            args=[], returncode=0,
+            stdout=receipt_json(commitment_status="unresolved"), stderr="",
+        ))
+        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS)
+        with self.assertRaises(ArcPaymentCommitmentUnresolvedError):
+            client.pay(arc_offer_catalog().offers[0], Money("0.001"))
+
+    def test_wrong_amount_and_wallet_are_unresolved_after_commit(self) -> None:
+        for payload in (
+            receipt_json(amount="0.002"),
+            receipt_json(wallet_address="0x2222222222222222222222222222222222222222"),
+        ):
+            runner = Mock(return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout=payload, stderr=""))
+            client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS)
+            with self.assertRaises(ArcPaymentCommitmentUnresolvedError):
+                client.pay(arc_offer_catalog().offers[0], Money("0.001"))
+
+    def test_payment_accepted_service_500_and_404_retain_exact_commitment(self) -> None:
+        for response_status in (500, 404):
+            runner = Mock(return_value=subprocess.CompletedProcess(
+                args=[], returncode=0,
+                stdout=receipt_json(response_status=response_status), stderr="",
+            ))
+            receipt = CircleArcDeveloperWalletPaymentClient(
+                runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS
+            ).pay(arc_offer_catalog().offers[0], Money("0.001"))
+            self.assertFalse(receipt.succeeded)
+            self.assertEqual(receipt.committed_cost, Money("0.001"))
+            self.assertIn(f"service_status={response_status}", receipt.evidence["facts"])
+            self.assertIn(f' service_result={{"error": "service failed with HTTP {response_status}"}}'.strip(), receipt.evidence["facts"])
+
+    def test_neutral_service_result_does_not_emit_positive_outcome(self) -> None:
+        payload = receipt_json(
+            service_outcome="neutral",
+            service_result={"capability": "arc-demo-quote", "result": "Circle Arc Testnet x402 demo result", "outcome": "neutral"},
+        )
+        runner = Mock(return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout=payload, stderr=""))
+        receipt = CircleArcDeveloperWalletPaymentClient(
+            runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS
+        ).pay(arc_offer_catalog().offers[0], Money("0.001"))
+        self.assertFalse(receipt.succeeded)
+        self.assertIn("service_outcome=neutral", receipt.evidence["facts"])
+        self.assertIn('service_result={"capability": "arc-demo-quote", "outcome": "neutral", "result": "Circle Arc Testnet x402 demo result"}', receipt.evidence["facts"])
+
+    def test_malformed_service_result_is_unresolved(self) -> None:
+        payload = receipt_json(service_result={"unexpected": True})
+        runner = Mock(return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout=payload, stderr=""))
+        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS)
+        with self.assertRaises(ArcPaymentCommitmentUnresolvedError):
+            client.pay(arc_offer_catalog().offers[0], Money("0.001"))
 
     def test_non_selected_arc_capability_is_never_paid(self) -> None:
         first = arc_offer_catalog(price="0.001")
@@ -147,7 +264,7 @@ class ArcTests(unittest.TestCase):
         result = run_capability_loop(
             state=initialize_benchmark_run(),
             candidate_source=type("Source", (), {"get_candidates": lambda self, task_state, run_state: candidates})(),
-            executor=CircleCapabilityExecutor(catalog=catalog, payment_client=CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id="wallet-id", wallet_address="0x1111111111111111111111111111111111111111", node="node")),
+            executor=CircleCapabilityExecutor(catalog=catalog, payment_client=CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS, node="node")),
             updater=RevenueOpportunityUpdater(),
         )
         self.assertEqual(runner.call_count, 1)
@@ -159,7 +276,7 @@ class ArcTests(unittest.TestCase):
             stdout=json.dumps({"error": "seller response unavailable", "commitment_status": "unresolved"}),
             stderr="",
         ))
-        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id="wallet-id", wallet_address="0x1111111111111111111111111111111111111111", node="node")
+        client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS, node="node")
         with self.assertRaises(ArcPaymentCommitmentUnresolvedError):
             client.pay(arc_offer_catalog().offers[0], Money("0.001"))
         self.assertEqual(runner.call_count, 1)
@@ -170,7 +287,7 @@ class ArcTests(unittest.TestCase):
         result = run_capability_loop(
             state=initialize_benchmark_run(),
             candidate_source=type("Source", (), {"get_candidates": lambda self, task_state, run_state: catalog.candidates})(),
-            executor=CircleCapabilityExecutor(catalog=catalog, payment_client=CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id="wallet-id", wallet_address="0x1111111111111111111111111111111111111111", node="node")),
+            executor=CircleCapabilityExecutor(catalog=catalog, payment_client=CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS, node="node")),
             updater=RevenueOpportunityUpdater(),
         )
         self.assertEqual(result.status, RunStatus.ECONOMIC_STOP)

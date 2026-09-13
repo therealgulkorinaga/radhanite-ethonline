@@ -31,11 +31,11 @@ The seller's x402 v2 response must expose an exact requirement with `scheme=exac
 
 ## Reference semantics
 
-The x402 response's successful Gateway transaction/payment reference is retained in evidence. The implementation labels immediate Gateway acceptance separately from later on-chain finality. It does not call an acceptance reference an on-chain final transaction unless a separate authoritative transfer lookup establishes that fact.
+The x402 response's successful Gateway transaction/payment reference is retained in evidence. The implementation labels immediate Gateway acceptance separately from later on-chain finality. It does not call an acceptance reference an on-chain final transaction unless a separate authoritative transfer lookup establishes that fact. Payment-response metadata is parsed before service HTTP status, so an accepted payment plus service failure retains exact committed cost and reference.
 
 ## Safety posture
 
-All network, asset, amount, scheme, version, batching name, verifying contract, EIP-712 primary type, authorization fields, selected-candidate, wallet correlation, and authorization checks occur before Circle signing or payment. If a signed/submitted payment may have committed but the exact amount or reference is unavailable, the adapter raises an unresolved-commitment error. The generic loop does not retry and does not fabricate zero spend.
+All network, asset, amount, scheme, version, batching name, verifying contract, EIP-712 primary type, authorization fields, selected-candidate, wallet correlation, and authorization checks occur before Circle signing or payment. Arc atomic conversion uses the Decimal coefficient/exponent tuple rather than ambient-context multiplication. Only an affirmative `pre_sign` helper envelope permits a pre-attempt error; crashes, timeouts, malformed output, and contradictory metadata raise unresolved commitment. The generic loop does not retry and does not fabricate zero spend. A validated positive demo result is the only path that emits `positive_market_signal`; neutral or negative results remain non-success evidence.
 
 **Implementation agent: Manus.**
 
