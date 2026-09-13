@@ -1,7 +1,8 @@
 # TASK-010 — Circle marketplace and Arc payments adapter
 
-**Status:** Specified — **NOT AUTHORIZED for implementation**
-**Authorization:** None. This document specifies the work; it does not permit it.
+**Status:** Authorized — **implementation on review branch, Arc phase added**
+**Authorization:** Arko authorized TASK-010 on 2026-09-13 for one thin Circle
+Marketplace/Arc payment adapter. This review branch is not merged.
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.1, §3.3, §6
 **Satisfies:** [TASK-008](TASK-008_CAPABILITY_ACQUISITION.md) as a source, and [TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md) §5.2 as an executor
 
@@ -54,10 +55,80 @@ payment protocol — `ARCHITECTURE.md` §6 items 1–4.
   relationship — §6 item 11, `ARCHITECTURE.md` §4b.
 - Credentials come from the environment and are never committed.
 
-## 6. Open decisions ⚠️ **UNRESOLVED**
+## 6. Current implementation boundary
 
-Whether discovery is live or a captured snapshot for the benchmark, and what a
-partial or metered charge reports as `committed_cost` (TASK-007 §7.1).
+This review branch uses **live Circle Discovery** at
+`https://api.circle.com/v2/x402/discovery/resources`. The selected vertical
+slice is the live AIsa API CoinGecko Simple Price resource, exposed at an exact
+quoted price of `12000` micro-USDC (`0.012` USDC) on Base mainnet with the
+`GatewayWalletBatched` scheme. Circle Marketplace Discovery currently did not
+establish an Arc Testnet listing for this resource, so the code does not claim
+that the live Marketplace path is an Arc Testnet path.
+
+The adapter normalizes Circle descriptors through TASK-008, retains Circle
+metadata outside the three-field TASK-006 `Candidate`, and maps the selected
+candidate back to its provider descriptor. The executor delegates signing and
+settlement to the official `circle services pay` CLI, passes an explicit method,
+chain, wallet address, and `--max-amount`, and returns an exact
+`ExecutionResult`. The CLI's structured JSON payment envelope is authoritative:
+successful and definitely submitted responses must match the selected offer's
+amount, network, CLI chain, scheme, and supported USDC asset. The supported Base
+mapping is `eip155:8453 -> BASE`; a chain override that does not exactly match
+the selected offer is rejected before the subprocess is invoked. The explicit smoke command is
+`PYTHONDONTWRITEBYTECODE=1 python3.12 -m radhanite.circle_smoke`; it requires
+`CIRCLE_WALLET_ADDRESS`, an installed/authenticated Circle CLI, and explicit
+`CIRCLE_SMOKE_ALLOW_MAINNET=1` for the currently selected Base-mainnet offer.
+No credentials are committed, and the smoke command is never run by unit tests.
+
+The deterministic suite mocks HTTP and payment calls. A live read-only
+Discovery request succeeded during implementation; a payment smoke was not run
+because no Circle wallet credentials or CLI were available, and a mainnet
+payment is consequential. Arc Testnet Gateway/x402 remains the documented
+testnet path when a compatible offer and funded EOA are available; testnet
+tokens are not production value.
+
+### 6.1 Arc Testnet payment slice
+
+The Arc phase is a provider-specific payment boundary, not a new economic rule.
+It uses Circle's official **Developer-Controlled Wallet EOA** SDK for wallet
+creation, typed-data signing, approval, Gateway deposit, transaction polling,
+and wallet-side custody. It uses Circle's official x402 batching SDK for the
+`GatewayWalletBatched` payment payload. The configured chain is
+`ARC-TESTNET` / `eip155:5042002`; there is no Base fallback.
+
+The Arc payment sequence is: obtain one exact pre-purchase price, run the
+existing TASK-006 selection, ensure sufficient Gateway balance through Circle's
+official approval/deposit transactions, request the seller's `402` payment
+requirements, select only the Arc Gateway option within the authorized ceiling,
+sign the typed data through Circle, retry with the x402 payment header, and
+retain the exact settlement response as immutable TASK-009 evidence. A local
+demo seller is provided only as separately identified hackathon test
+infrastructure, derived from Circle's official Arc nanopayments example; it is
+not claimed to be a Circle Marketplace listing.
+
+The Arc live smoke is explicit and credential-gated. It requires
+`CIRCLE_API_KEY`, `CIRCLE_ENTITY_SECRET`, an Arc EOA, testnet USDC, a Gateway
+balance, and `Radhanite_ARC_RESOURCE`. Missing setup produces a blocker report;
+it does not attempt payment, silently use Base, or invent a successful result.
+No credentials or private keys are stored in the repository.
+
+For the selected exact-payment scheme, a successful response commits the exact
+atomic amount returned by the authoritative JSON envelope after it is validated
+against the pre-purchase quote. Base-mainnet offers must use the documented Base
+USDC asset, and atomic micro-USDC strings are converted exactly without ambient
+Decimal-context rounding. If the official CLI reports that payment was submitted
+but the service failed and provides a matching exact amount, that amount is
+recorded as committed. If payment may have been submitted but the exact amount
+cannot be established, the adapter raises an unresolved-commitment error and
+does not create a normal TASK-007 `ExecutionResult`. A failure before submission
+raises a pre-attempt error and records no spend.
+
+## 7. Open decisions ⚠️ **UNRESOLVED**
+
+Whether discovery is live or a captured snapshot for the benchmark, and how
+future partial or metered provider offers should expose exact committed cost
+(TASK-007 §7.1). The current exact Circle path fails closed when commitment is
+ambiguous rather than guessing an amount.
 
 **Pricing is no longer open.** TASK-008 §6.2 settles it: Circle Discovery
 exposes payment terms before purchase, TASK-008 normalizes the quoted amount

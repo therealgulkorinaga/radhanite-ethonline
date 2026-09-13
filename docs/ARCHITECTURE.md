@@ -47,7 +47,7 @@ authoritative for the implementation.**
 
 Every acceptance criterion in TASK-001 and every field in the run record
 documented in [`RUN_RECORDS.md`](RUN_RECORDS.md) were written against this
-model. It remains the active runtime. The repository now contains **725 passing
+model. It remains the active runtime. The repository now contains **764 passing
 tests**; the TASK-001 two-tier model is no longer the only implemented layer.
 
 #### 2.2.2 Authorized migration direction — partially implemented
@@ -94,10 +94,20 @@ which **capability** to acquire — [`PREREQ-001`](PREREQ-001_PRODUCT_DEFINITION
 **What does not exist.** The generalized loop is implemented as a provider-
 neutral library boundary, but it does not replace the active CLI path.
 `python -m radhanite` still runs TASK-001's two-tier loop, as §2.2.1 describes.
-No provider-specific candidate generation, payment, network, or external adapter
-exists. TASK-009 now provides the declared revenue-opportunity state, evidence
-contract, benchmark initializer, and provider-neutral TASK-007 updater; it does
-not provide a live adapter. TASK-008 PR A provides
+The TASK-010 review branch contains the historical provider-specific Circle
+Discovery and official-CLI Base adapter plus an explicit Arc Testnet path using
+Circle's official EOA Developer-Controlled Wallet and x402 batching SDKs. The
+Arc boundary prepares Gateway balance through Circle's approval/deposit
+transactions, binds payment to `eip155:5042002`, and hands exact committed cost
+and immutable evidence into TASK-007/TASK-009. Circle Discovery currently has no
+Arc listing for the selected live resource, so a separately identified demo
+seller is used for the Arc smoke and is not represented as a Marketplace offer.
+No credentials are stored, no Base fallback is allowed, and the live Arc smoke
+remains explicitly opt-in. No other provider-specific candidate generation,
+payment, network, or external adapter exists.
+TASK-009 provides the declared revenue-opportunity state, evidence contract,
+benchmark initializer, and provider-neutral TASK-007 updater; it does not
+provide a live adapter. TASK-008 PR A provides
 normalization and catalog lookup only; its source-specific generation and
 adapters remain unbuilt.
 
@@ -119,7 +129,7 @@ independent of budget.
 acceptance criteria are demonstrated by TASK-007's provider-neutral final loop;
 the economic kernel remains separate. The TASK-001 CLI path still describes
 what actually runs by default, while the generic loop is available as a library
-boundary on this review branch.
+boundary on main.
 
 #### 2.2.3 The generalization requires its own authorized task
 
@@ -169,9 +179,9 @@ the only thing Radhanite is uniquely qualified to own.
 | Inference execution | OpenRouter | **Not authorized yet** |
 | Programmable authority over the agent, and its wallet | Privy | **Not authorized — deprioritized**, §3.2 |
 | Onchain information as a purchasable capability | The Graph | **Not authorized yet** |
-| Agent economic budget | Arc / USDC | **Not authorized yet** |
-| Agent payments, outbound and inbound | Hedera / x402 | **Not authorized yet** |
-| Capability discovery and marketplace settlement | Circle Agent Marketplace | **Not authorized yet** |
+| Agent economic budget | Arc / USDC | **Arc Testnet payment slice authorized on this review branch; production budget not authorized** |
+| Agent payments, outbound and inbound | Hedera / x402 | **Hedera not authorized; Circle Gateway x402 outbound slice authorized by TASK-010** |
+| Capability discovery and marketplace settlement | Circle Agent Marketplace / Gateway | **TASK-010 authorized on this review branch** |
 
 **Every system in this table sits beneath Radhanite, not beside it.** Radhanite
 decides *whether* and *what* to buy; these supply it, or settle it.
@@ -233,8 +243,12 @@ Radhanite must **not** implement custody, key management, or an authentication
 system. It holds authority; it does not issue it.
 
 ### 3.3 Arc / USDC — the agent's economic budget
-Intended later to make the budget real value rather than an internal number.
-Radhanite must **not** implement token accounting, transfers, or settlement.
+TASK-010 authorizes a bounded **Arc Testnet** outbound payment slice, not a
+production budget. Radhanite must **not** implement token accounting, custody,
+transfers, Gateway settlement, or wallet signing. Circle's official
+Developer-Controlled Wallet and x402 SDKs own those operations; Radhanite owns
+the pre-purchase economic decision, authorization ceiling, exact-cost ledger,
+and evidence handoff.
 
 Specified in [TASK-005](../tasks/TASK-005_BUDGET_IN_REAL_USDC_ON_ARC.md), which
 is where the prohibition in §6 item 8 is lifted — and only for values that are
@@ -246,10 +260,9 @@ in a second token would split every cost into the price of the thing and the
 price of paying for it, and "what did this task cost" would stop having a single
 answer.
 
-Until Arc is authorized, budget and task value are **USD-denominated decimal
-numbers** internal to Radhanite. They must not be named, labelled, or described
-as USDC. Simulated numbers are not a currency, and calling them one before real
-USDC exists would misrepresent what the system does.
+The benchmark budget and task value remain **USD-denominated decimal numbers**
+internal to Radhanite. The Arc Testnet smoke's USDC is a payment-rail fixture,
+not production value and not a replacement for the economic model.
 
 ### 3.4 Hedera / x402 — payments, in both directions
 
@@ -296,10 +309,13 @@ carries three unresolved decisions and authorizes nothing.
 
 ## 4. Integration authorization status
 
-**No external integration is authorized at this time.**
+**No external integration beyond TASK-010 is authorized at this time.**
 
-Specifically, **none** of OpenRouter, Arc/USDC, Hedera, x402, The Graph, or
-Privy is authorized in [`TASK-001`](../tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md).
+Specifically, **none** of OpenRouter, Arc/USDC budget custody, Hedera, The Graph,
+or Privy is authorized in [`TASK-001`](../tasks/TASK-001_DETERMINISTIC_ECONOMIC_LOOP.md).
+TASK-010 separately authorizes only the Circle Discovery boundary and the
+official Circle CLI x402/Gateway executor boundary; it does not authorize
+Radhanite to reimplement wallets, x402, settlement, or token accounting.
 Any code, dependency, configuration, credential, or network call touching them
 is out of scope and must be rejected in review, regardless of how small.
 
@@ -334,8 +350,8 @@ order work would be taken in if it were.
 | 006 | [Generalized capability selection](../tasks/TASK-006_GENERALIZED_CAPABILITY_SELECTION.md) | **Engine** — implemented, provider-neutral, task-agnostic |
 | 007 | [Capability run loop](../tasks/TASK-007_CAPABILITY_RUN_LOOP.md) | **Engine** — final generic loop implemented and merged; provider-specific generation and benchmark integration incomplete |
 | 008 | [Capability acquisition](../tasks/TASK-008_CAPABILITY_ACQUISITION.md) | **Boundary** — PR A normalization/catalog boundary implemented; generation and adapters incomplete |
-| 009 | [Revenue opportunity state](../tasks/TASK-009_REVENUE_OPPORTUNITY_STATE.md) | **Benchmark reasoning** — state, declared evidence transitions, initializer, and updater implemented on the review branch |
-| 010 | [Circle marketplace and Arc payments](../tasks/TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | **Adapter** — discovery and settlement |
+| 009 | [Revenue opportunity state](../tasks/TASK-009_REVENUE_OPPORTUNITY_STATE.md) | **Benchmark reasoning** — state, declared evidence transitions, initializer, and updater implemented and merged |
+| 010 | [Circle marketplace and Arc payments](../tasks/TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | **Adapter** — live Discovery normalization and opt-in official CLI x402/Gateway execution on the review branch; Arc Testnet remains credential/offer gated |
 | 011 | [Onchain intelligence via The Graph](../tasks/TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md) | **Adapter** — evidence |
 | 012 | [Hedera independent review](../tasks/TASK-012_HEDERA_INDEPENDENT_REVIEW.md) | **Adapter** — one paid second opinion |
 | 013 | [Revenue-agent benchmark](../tasks/TASK-013_REVENUE_AGENT_BENCHMARK.md) | **Assembly** |

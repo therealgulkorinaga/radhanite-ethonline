@@ -119,3 +119,4 @@ If a reviewer other than Codex is ever used, substitute its name.
 | [#34](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/34) | [PR-034](PR-034_CODEX_REVIEW.md) | **Merged without review** — correction branch merged before the required independent re-review |
 | [#35](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/35) | [PR-035](PR-035_CODEX_REVIEW.md) | pending — **prompt committed before the review** (§7.3) |
 | [#36](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/36) | [PR-036](PR-036_CODEX_REVIEW.md) | pending — **prompt committed before the review** (§7.3) |
+| [#37](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/37) | [PR-037](PR-037_CODEX_REVIEW.md) | pending — **prompt committed before the review** (§7.3) |
