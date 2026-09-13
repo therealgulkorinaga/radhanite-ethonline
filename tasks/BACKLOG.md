@@ -95,7 +95,7 @@ adapter remain incomplete.
 | [007](TASK-007_CAPABILITY_RUN_LOOP.md) | Engine — the run loop | **Implemented and merged** — candidate source, TASK-006 selection, PR-B execution, updater, terminal classification, and immutable history; provider-specific work remains incomplete |
 | [008](TASK-008_CAPABILITY_ACQUISITION.md) | Boundary — candidate generation | **PR A implemented** — normalization/catalog boundary; source-specific generation and adapters remain incomplete |
 | [009](TASK-009_REVENUE_OPPORTUNITY_STATE.md) | Benchmark reasoning | **Implemented and merged** — immutable state, declared evidence transitions, initializer, and TASK-007 updater |
-| [010](TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | Adapter — Circle / Arc | **Authorized — implemented on review branch** — live Discovery normalization and opt-in official CLI x402/Gateway executor boundary; payment smoke remains credential-gated |
+| [010](TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | Adapter — Circle / Arc | **Authorized — implemented on review branch** — live Discovery normalization, exact supported-USDC conversion, selected-offer chain validation, and opt-in official CLI x402/Gateway executor; ambiguous payment commitment remains outside exact accounting |
 | [011](TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md) | Adapter — The Graph | Specified |
 | [012](TASK-012_HEDERA_INDEPENDENT_REVIEW.md) | Adapter — Hedera | Specified |
 | [013](TASK-013_REVENUE_AGENT_BENCHMARK.md) | Assembly — the benchmark | Specified |

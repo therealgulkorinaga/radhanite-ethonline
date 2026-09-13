@@ -70,7 +70,11 @@ metadata outside the three-field TASK-006 `Candidate`, and maps the selected
 candidate back to its provider descriptor. The executor delegates signing and
 settlement to the official `circle services pay` CLI, passes an explicit method,
 chain, wallet address, and `--max-amount`, and returns an exact
-`ExecutionResult`. The explicit smoke command is
+`ExecutionResult`. The CLI's structured JSON payment envelope is authoritative:
+successful and definitely submitted responses must match the selected offer's
+amount, network, CLI chain, scheme, and supported USDC asset. The supported Base
+mapping is `eip155:8453 -> BASE`; a chain override that does not exactly match
+the selected offer is rejected before the subprocess is invoked. The explicit smoke command is
 `PYTHONDONTWRITEBYTECODE=1 python3.12 -m radhanite.circle_smoke`; it requires
 `CIRCLE_WALLET_ADDRESS`, an installed/authenticated Circle CLI, and explicit
 `CIRCLE_SMOKE_ALLOW_MAINNET=1` for the currently selected Base-mainnet offer.
@@ -84,15 +88,22 @@ testnet path when a compatible offer and funded EOA are available; testnet
 tokens are not production value.
 
 For the selected exact-payment scheme, a successful response commits the exact
-pre-purchase quote. If the official CLI reports that payment was submitted but
-the service failed, the same exact quote is recorded as committed; no partial
-metered amount is invented. A failure before submission raises a pre-attempt
-error and records no spend.
+atomic amount returned by the authoritative JSON envelope after it is validated
+against the pre-purchase quote. Base-mainnet offers must use the documented Base
+USDC asset, and atomic micro-USDC strings are converted exactly without ambient
+Decimal-context rounding. If the official CLI reports that payment was submitted
+but the service failed and provides a matching exact amount, that amount is
+recorded as committed. If payment may have been submitted but the exact amount
+cannot be established, the adapter raises an unresolved-commitment error and
+does not create a normal TASK-007 `ExecutionResult`. A failure before submission
+raises a pre-attempt error and records no spend.
 
 ## 7. Open decisions ⚠️ **UNRESOLVED**
 
-Whether discovery is live or a captured snapshot for the benchmark, and what a
-partial or metered charge reports as `committed_cost` (TASK-007 §7.1).
+Whether discovery is live or a captured snapshot for the benchmark, and how
+future partial or metered provider offers should expose exact committed cost
+(TASK-007 §7.1). The current exact Circle path fails closed when commitment is
+ambiguous rather than guessing an amount.
 
 **Pricing is no longer open.** TASK-008 §6.2 settles it: Circle Discovery
 exposes payment terms before purchase, TASK-008 normalizes the quoted amount
