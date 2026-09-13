@@ -147,6 +147,56 @@ class CircleTests(unittest.TestCase):
         self.assertNotIn("AIsa", vars(candidate) if hasattr(candidate, "__dict__") else {})
         self.assertEqual(catalog.descriptor_for(candidate.candidate_id).name, "Simple Price")
 
+    def test_discovery_accepts_lowercase_base_usdc_address(self) -> None:
+        payload = discovery_payload()
+        payload["items"][0]["accepts"][0]["asset"] = BASE_USDC.lower()
+        catalog = catalog_from_circle_response(
+            payload,
+            expected_post_action_success_probability=Probability("0.14"),
+            network="eip155:8453",
+        )
+        self.assertEqual(len(catalog), 1)
+
+    def test_discovery_accepts_same_evm_address_with_different_hex_casing(self) -> None:
+        payload = discovery_payload()
+        payload["items"][0]["accepts"][0]["asset"] = "0x833589FCD6EDB6E08F4C7C32D4F71B54BDA02913"
+        catalog = catalog_from_circle_response(
+            payload,
+            expected_post_action_success_probability=Probability("0.14"),
+            network="eip155:8453",
+        )
+        self.assertEqual(len(catalog), 1)
+
+    def test_discovery_rejects_different_valid_evm_asset(self) -> None:
+        payload = discovery_payload()
+        payload["items"][0]["accepts"][0]["asset"] = "0x0000000000000000000000000000000000000001"
+        with self.assertRaises(CircleDiscoveryError):
+            catalog_from_circle_response(
+                payload,
+                expected_post_action_success_probability=Probability("0.14"),
+                network="eip155:8453",
+            )
+
+    def test_discovery_rejects_malformed_evm_asset(self) -> None:
+        payload = discovery_payload()
+        payload["items"][0]["accepts"][0]["asset"] = "0xnot-an-address"
+        with self.assertRaises(CircleDiscoveryError):
+            catalog_from_circle_response(
+                payload,
+                expected_post_action_success_probability=Probability("0.14"),
+                network="eip155:8453",
+            )
+
+    def test_discovery_rejects_wrong_length_evm_asset(self) -> None:
+        payload = discovery_payload()
+        payload["items"][0]["accepts"][0]["asset"] = "0x833589fcd6edb6e08f4c7c32d4f71b54bda0291"
+        with self.assertRaises(CircleDiscoveryError):
+            catalog_from_circle_response(
+                payload,
+                expected_post_action_success_probability=Probability("0.14"),
+                network="eip155:8453",
+            )
+
     def test_unknown_or_non_gateway_price_is_excluded(self) -> None:
         with self.assertRaises(CircleDiscoveryError):
             catalog_from_circle_response(
