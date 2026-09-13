@@ -1,57 +1,52 @@
-# site/
+# Radhanite demo frontend
 
-The public ETHOnline progress page. **Communication material, not product code.**
+**Implementation agent: Manus.**
 
-Committed under [`AI_BUILD_GOVERNANCE.md`](../docs/AI_BUILD_GOVERNANCE.md) §3.2,
-which is the only authority that permits it and which constrains what it may
-say.
+This directory contains the TASK-016 desktop-first demo frontend for ETHOnline judges. It presents the Radhanite thesis as an economic control console for autonomous agents:
 
+```text
+Task + value + budget
+→ candidate capabilities
+→ economic evaluation
+→ BUY / SKIP
+→ Circle / Arc execution
+→ evidence
+→ updated probability/state
+→ next decision / STOP
 ```
-site/index.html    the page — one file, no build step, no dependencies
-vercel.json        at the repository root; points Vercel here
+
+## Run locally
+
+From the repository root:
+
+```bash
+python3 -m http.server 4173 --directory site
 ```
 
-## Deploying
+Then open <http://127.0.0.1:4173/>. Opening `site/index.html` directly also works in modern browsers, but an HTTP server is recommended because the UI imports `demo-data.js` as an ES module.
 
-The page is a single static HTML file. It needs no build, no framework, and no
-install step.
+## Routes / views
 
-**Vercel.** Import the repository. `vercel.json` at the repository root already
-sets `outputDirectory` to `site` with no build command, so the defaults are
-correct and nothing needs configuring in the dashboard. If the project was
-created before that file existed, set **Root Directory** to `site` and
-**Framework Preset** to *Other* instead.
+The single-page demo exposes three hash views:
 
-**Anything else.** Serve `site/` as a static directory, or open
-`site/index.html` in a browser. Both work; there is nothing to compile.
+- `#dashboard` — live demo dashboard with opportunity summary, candidate cards, selected decision, Arc execution, evidence, and state transition.
+- `#trace` — chronological decision trace from opportunity creation through the next TASK-006 decision.
+- `#how` — architecture diagram and explicit integration status.
 
-The only network requests the page makes are to Google Fonts. Everything else —
-styles, layout, the small script that tracks the scroll position — ships inside
-the file.
+## Fixture and live honesty
 
-## What this page may and may not say
+This build defaults to **FIXTURE** mode. It uses deterministic backend-shaped benchmark data and never performs payment. The visible Arc wallet, x402, Arc Testnet, quote, committed amount, and reference are labelled fixture data and are not settlement evidence.
 
-§3.2 is narrow on purpose, because a landing page is exactly where a project
-starts overclaiming.
+The frontend contains no live backend endpoint and no payment capability. It does not reproduce TASK-006 calculations in JavaScript. The displayed values are rendered from `demo-data.js`, which is shaped like backend output. A future live view may render actual backend evidence only when an authorized endpoint supplies it; it must then show `LIVE ARC TESTNET` and never silently fall back to fixture mode.
 
-- Every claim about what exists must be **true of a named commit**, and the page
-  states which one. A page whose figures have drifted from the repository is a
-  defect in the page.
-- [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §6 applies here **in full** —
-  items 8 through 12 especially. Simulated figures are not USDC, declared
-  fixtures are not measurements, testnet value is not production value, and
-  nothing may imply Radhanite has done work it has not done.
-- It **introduces no product or architecture decision.** It describes documents
-  that already exist and has no authority of its own.
-- Naming an integration here **authorizes nothing.** Every integration on the
-  page is marked *not authorized*, which is the truth and must stay the truth.
+The Graph and Hedera are intentionally displayed as **Coming next / Not connected in this build**. They are not presented as live integrations.
 
-## Keeping it honest
+## Visual direction
 
-The figures come from the repository and go stale as the repository moves. When
-they do, correct them in the same pull request as the change that invalidated
-them, or correct the provenance line so a reader can see the page is behind.
+The design is a restrained economic-control-console aesthetic: deep ink navigation, warm neutral surfaces, mint decision states, amber fixture/setup states, large numeric hierarchy, and compact monospace data. It avoids wallet-first, trading-dashboard, and developer-console patterns.
 
-Leaving a stale claim standing is the failure this project has spent the most
-effort avoiding — see `AI_BUILD_GOVERNANCE.md` §7.4 for what it cost the last
-few times.
+## Verification
+
+The frontend is intentionally dependency-free. The repository-level Python suite remains the runtime authority. The demo's pure formatting/data module can be imported by a future lightweight browser test harness without changing the Python economic contracts.
+
+**Implementation agent: Manus.**
