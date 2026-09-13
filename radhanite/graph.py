@@ -69,6 +69,7 @@ __all__ = [
     "GraphQueryError",
     "GraphQueryReceipt",
     "GraphQuerySpec",
+    "GraphCommitmentUnresolvedError",
     "GraphPostAttemptError",
     "GraphPreAttemptError",
     "catalog_from_query_specs",
@@ -77,6 +78,7 @@ __all__ = [
 GATEWAY_URL_TEMPLATE = "https://gateway.thegraph.com/api/subgraphs/id/{subgraph_id}"
 
 _EVIDENCE_TYPE = "graph_onchain_evidence"
+_USER_AGENT = "radhanite/0.1.0 (+https://github.com/therealgulkorinaga/radhanite-ethonline)"
 _FACT_EXCERPT_LENGTH = 240
 
 
@@ -90,6 +92,10 @@ class GraphPreAttemptError(RuntimeError):
 
 class GraphPostAttemptError(RuntimeError):
     """The query was served, but no usable result could be recovered."""
+
+
+class GraphCommitmentUnresolvedError(GraphPostAttemptError):
+    """The gateway answered, but whether it billed the query is unknown."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -240,17 +246,22 @@ class GraphQueryClient(Protocol):
 class GraphGatewayClient:
     """Query one subgraph over The Graph's decentralized gateway.
 
-    **Commitment accounting.** The gateway bills for a query it serves. This
-    client therefore treats the boundary as follows, and the distinction is the
-    point rather than a detail:
+    **Commitment accounting.** The gateway bills for a query an indexer serves,
+    and the response is the only thing this client can see. Three cases, and the
+    distinction between them is the point rather than a detail:
 
-    - a failure *before* the request is sent — no API key, malformed spec,
-      connection refused, DNS failure — is a `GraphPreAttemptError`. Nothing was
-      served and nothing is recorded as spent.
-    - a response that *was* served, including one carrying GraphQL `errors` or
-      an auth rejection, is a committed attempt reported as a failed
-      `GraphQueryReceipt` at the declared cost. TASK-007 records what was spent;
-      it does not get to discover a cheaper story afterwards.
+    - **Nothing was served.** A failure before the request is sent — no API key,
+      cost above the ceiling — or a non-200 status, which is the gateway or its
+      edge refusing the request before any indexer saw it. `GraphPreAttemptError`,
+      and nothing is recorded as spent.
+    - **Served and answered.** HTTP 200 carrying `data`: the declared cost is
+      committed.
+    - **Answered, but billing unknown.** HTTP 200 carrying `errors`, or neither
+      `data` nor `errors`. Whether an indexer served and billed it cannot be read
+      off the response, so this raises `GraphCommitmentUnresolvedError` rather
+      than inventing an amount in either direction — the same stance
+      `CirclePaymentCommitmentUnresolvedError` takes in `circle.py`. Subgraph
+      Studio's query count is the authority, and a human resolves it there.
 
     The API key is read from the environment and is never written into evidence,
     a run record, a fact, or an error message.
@@ -293,15 +304,23 @@ class GraphGatewayClient:
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.api_key}",
+                # The gateway sits behind an edge that rejects the stdlib
+                # default agent outright (Cloudflare 1010). Identify honestly.
+                "User-Agent": _USER_AGENT,
             },
         )
         try:
             with self.opener(request, timeout=self.timeout) as response:
                 raw = response.read().decode("utf-8")
         except urllib.error.HTTPError as exc:
-            # An HTTP error status still means the gateway served a response.
-            raw = _safe_read(exc)
-            return self._failed(spec, f"gateway returned HTTP {exc.code}", raw)
+            # A non-200 status is the gateway or its edge refusing the request
+            # before an indexer served it — auth rejection, rate limit, edge
+            # block, outage. Nothing was served, so nothing was billed.
+            raise GraphPreAttemptError(
+                f"The Graph gateway refused the request with HTTP {exc.code}; "
+                f"no query was served and nothing was spent: "
+                f"{_truncate(_safe_read(exc))}"
+            ) from exc
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             raise GraphPreAttemptError(
                 f"Could not reach The Graph gateway; no query was served: {exc}"
@@ -309,13 +328,22 @@ class GraphGatewayClient:
 
         payload = _parse_json(raw)
         if payload is None:
-            return self._failed(spec, "gateway response was not JSON", raw)
+            raise GraphPostAttemptError(
+                "The Graph gateway returned a non-JSON body: " + _truncate(raw)
+            )
         errors = payload.get("errors")
         if errors:
-            return self._failed(spec, "gateway returned GraphQL errors", json.dumps(errors))
+            raise GraphCommitmentUnresolvedError(
+                "The Graph gateway returned query errors; whether an indexer "
+                "served and billed the query is unresolved. Subgraph Studio's "
+                "query count is the authority: " + _truncate(json.dumps(errors))
+            )
         data = payload.get("data")
         if not isinstance(data, Mapping) or not data:
-            return self._failed(spec, "gateway returned no data", raw)
+            raise GraphCommitmentUnresolvedError(
+                "The Graph gateway returned neither data nor errors; whether the "
+                "query was billed is unresolved: " + _truncate(raw)
+            )
 
         return GraphQueryReceipt(
             succeeded=True,
@@ -324,13 +352,6 @@ class GraphGatewayClient:
                 spec,
                 facts=("onchain evidence retrieved", *_facts_from(data, spec.fact_fields)),
             ),
-        )
-
-    def _failed(self, spec: GraphQuerySpec, reason: str, detail: str) -> GraphQueryReceipt:
-        return GraphQueryReceipt(
-            succeeded=False,
-            committed_cost=spec.declared_cost,
-            evidence=self._evidence(spec, facts=(reason, _truncate(detail))),
         )
 
     def _evidence(self, spec: GraphQuerySpec, *, facts: Sequence[str]) -> Mapping[str, object]:

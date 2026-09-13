@@ -12,9 +12,11 @@ from radhanite.capability import Candidate
 from radhanite.capability_execution import ExecutionResult
 from radhanite.graph import (
     GATEWAY_URL_TEMPLATE,
+    GraphCommitmentUnresolvedError,
     GraphCapabilityCatalog,
     GraphCapabilityExecutor,
     GraphGatewayClient,
+    GraphPostAttemptError,
     GraphPreAttemptError,
     GraphQueryError,
     GraphQueryReceipt,
@@ -171,29 +173,40 @@ class GatewayClientTests(unittest.TestCase):
             "secret-key", json.dumps(dict(receipt.evidence), default=str)
         )
 
-    def test_graphql_errors_are_a_committed_failure(self) -> None:
-        # The gateway served the query, so it was paid for. Reporting this as a
-        # pre-attempt failure would understate real spend.
+    def test_graphql_errors_leave_commitment_unresolved(self) -> None:
+        # The gateway answered, but whether an indexer served and billed the
+        # query cannot be read off the response. Inventing either $0.00 or the
+        # declared cost would be a fabricated accounting fact.
         body = json.dumps({"errors": [{"message": "auth error: API key not found"}]})
         client = GraphGatewayClient(api_key="k", opener=opener_returning(body))
-        receipt = client.query(spec(), Money("0.40"))
-        self.assertFalse(receipt.succeeded)
-        self.assertEqual(receipt.committed_cost, Money("0.40"))
-        self.assertIn("gateway returned GraphQL errors", receipt.evidence["facts"])
+        with self.assertRaisesRegex(GraphCommitmentUnresolvedError, "unresolved"):
+            client.query(spec(), Money("0.40"))
 
-    def test_http_error_status_is_a_committed_failure(self) -> None:
+    def test_edge_rejection_commits_nothing(self) -> None:
+        # Cloudflare 1010 against the stdlib user agent was the real failure
+        # this guards: a 403 never reaches an indexer, so it is never billed.
         error = urllib.error.HTTPError(
             url="https://gateway.thegraph.com",
-            code=402,
-            msg="Payment Required",
+            code=403,
+            msg="Forbidden",
             hdrs=None,
             fp=None,
         )
         client = GraphGatewayClient(api_key="k", opener=opener_raising(error))
-        receipt = client.query(spec(), Money("0.40"))
-        self.assertFalse(receipt.succeeded)
-        self.assertEqual(receipt.committed_cost, Money("0.40"))
-        self.assertIn("gateway returned HTTP 402", receipt.evidence["facts"])
+        with self.assertRaisesRegex(GraphPreAttemptError, "nothing was spent"):
+            client.query(spec(), Money("0.40"))
+
+    def test_request_identifies_itself_to_the_edge(self) -> None:
+        captured: list = []
+        body = json.dumps({"data": {"ok": 1}})
+        client = GraphGatewayClient(
+            api_key="k", opener=opener_returning(body, captured)
+        )
+        client.query(spec(fact_fields=()), Money("0.40"))
+        (request,) = captured
+        agent = request.headers["User-agent"]
+        self.assertIn("radhanite", agent)
+        self.assertNotIn("Python-urllib", agent)
 
     def test_unreachable_gateway_commits_nothing(self) -> None:
         client = GraphGatewayClient(
@@ -216,21 +229,19 @@ class GatewayClientTests(unittest.TestCase):
         with self.assertRaisesRegex(GraphPreAttemptError, "no query was sent"):
             client.query(spec(), Money("0.10"))
 
-    def test_non_json_body_is_a_committed_failure(self) -> None:
+    def test_non_json_body_is_refused_rather_than_priced(self) -> None:
         client = GraphGatewayClient(
             api_key="k", opener=opener_returning("<html>502</html>")
         )
-        receipt = client.query(spec(), Money("0.40"))
-        self.assertFalse(receipt.succeeded)
-        self.assertIn("gateway response was not JSON", receipt.evidence["facts"])
+        with self.assertRaisesRegex(GraphPostAttemptError, "non-JSON body"):
+            client.query(spec(), Money("0.40"))
 
-    def test_empty_data_is_a_committed_failure(self) -> None:
+    def test_empty_data_leaves_commitment_unresolved(self) -> None:
         client = GraphGatewayClient(
             api_key="k", opener=opener_returning(json.dumps({"data": {}}))
         )
-        receipt = client.query(spec(), Money("0.40"))
-        self.assertFalse(receipt.succeeded)
-        self.assertIn("gateway returned no data", receipt.evidence["facts"])
+        with self.assertRaisesRegex(GraphCommitmentUnresolvedError, "unresolved"):
+            client.query(spec(), Money("0.40"))
 
 
 class _StubClient:

@@ -21,7 +21,9 @@ import sys
 
 from radhanite.graph import (
     GraphCapabilityExecutor,
+    GraphCommitmentUnresolvedError,
     GraphGatewayClient,
+    GraphPostAttemptError,
     GraphPreAttemptError,
     GraphQuerySpec,
     catalog_from_query_specs,
@@ -109,7 +111,15 @@ def main() -> int:
             updater=RevenueOpportunityUpdater(),
         )
     except GraphPreAttemptError as exc:
-        print(f"query=not_attempted reason={exc}", file=sys.stderr)
+        print(f"query=not_served reason={exc}", file=sys.stderr)
+        return 2
+    except GraphCommitmentUnresolvedError as exc:
+        # Never invent an amount in either direction — Subgraph Studio's query
+        # count is the authority, and a human resolves it there.
+        print(f"query=commitment_unresolved reason={exc}", file=sys.stderr)
+        return 2
+    except GraphPostAttemptError as exc:
+        print(f"query=unusable_response reason={exc}", file=sys.stderr)
         return 2
 
     print(f"status={result.status.value}")
