@@ -123,3 +123,4 @@ If a reviewer other than Codex is ever used, substitute its name.
 | [#38](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/38) | [PR-038](PR-038_CODEX_REVIEW.md) | pending — **prompt committed before the review** (§7.3) |
 | [#40](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/40) | [PR-040](PR-040_CODEX_REVIEW.md) | pending — **prompt committed before the review** (§7.3) |
 | [#42](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/42) | [PR-042](PR-042_CODEX_REVIEW.md) | pending — **prompt committed before the review** (§7.3) |
+| [#41](https://github.com/therealgulkorinaga/radhanite-ethonline/pull/41) | [PR-041](PR-041_CODEX_REVIEW.md) | pending — **prompt committed before the review** (§7.3) |
