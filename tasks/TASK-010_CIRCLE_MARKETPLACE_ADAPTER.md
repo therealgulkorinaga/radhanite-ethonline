@@ -1,6 +1,6 @@
 # TASK-010 — Circle marketplace and Arc payments adapter
 
-**Status:** Authorized — **implementation on review branch**
+**Status:** Authorized — **implementation on review branch, Arc phase added**
 **Authorization:** Arko authorized TASK-010 on 2026-09-13 for one thin Circle
 Marketplace/Arc payment adapter. This review branch is not merged.
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.1, §3.3, §6
@@ -86,6 +86,31 @@ because no Circle wallet credentials or CLI were available, and a mainnet
 payment is consequential. Arc Testnet Gateway/x402 remains the documented
 testnet path when a compatible offer and funded EOA are available; testnet
 tokens are not production value.
+
+### 6.1 Arc Testnet payment slice
+
+The Arc phase is a provider-specific payment boundary, not a new economic rule.
+It uses Circle's official **Developer-Controlled Wallet EOA** SDK for wallet
+creation, typed-data signing, approval, Gateway deposit, transaction polling,
+and wallet-side custody. It uses Circle's official x402 batching SDK for the
+`GatewayWalletBatched` payment payload. The configured chain is
+`ARC-TESTNET` / `eip155:5042002`; there is no Base fallback.
+
+The Arc payment sequence is: obtain one exact pre-purchase price, run the
+existing TASK-006 selection, ensure sufficient Gateway balance through Circle's
+official approval/deposit transactions, request the seller's `402` payment
+requirements, select only the Arc Gateway option within the authorized ceiling,
+sign the typed data through Circle, retry with the x402 payment header, and
+retain the exact settlement response as immutable TASK-009 evidence. A local
+demo seller is provided only as separately identified hackathon test
+infrastructure, derived from Circle's official Arc nanopayments example; it is
+not claimed to be a Circle Marketplace listing.
+
+The Arc live smoke is explicit and credential-gated. It requires
+`CIRCLE_API_KEY`, `CIRCLE_ENTITY_SECRET`, an Arc EOA, testnet USDC, a Gateway
+balance, and `Radhanite_ARC_RESOURCE`. Missing setup produces a blocker report;
+it does not attempt payment, silently use Base, or invent a successful result.
+No credentials or private keys are stored in the repository.
 
 For the selected exact-payment scheme, a successful response commits the exact
 atomic amount returned by the authoritative JSON envelope after it is validated
