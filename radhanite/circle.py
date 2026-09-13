@@ -512,7 +512,16 @@ def catalog_from_circle_response(
                 f"Circle Gateway offer has invalid atomic amount {amount!r}."
             ) from exc
         expected_asset = _SUPPORTED_USDC_ASSETS[network]
-        if term.get("asset") != expected_asset:
+        try:
+            expected_asset_normalized = _normalize_evm_address(
+                expected_asset, "configured expected asset"
+            )
+            discovered_asset_normalized = _normalize_evm_address(
+                term.get("asset"), "discovered asset"
+            )
+        except (TypeError, ValueError) as exc:
+            raise CircleDiscoveryError(str(exc)) from exc
+        if discovered_asset_normalized != expected_asset_normalized:
             raise CircleDiscoveryError(
                 f"Circle Gateway offer does not use supported USDC asset for {network!r}."
             )
@@ -563,6 +572,17 @@ def catalog_from_circle_response(
             for descriptor, probability in pairs
         ]
     ), offers=tuple(offers))
+
+
+def _normalize_evm_address(value: object, label: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError(f"Circle {label} must be a string EVM address.")
+    if re.fullmatch(r"0x[0-9a-fA-F]{40}", value) is None:
+        raise ValueError(
+            f"Circle {label} must have a 0x prefix and exactly 40 hexadecimal "
+            "characters after it."
+        )
+    return value.lower()
 
 
 def _gateway_term(accepts: Any, network: str) -> Mapping[str, Any] | None:
