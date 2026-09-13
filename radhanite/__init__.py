@@ -31,6 +31,8 @@ Implemented so far:
   benchmark initializer, and TASK-007 updater (TASK-009)
 - ``radhanite.circle`` — live Circle Discovery normalization and an opt-in
   Circle CLI x402/Gateway executor boundary (TASK-010)
+- ``radhanite.arc`` — the opt-in official Circle Developer-Controlled Wallet
+  and Arc Testnet x402 executor boundary (TASK-010)
 
 TASK-001 is complete. TASK-006 — choosing among candidate capabilities rather
 than escalating through two fixed tiers — is implemented: the candidate model,
@@ -57,6 +59,16 @@ from radhanite.acquisition import (
     CapabilityDescriptor,
     acquire,
     normalize,
+)
+from radhanite.arc import (
+    ARC_TESTNET_CHAIN_ID,
+    ARC_TESTNET_GATEWAY_WALLET,
+    ARC_TESTNET_NETWORK,
+    ARC_TESTNET_USDC,
+    ARC_TESTNET_WALLET_CHAIN,
+    ArcPaymentError,
+    CircleArcDeveloperWalletPaymentClient,
+    arc_demo_catalog,
 )
 from radhanite.capability import DECLARED_CANDIDATES, Candidate, validate_candidates
 from radhanite.capability_execution import (
@@ -122,11 +134,18 @@ __all__ = [
     "DECLARED_STRATEGIES",
     "Assessment",
     "Attempt",
+    "ARC_TESTNET_CHAIN_ID",
+    "ARC_TESTNET_GATEWAY_WALLET",
+    "ARC_TESTNET_NETWORK",
+    "ARC_TESTNET_USDC",
+    "ARC_TESTNET_WALLET_CHAIN",
+    "ArcPaymentError",
     "CapabilityCatalog",
     "CapabilityDescriptor",
     "CapabilityExecutor",
     "CircleCapabilityCatalog",
     "CircleCapabilityExecutor",
+    "CircleArcDeveloperWalletPaymentClient",
     "CircleCliPaymentClient",
     "CircleDiscoveryError",
     "CircleOffer",
@@ -165,6 +184,7 @@ __all__ = [
     "Verdict",
     "__version__",
     "acquire",
+    "arc_demo_catalog",
     "benchmark_opportunity",
     "initialize_benchmark_run",
     "make_evidence",
