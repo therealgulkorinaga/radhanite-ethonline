@@ -96,8 +96,12 @@ neutral library boundary, but it does not replace the active CLI path.
 `python -m radhanite` still runs TASK-001's two-tier loop, as §2.2.1 describes.
 The TASK-010 review branch now contains one provider-specific Circle Discovery
 and official-CLI x402/Gateway adapter; no payment smoke has been run because
-credentials are unavailable, and no credentials are stored. No other provider-
-specific candidate generation, payment, network, or external adapter exists.
+credentials are unavailable, and no credentials are stored. Its payment boundary
+uses the official CLI JSON envelope as the accounting source of truth, derives
+`BASE` from the supported Base network, validates the selected offer's chain,
+scheme, and USDC asset, and refuses to enter an ambiguous possibly-submitted
+payment into the exact TASK-007 ledger. No other provider-specific candidate
+generation, payment, network, or external adapter exists.
 TASK-009 provides the declared revenue-opportunity state, evidence contract,
 benchmark initializer, and provider-neutral TASK-007 updater; it does not
 provide a live adapter. TASK-008 PR A provides
