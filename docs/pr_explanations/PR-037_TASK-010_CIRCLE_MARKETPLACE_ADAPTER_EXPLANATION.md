@@ -32,8 +32,21 @@ Circle's official documentation describes Arc Testnet Gateway/x402 nanopayments 
 
 The focused TASK-010 suite contains **26 tests** and mocks HTTP and payment calls. It covers exact-price normalization, provider neutrality, no payment during discovery, unknown/non-Gateway exclusion, candidate-to-descriptor mapping, selection-before-payment, explicit authorization, over-commitment rejection, exact successful accounting, attempted-failure accounting, structured JSON metadata validation, definite pre-attempt and submitted failures, unresolved commitment handling, chain/network mapping, mainnet safety, exact atomic conversion under a tiny Decimal context, supported USDC validation, CLI command construction, and environment-only credential handling.
 
-The authoritative command `PYTHONDONTWRITEBYTECODE=1 python3.12 -m unittest discover -q` passes **751 tests** on Python 3.12. The live read-only Circle Discovery check succeeded and returned **18** exact Base-mainnet Gateway offers at the time of implementation. The live payment smoke was **not run**: the sandbox has no Circle CLI or wallet credentials, and a mainnet payment requires explicit user-controlled setup and funding.
+The authoritative command at the original Base-only implementation passed **751 tests** on Python 3.12. The live read-only Circle Discovery check succeeded and returned **18** exact Base-mainnet Gateway offers at the time of implementation. The live payment smoke was **not run**: the sandbox has no Circle CLI or wallet credentials, and a mainnet payment requires explicit user-controlled setup and funding.
 
 ## Deliberate non-scope
 
 This PR adds no Circle SDK dependency, no wallet custody, no private-key handling, no payment protocol implementation, no retry behavior, no persistence, no UI, no The Graph or Hedera integration, no probability logic, and no change to the TASK-001 CLI/runtime path. Arc is not used by the verified live offer. TASK-010 remains a review branch and must not be merged by the implementation agent.
+
+
+## Arc phase extension
+
+**Implementation agent: Manus.** This same PR now contains the separately authorized Arc Testnet phase. The chosen wallet model is Circle's official **Developer-Controlled Wallet EOA**, because Circle's official Arc nanopayments buyer example uses that SDK directly for wallet creation, typed-data signing, contract execution, and transaction polling. The x402 payment uses Circle's official `@circle-fin/x402-batching` SDK.
+
+Circle Discovery was checked for an Arc-compatible paid resource and did not establish one for the selected live Marketplace resource. Accordingly, the Arc smoke uses a separately identified minimal demo seller derived from Circle's official Arc nanopayments example. The seller is not represented as a Circle Marketplace listing, and Base is not used as a fallback.
+
+The Arc path is bound to `ARC-TESTNET` / `eip155:5042002` and the official Arc Testnet USDC asset configured in the adapter. Before signing, Radhanite knows the exact quoted price and TASK-006 selects the candidate. The helper then checks Gateway balance, performs Circle's official USDC approval and Gateway deposit when needed, obtains the seller's `402` requirements, signs the selected `GatewayWalletBatched` requirement, retries with the x402 payment header, and retains the settlement or authorization reference and exact amount. The result is converted into the existing immutable TASK-009 evidence envelope; the Circle adapter does not update probability, select the next capability, or mark the task complete.
+
+The branch adds six critical Arc tests covering Arc network acceptance, Base rejection, wallet/network binding, wrong-network rejection before signing, exact amount and asset preservation, non-selected payment exclusion, selected-after-TASK-006 ordering, exact committed-cost and reference retention, and TASK-009 evidence handoff. The full Python 3.12 suite passes **764 tests**. Node syntax and official SDK imports also pass.
+
+The live Arc smoke is **blocked, not falsely reported as successful**, because this checkout has no supplied Circle API key, entity secret, funded Arc EOA, Gateway balance, or seller URL. The explicit command reports those exact prerequisites and never prints secrets, attempts Base fallback, or performs a payment without them.
