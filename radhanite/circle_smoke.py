@@ -16,6 +16,8 @@ from radhanite.circle import (
     CircleCapabilityExecutor,
     CircleCliPaymentClient,
     CircleDiscoveryError,
+    CirclePaymentCommitmentUnresolvedError,
+    CirclePaymentMetadataError,
     CirclePreAttemptError,
     live_circle_discovery,
 )
@@ -104,6 +106,12 @@ def main() -> int:
         )
     except CirclePreAttemptError as exc:
         print(f"payment=not_attempted reason={exc}", file=sys.stderr)
+        return 2
+    except CirclePaymentCommitmentUnresolvedError as exc:
+        print(f"payment=unresolved_commitment reason={exc}", file=sys.stderr)
+        return 2
+    except CirclePaymentMetadataError as exc:
+        print(f"payment=metadata_rejected reason={exc}", file=sys.stderr)
         return 2
 
     print(f"status={result.status.value}")

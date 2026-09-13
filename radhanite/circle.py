@@ -15,13 +15,13 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import urllib.parse
 import urllib.request
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from decimal import Decimal
 from typing import Any, Protocol
 
 from radhanite.acquisition import CapabilityCatalog, CapabilityDescriptor, normalize
@@ -38,6 +38,8 @@ __all__ = [
     "CircleDiscoveryError",
     "CircleOffer",
     "CirclePaymentReceipt",
+    "CirclePaymentCommitmentUnresolvedError",
+    "CirclePaymentMetadataError",
     "CirclePostAttemptError",
     "CirclePreAttemptError",
     "catalog_from_circle_response",
@@ -45,7 +47,14 @@ __all__ = [
 ]
 
 DISCOVERY_URL = "https://api.circle.com/v2/x402/discovery/resources"
-_USDC_MICRO_UNITS = Decimal("1000000")
+_USDC_DECIMAL_PLACES = 6
+_SUPPORTED_USDC_ASSETS = {
+    "eip155:8453": "0x833589fcd6edb6e08f4c7c32d4f71b54bdA02913",
+}
+_NETWORK_TO_CLI_CHAIN = {
+    "eip155:8453": "BASE",
+}
+_ATOMIC_AMOUNT_RE = re.compile(r"^[0-9]+$")
 _DEFAULT_QUERY = {"ids": "bitcoin,ethereum", "vs_currencies": "usd"}
 
 
@@ -61,6 +70,14 @@ class CirclePostAttemptError(RuntimeError):
     """The payment may have committed, but the provider did not return a receipt."""
 
 
+class CirclePaymentCommitmentUnresolvedError(CirclePostAttemptError):
+    """The provider may have charged, but no exact committed amount is known."""
+
+
+class CirclePaymentMetadataError(ValueError):
+    """The authoritative Circle payment metadata is missing or inconsistent."""
+
+
 @dataclass(frozen=True, slots=True)
 class CircleOffer:
     """Provider-specific metadata retained outside TASK-006."""
@@ -73,6 +90,9 @@ class CircleOffer:
     quoted_cost: Money
     source_reference: str
     request_url: str | None = None
+    asset: str = _SUPPORTED_USDC_ASSETS["eip155:8453"]
+    scheme: str = "GatewayWalletBatched"
+    atomic_amount: str = "12000"
 
     @property
     def payable_url(self) -> str:
@@ -163,11 +183,11 @@ class CircleCliPaymentClient:
     """Use the official Circle CLI for an explicit, opt-in x402 payment.
 
     The CLI owns wallet signing and Circle Gateway settlement. This adapter does
-    not create a wallet, accept private keys, or silently retry. Exact x402
-    pricing means a successful response commits the quoted amount. If a failed
-    command says payment was submitted, the same exact quote is recorded as
-    committed; otherwise the failure is treated as pre-attempt and no spend is
-    fabricated.
+    not create a wallet, accept private keys, or silently retry. The official
+    JSON envelope is the only payment-accounting source of truth: successful and
+    definitely submitted responses must expose matching amount, network, chain,
+    scheme, and asset metadata. A possibly submitted response without an exact
+    amount fails closed because TASK-007 cannot record an unknown spend.
     """
 
     def __init__(
@@ -176,12 +196,18 @@ class CircleCliPaymentClient:
         cli: str = "circle",
         wallet_address: str | None = None,
         chain: str | None = None,
+        allow_mainnet: bool | None = None,
         runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
         outcome_key: str = "positive_market_signal",
     ) -> None:
         self.cli = cli
         self.wallet_address = wallet_address or os.environ.get("CIRCLE_WALLET_ADDRESS")
-        self.chain = chain or os.environ.get("CIRCLE_CHAIN", "BASE")
+        self.chain_override = chain if chain is not None else os.environ.get("CIRCLE_CHAIN")
+        self.allow_mainnet = (
+            allow_mainnet
+            if allow_mainnet is not None
+            else os.environ.get("CIRCLE_SMOKE_ALLOW_MAINNET") == "1"
+        )
         self.runner = runner
         self.outcome_key = outcome_key
 
@@ -197,6 +223,18 @@ class CircleCliPaymentClient:
             )
         if offer.method not in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
             raise CirclePreAttemptError(f"Unsupported seller method {offer.method!r}.")
+        expected_chain = _cli_chain_for_network(offer.network)
+        payment_chain = self.chain_override or expected_chain
+        if payment_chain != expected_chain:
+            raise CirclePaymentMetadataError(
+                f"Circle offer network {offer.network!r} requires CLI chain "
+                f"{expected_chain!r}; received {payment_chain!r}."
+            )
+        if payment_chain == "BASE" and not self.allow_mainnet:
+            raise CirclePreAttemptError(
+                "Refusing a Base-mainnet payment without explicit mainnet consent; "
+                "set CIRCLE_SMOKE_ALLOW_MAINNET=1."
+            )
         command = [
             self.cli,
             "services",
@@ -207,7 +245,7 @@ class CircleCliPaymentClient:
             "--address",
             self.wallet_address,
             "--chain",
-            self.chain,
+            payment_chain,
             "--max-amount",
             str(maximum_authorized_cost.amount),
             "--output",
@@ -217,12 +255,21 @@ class CircleCliPaymentClient:
         output = (completed.stdout or "").strip()
         error = (completed.stderr or "").strip()
         if completed.returncode != 0:
-            combined = f"{output}\n{error}"
-            if "PAYMENT WAS SUBMITTED" in combined.upper() or "paymentSubmitted" in combined:
+            payload = _parse_json_envelope(output)
+            if payload is not None and payload.get("paymentSubmitted") is True:
+                metadata = _payment_metadata(payload)
+                if metadata is None or "amount" not in metadata:
+                    raise CirclePaymentCommitmentUnresolvedError(
+                        "payment may have been submitted; exact commitment unresolved; "
+                        "inspect Circle payment records"
+                    )
+                committed_cost = _validate_payment_metadata(offer, metadata)
                 return CirclePaymentReceipt(
                     succeeded=False,
-                    committed_cost=offer.quoted_cost,
-                    evidence=self._evidence(offer, combined, "payment submitted but service failed"),
+                    committed_cost=committed_cost,
+                    evidence=self._evidence(
+                        offer, output, "payment submitted but service failed"
+                    ),
                 )
             raise CirclePreAttemptError(
                 "Circle CLI failed before payment commitment; no spend was recorded: "
@@ -232,9 +279,20 @@ class CircleCliPaymentClient:
             raise CirclePostAttemptError(
                 "Circle CLI returned success without a response body or payment receipt."
             )
+        payload = _parse_json_envelope(output)
+        if payload is None:
+            raise CirclePaymentMetadataError(
+                "Circle CLI success output was not a JSON payment envelope."
+            )
+        metadata = _payment_metadata(payload)
+        if metadata is None:
+            raise CirclePaymentMetadataError(
+                "Circle CLI success JSON did not contain authoritative payment metadata."
+            )
+        committed_cost = _validate_payment_metadata(offer, metadata)
         return CirclePaymentReceipt(
             succeeded=True,
-            committed_cost=offer.quoted_cost,
+            committed_cost=committed_cost,
             evidence=self._evidence(offer, output, "Circle service response received"),
         )
 
@@ -247,6 +305,72 @@ class CircleCliPaymentClient:
             source_reference=offer.resource,
             outcome_key=self.outcome_key,
         )
+
+
+def _parse_json_envelope(response: str) -> Mapping[str, Any] | None:
+    try:
+        payload = json.loads(response)
+    except (TypeError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, Mapping) else None
+
+
+def _payment_metadata(payload: Mapping[str, Any]) -> Mapping[str, Any] | None:
+    for key in ("payment", "paymentMetadata", "paymentDetails", "receipt"):
+        value = payload.get(key)
+        if isinstance(value, Mapping):
+            return value
+    if any(key in payload for key in ("amount", "network", "chain", "scheme", "asset")):
+        return payload
+    return None
+
+
+def _cli_chain_for_network(network: str) -> str:
+    try:
+        return _NETWORK_TO_CLI_CHAIN[network]
+    except KeyError as exc:
+        raise CirclePaymentMetadataError(
+            f"Circle offer network {network!r} has no supported CLI chain mapping."
+        ) from exc
+
+
+def _atomic_amount_to_money(value: object) -> Money:
+    if type(value) is not str:
+        raise TypeError("Circle atomic amount must be an exact decimal digit string.")
+    if not _ATOMIC_AMOUNT_RE.fullmatch(value):
+        raise ValueError("Circle atomic amount must contain decimal digits only.")
+    units = int(value)
+    if units <= 0:
+        raise ValueError("Circle atomic amount must be positive.")
+    whole, fractional = divmod(units, 10**_USDC_DECIMAL_PLACES)
+    return Money(f"{whole}.{fractional:0{_USDC_DECIMAL_PLACES}d}")
+
+
+def _validate_payment_metadata(
+    offer: CircleOffer, metadata: Mapping[str, Any]
+) -> Money:
+    amount = metadata.get("amount")
+    committed_cost = _atomic_amount_to_money(amount)
+    expected_cost = _atomic_amount_to_money(offer.atomic_amount)
+    expected_asset = offer.asset
+    expected_chain = _cli_chain_for_network(offer.network)
+    checks = (
+        (metadata.get("network"), offer.network, "network"),
+        (metadata.get("chain"), expected_chain, "chain"),
+        (metadata.get("scheme"), offer.scheme, "scheme"),
+        (metadata.get("asset"), expected_asset, "asset"),
+    )
+    for actual, expected, label in checks:
+        if actual != expected:
+            raise CirclePaymentMetadataError(
+                f"Circle payment {label} mismatch: expected {expected!r}, got {actual!r}."
+            )
+    if committed_cost != expected_cost:
+        raise CirclePaymentMetadataError(
+            f"Circle payment amount mismatch: expected {offer.atomic_amount!r} "
+            f"atomic units, got {amount!r}."
+        )
+    return committed_cost
 
 
 def live_circle_discovery(
@@ -297,6 +421,10 @@ def catalog_from_circle_response(
         raise CircleDiscoveryError("Circle Discovery response must be an object.")
     if not isinstance(expected_post_action_success_probability, Probability):
         raise TypeError("expected_post_action_success_probability must be Probability.")
+    if network not in _SUPPORTED_USDC_ASSETS:
+        raise CircleDiscoveryError(
+            f"Circle Discovery network {network!r} has no supported USDC asset mapping."
+        )
     items = payload.get("items")
     if not isinstance(items, Sequence) or isinstance(items, (str, bytes)):
         raise CircleDiscoveryError("Circle Discovery response has no ordered items.")
@@ -321,11 +449,16 @@ def catalog_from_circle_response(
             continue
         amount = term.get("amount")
         try:
-            quoted_cost = Money(str(Decimal(str(amount)) / _USDC_MICRO_UNITS))
-        except Exception:
-            continue
-        if not quoted_cost.is_positive:
-            continue
+            quoted_cost = _atomic_amount_to_money(amount)
+        except (TypeError, ValueError) as exc:
+            raise CircleDiscoveryError(
+                f"Circle Gateway offer has invalid atomic amount {amount!r}."
+            ) from exc
+        expected_asset = _SUPPORTED_USDC_ASSETS[network]
+        if term.get("asset") != expected_asset:
+            raise CircleDiscoveryError(
+                f"Circle Gateway offer does not use supported USDC asset for {network!r}."
+            )
         name = metadata.get("description") or (metadata.get("provider") or {}).get("name")
         if not isinstance(name, str) or not name.strip():
             continue
@@ -356,6 +489,9 @@ def catalog_from_circle_response(
                 quoted_cost=quoted_cost,
                 source_reference=source_reference,
                 request_url=request_url,
+                asset=expected_asset,
+                scheme=str(term["scheme"]),
+                atomic_amount=amount,
             )
         )
 
