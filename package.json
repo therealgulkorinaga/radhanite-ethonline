@@ -1,0 +1,19 @@
+{
+  "name": "radhanite-arc-x402",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "arc:pay": "node scripts/arc_x402_pay.mjs"
+  },
+  "dependencies": {
+    "@circle-fin/developer-controlled-wallets": "10.8.0",
+    "@circle-fin/x402-batching": "3.4.0",
+    "@x402/core": "2.25.0",
+    "@x402/evm": "2.25.0",
+    "express": "5.1.0",
+    "viem": "2.52.0"
+  }
+}
