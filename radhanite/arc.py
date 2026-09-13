@@ -170,12 +170,18 @@ class CircleArcDeveloperWalletPaymentClient:
                 "Arc helper exited without a trustworthy structured phase."
             )
         if completed.returncode != 0:
+            detail = _safe_error(
+                payload,
+                completed.stderr,
+                completed.stdout,
+                redactions=_credential_values(self.environment),
+            )
             if _is_affirmative_pre_sign_failure(payload):
-                detail = _safe_error(payload, completed.stderr, completed.stdout)
                 raise ArcPaymentError(f"Arc x402 payment failed before signing: {detail}")
             if not _is_committed_failure_envelope(payload):
                 raise ArcPaymentCommitmentUnresolvedError(
-                    "Arc helper may have signed or submitted payment; commitment is unresolved."
+                    "Arc helper may have signed or submitted payment; commitment is unresolved: "
+                    f"{detail}"
                 )
         elif payload.get("phase") != "complete":
             raise ArcPaymentCommitmentUnresolvedError(
@@ -343,13 +349,35 @@ def _parse_result(stdout: str | None) -> Mapping[str, Any] | None:
 
 
 def _safe_error(
-    payload: Mapping[str, Any] | None, stderr: str | None, stdout: str | None
+    payload: Mapping[str, Any] | None,
+    stderr: str | None,
+    stdout: str | None,
+    *,
+    redactions: tuple[str, ...] = (),
 ) -> str:
     if payload:
         message = payload.get("error") or payload.get("message")
         if isinstance(message, str) and message:
-            return message[:240]
-    return (stderr or stdout or "unknown helper error").strip()[:240]
+            return _sanitize_diagnostic(message, redactions)
+    return _sanitize_diagnostic(
+        (stderr or stdout or "unknown helper error").strip(), redactions
+    )
+
+
+def _credential_values(environment: Mapping[str, str] | None) -> tuple[str, ...]:
+    values = os.environ if environment is None else environment
+    return tuple(
+        value
+        for name in ("CIRCLE_API_KEY", "CIRCLE_ENTITY_SECRET")
+        if (value := values.get(name))
+    )
+
+
+def _sanitize_diagnostic(message: str, redactions: tuple[str, ...]) -> str:
+    sanitized = message
+    for secret in redactions:
+        sanitized = sanitized.replace(secret, "[REDACTED]")
+    return sanitized[:240]
 
 
 def _is_affirmative_pre_sign_failure(payload: Mapping[str, Any]) -> bool:

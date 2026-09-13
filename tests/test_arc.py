@@ -168,8 +168,65 @@ class ArcTests(unittest.TestCase):
     def test_nonzero_no_json_is_unresolved(self) -> None:
         runner = Mock(return_value=subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="killed"))
         client = CircleArcDeveloperWalletPaymentClient(runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS)
-        with self.assertRaises(ArcPaymentCommitmentUnresolvedError):
+        with self.assertRaises(ArcPaymentCommitmentUnresolvedError) as caught:
             client.pay(arc_offer_catalog().offers[0], Money("0.001"))
+        self.assertNotIn("killed", str(caught.exception))
+        self.assertEqual(runner.call_count, 1)
+
+    def test_unresolved_helper_detail_is_bounded_and_preserved(self) -> None:
+        detail = "seller returned diagnostic-safe failure"
+        runner = Mock(return_value=subprocess.CompletedProcess(
+            args=[], returncode=1,
+            stdout=json.dumps({
+                "phase": "post_submit",
+                "status": "error",
+                "signing_started": True,
+                "payment_submitted": True,
+                "commitment_status": "unresolved",
+                "error": detail,
+            }),
+            stderr="",
+        ))
+        client = CircleArcDeveloperWalletPaymentClient(
+            runner=runner, wallet_id=WALLET_ID, wallet_address=WALLET_ADDRESS
+        )
+        with self.assertRaises(ArcPaymentCommitmentUnresolvedError) as caught:
+            client.pay(arc_offer_catalog().offers[0], Money("0.001"))
+        self.assertIn(detail, str(caught.exception))
+        self.assertIs(type(caught.exception), ArcPaymentCommitmentUnresolvedError)
+        self.assertEqual(runner.call_count, 1)
+
+    def test_unresolved_diagnostic_redacts_circle_credentials(self) -> None:
+        api_key = "api-key-diagnostic-secret"
+        entity_secret = "entity-secret-diagnostic-secret"
+        runner = Mock(return_value=subprocess.CompletedProcess(
+            args=[], returncode=1,
+            stdout=json.dumps({
+                "phase": "post_submit",
+                "status": "error",
+                "signing_started": True,
+                "payment_submitted": True,
+                "commitment_status": "unresolved",
+                "error": f"provider diagnostic {api_key} / {entity_secret}",
+            }),
+            stderr="",
+        ))
+        client = CircleArcDeveloperWalletPaymentClient(
+            runner=runner,
+            wallet_id=WALLET_ID,
+            wallet_address=WALLET_ADDRESS,
+            environment={
+                "CIRCLE_API_KEY": api_key,
+                "CIRCLE_ENTITY_SECRET": entity_secret,
+            },
+        )
+        with self.assertRaises(ArcPaymentCommitmentUnresolvedError) as caught:
+            client.pay(arc_offer_catalog().offers[0], Money("0.001"))
+        message = str(caught.exception)
+        self.assertNotIn(api_key, message)
+        self.assertNotIn(entity_secret, message)
+        self.assertIn("[REDACTED]", message)
+        self.assertEqual(runner.call_count, 1)
 
     def test_malformed_json_is_unresolved(self) -> None:
         runner = Mock(return_value=subprocess.CompletedProcess(args=[], returncode=1, stdout="not-json", stderr=""))
