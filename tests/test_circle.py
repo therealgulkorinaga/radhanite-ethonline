@@ -63,14 +63,25 @@ def cli_offer(**overrides) -> CircleOffer:
 
 def cli_success_json(**payment_overrides) -> str:
     payment = {
-        "amount": "12000",
+        "amount": "$0.012 USDC",
         "network": "eip155:8453",
-        "chain": "BASE",
+        "chain": "Base",
         "scheme": "GatewayWalletBatched",
         "asset": BASE_USDC,
     }
     payment.update(payment_overrides)
-    return json.dumps({"status": "success", "payment": payment, "response": {"price": "1"}})
+    return json.dumps(
+        {
+            "data": {
+                "payment": payment,
+                "response": {"price": "1"},
+            }
+        }
+    )
+
+
+def cli_error_json(message: str, hint: str) -> str:
+    return json.dumps({"error": {"message": message, "hint": hint}})
 
 
 def discovery_payload(*, amount: str = "12000", supports_gateway: bool = True) -> dict:
@@ -365,6 +376,22 @@ class CircleTests(unittest.TestCase):
         self.assertTrue(receipt.succeeded)
         self.assertEqual(receipt.committed_cost, Money("0.012"))
 
+    def test_cli_real_shaped_success_uses_nested_payment_and_formatted_amount(self) -> None:
+        from radhanite.circle import CircleCliPaymentClient
+
+        runner = Mock(
+            return_value=__import__("subprocess").CompletedProcess(
+                args=[], returncode=0, stdout=cli_success_json(), stderr=""
+            )
+        )
+        client = CircleCliPaymentClient(
+            cli="circle", wallet_address="0xwallet", allow_mainnet=True, runner=runner
+        )
+        with patch("radhanite.circle.shutil.which", return_value="/usr/bin/circle"):
+            receipt = client.pay(cli_offer(), Money("0.012"))
+        self.assertTrue(receipt.succeeded)
+        self.assertEqual(receipt.committed_cost, Money("0.012"))
+
     def test_cli_success_uses_authoritative_json_amount(self) -> None:
         from radhanite.circle import CircleCliPaymentClient
 
@@ -409,7 +436,10 @@ class CircleTests(unittest.TestCase):
 
         runner = Mock(return_value=__import__("subprocess").CompletedProcess(
             args=[], returncode=1,
-            stdout=json.dumps({"status": "error", "code": "PAYMENT_NOT_CHARGED"}),
+            stdout=cli_error_json(
+                "Payment was NOT charged",
+                "The request was rejected before payment authorization.",
+            ),
             stderr="",
         ))
         client = CircleCliPaymentClient(cli="circle", wallet_address="0xwallet", runner=runner)
@@ -422,18 +452,23 @@ class CircleTests(unittest.TestCase):
 
         runner = Mock(return_value=__import__("subprocess").CompletedProcess(
             args=[], returncode=1,
-            stdout=json.dumps({
-                "status": "error",
-                "code": "PAYMENT_SUBMITTED",
-                "paymentSubmitted": True,
-                "payment": {
-                    "amount": "12000",
-                    "network": "eip155:8453",
-                    "chain": "BASE",
-                    "scheme": "GatewayWalletBatched",
-                    "asset": BASE_USDC,
+            stdout=json.dumps(
+                {
+                    "error": {
+                        "message": "Payment failed after authorization",
+                        "hint": "PAYMENT WAS SUBMITTED — funds may have moved",
+                    },
+                    "data": {
+                        "payment": {
+                            "amount": "$0.012 USDC",
+                            "network": "eip155:8453",
+                            "chain": "Base",
+                            "scheme": "GatewayWalletBatched",
+                            "asset": BASE_USDC,
+                        }
+                    },
                 },
-            }),
+            ),
             stderr="",
         ))
         client = CircleCliPaymentClient(
@@ -449,12 +484,10 @@ class CircleTests(unittest.TestCase):
 
         runner = Mock(return_value=__import__("subprocess").CompletedProcess(
             args=[], returncode=1,
-            stdout=json.dumps({
-                "status": "error",
-                "code": "PAYMENT_SUBMITTED",
-                "paymentSubmitted": True,
-                "message": "Payment may have been submitted",
-            }),
+            stdout=cli_error_json(
+                "Payment failed",
+                "PAYMENT MAY HAVE BEEN SUBMITTED — funds may have moved",
+            ),
             stderr="",
         ))
         client = CircleCliPaymentClient(
@@ -462,6 +495,24 @@ class CircleTests(unittest.TestCase):
         )
         with patch("radhanite.circle.shutil.which", return_value="/usr/bin/circle"):
             with self.assertRaises(CirclePaymentCommitmentUnresolvedError):
+                client.pay(cli_offer(), Money("0.012"))
+
+    def test_cli_malformed_success_envelope_is_rejected(self) -> None:
+        from radhanite.circle import CircleCliPaymentClient
+
+        runner = Mock(
+            return_value=__import__("subprocess").CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout=json.dumps({"data": {"payment": {"chain": "Base"}}}),
+                stderr="",
+            )
+        )
+        client = CircleCliPaymentClient(
+            cli="circle", wallet_address="0xwallet", allow_mainnet=True, runner=runner
+        )
+        with patch("radhanite.circle.shutil.which", return_value="/usr/bin/circle"):
+            with self.assertRaises(CirclePaymentMetadataError):
                 client.pay(cli_offer(), Money("0.012"))
 
     def test_unrelated_text_cannot_fabricate_submitted_spend(self) -> None:
