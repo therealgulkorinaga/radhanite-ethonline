@@ -24,6 +24,7 @@ app.get("/premium/quote", gateway.require("$0.001"), (request, response) => {
   response.json({
     capability: "arc-demo-quote",
     result: "Circle Arc Testnet x402 demo result",
+    outcome: "positive_market_signal",
     requestId: request.headers["x-request-id"] ?? null,
   });
 });

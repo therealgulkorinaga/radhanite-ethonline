@@ -1,8 +1,9 @@
 # TASK-010 — Circle marketplace and Arc payments adapter
 
-**Status:** Authorized — **implementation on review branch, Arc phase added**
+**Status:** Authorized — **implemented and merged in PR #37; Arc phase remains credential/offer gated**
 **Authorization:** Arko authorized TASK-010 on 2026-09-13 for one thin Circle
-Marketplace/Arc payment adapter. This review branch is not merged.
+Marketplace/Arc payment adapter. PR #37 is merged; TASK-015 is the authorized
+follow-on for the real Arc Testnet execution slice.
 **Bounded by:** [`ARCHITECTURE.md`](../docs/ARCHITECTURE.md) §2.1, §3.3, §6
 **Satisfies:** [TASK-008](TASK-008_CAPABILITY_ACQUISITION.md) as a source, and [TASK-007](TASK-007_CAPABILITY_RUN_LOOP.md) §5.2 as an executor
 
@@ -57,7 +58,7 @@ payment protocol — `ARCHITECTURE.md` §6 items 1–4.
 
 ## 6. Current implementation boundary
 
-This review branch uses **live Circle Discovery** at
+The merged implementation uses **live Circle Discovery** at
 `https://api.circle.com/v2/x402/discovery/resources`. The selected vertical
 slice is the live AIsa API CoinGecko Simple Price resource, exposed at an exact
 quoted price of `12000` micro-USDC (`0.012` USDC) on Base mainnet with the
@@ -97,18 +98,20 @@ and wallet-side custody. It uses Circle's official x402 batching SDK for the
 `ARC-TESTNET` / `eip155:5042002`; there is no Base fallback.
 
 The Arc payment sequence is: obtain one exact pre-purchase price, run the
-existing TASK-006 selection, ensure sufficient Gateway balance through Circle's
-official approval/deposit transactions, request the seller's `402` payment
-requirements, select only the Arc Gateway option within the authorized ceiling,
-sign the typed data through Circle, retry with the x402 payment header, and
-retain the exact settlement response as immutable TASK-009 evidence. A local
+existing TASK-006 selection, verify the pre-provisioned wallet ID/address and
+read-only Gateway balance, request the seller's `402` payment requirements,
+select only the Arc Gateway option within the authorized ceiling, sign the typed
+data through Circle, retry with the x402 payment header, and retain the exact
+settlement response as immutable TASK-009 evidence. Wallet creation, approval,
+and Gateway deposit are setup actions outside the purchase path. A local
 demo seller is provided only as separately identified hackathon test
 infrastructure, derived from Circle's official Arc nanopayments example; it is
 not claimed to be a Circle Marketplace listing.
 
 The Arc live smoke is explicit and credential-gated. It requires
-`CIRCLE_API_KEY`, `CIRCLE_ENTITY_SECRET`, an Arc EOA, testnet USDC, a Gateway
-balance, and `Radhanite_ARC_RESOURCE`. Missing setup produces a blocker report;
+`CIRCLE_API_KEY`, `CIRCLE_ENTITY_SECRET`, `CIRCLE_ARC_WALLET_ID`,
+`CIRCLE_ARC_WALLET_ADDRESS`, `RADHANITE_ARC_RESOURCE`, `RADHANITE_ARC_PRICE`,
+an Arc EOA, testnet USDC, and a pre-funded Gateway balance. Missing setup produces a blocker report;
 it does not attempt payment, silently use Base, or invent a successful result.
 No credentials or private keys are stored in the repository.
 

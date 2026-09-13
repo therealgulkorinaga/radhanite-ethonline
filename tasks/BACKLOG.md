@@ -84,11 +84,11 @@ recorded separately rather than letting the two blur.
 Set by the human product owner on 2026-09-11, when the benchmark became
 autonomous revenue opportunity pursuit. TASK-007 PR A and PR B, TASK-007's
 final generic loop, TASK-008 PR A, and TASK-009 are implemented and merged.
-TASK-010 is authorized and implemented on its review branch, now including the
-bounded Arc Testnet EOA Developer-Controlled Wallet and x402/Gateway payment
-path. The engine remains provider-neutral; source-specific generation, benchmark
-assembly, and external integrations beyond the Circle/Arc adapter remain
-incomplete.
+TASK-010 is authorized and implemented in merged PR #37, including the bounded
+Arc Testnet EOA Developer-Controlled Wallet and x402/Gateway payment path. TASK-015
+is the authorized follow-on for the real Arc Testnet execution slice. The engine
+remains provider-neutral; source-specific generation, benchmark assembly, and
+external integrations beyond the Circle/Arc adapter remain incomplete.
 
 | Task | Layer | Status |
 |---|---|---|
@@ -96,7 +96,7 @@ incomplete.
 | [007](TASK-007_CAPABILITY_RUN_LOOP.md) | Engine — the run loop | **Implemented and merged** — candidate source, TASK-006 selection, PR-B execution, updater, terminal classification, and immutable history; provider-specific work remains incomplete |
 | [008](TASK-008_CAPABILITY_ACQUISITION.md) | Boundary — candidate generation | **PR A implemented** — normalization/catalog boundary; source-specific generation and adapters remain incomplete |
 | [009](TASK-009_REVENUE_OPPORTUNITY_STATE.md) | Benchmark reasoning | **Implemented and merged** — immutable state, declared evidence transitions, initializer, and TASK-007 updater |
-| [010](TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | Adapter — Circle / Arc | **Authorized — implemented on review branch** — live Discovery/Base CLI boundary plus opt-in Arc Testnet EOA Developer-Controlled Wallet, Gateway balance preparation, x402 payment, settlement evidence, and TASK-009 handoff; live Arc smoke remains credential-gated |
+| [010](TASK-010_CIRCLE_MARKETPLACE_ADAPTER.md) | Adapter — Circle / Arc | **Implemented and merged in PR #37** — live Discovery/Base CLI boundary plus opt-in Arc Testnet EOA Developer-Controlled Wallet, Gateway balance preparation, x402 payment, settlement evidence, and TASK-009 handoff; live Arc smoke remains credential-gated |
 | [011](TASK-011_ONCHAIN_INTELLIGENCE_VIA_THE_GRAPH.md) | Adapter — The Graph | Specified |
 | [012](TASK-012_HEDERA_INDEPENDENT_REVIEW.md) | Adapter — Hedera | Specified |
 | [013](TASK-013_REVENUE_AGENT_BENCHMARK.md) | Assembly — the benchmark | Specified |

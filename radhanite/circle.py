@@ -94,6 +94,9 @@ class CircleOffer:
     asset: str = _SUPPORTED_USDC_ASSETS["eip155:8453"]
     scheme: str = "GatewayWalletBatched"
     atomic_amount: str = "12000"
+    extra_name: str = "GatewayWalletBatched"
+    extra_version: str = "1"
+    verifying_contract: str | None = None
 
     @property
     def payable_url(self) -> str:
@@ -558,6 +561,9 @@ def catalog_from_circle_response(
                 asset=expected_asset,
                 scheme=str(term["scheme"]),
                 atomic_amount=amount,
+                extra_name=str(term.get("extra", {}).get("name", "")),
+                extra_version=str(term.get("extra", {}).get("version", "")),
+                verifying_contract=term.get("extra", {}).get("verifyingContract"),
             )
         )
 
